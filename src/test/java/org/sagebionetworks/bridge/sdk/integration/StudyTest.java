@@ -38,6 +38,7 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.FilesApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
+import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -49,12 +50,19 @@ import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignInType;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyInfo;
 import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -312,4 +320,48 @@ public class StudyTest {
             
         adminStudiesApi.deleteStudy(tempStudyId, true).execute();
     }    
+    
+    @Test
+    public void testPublicStudies() throws IOException {
+        String url = admin.getClientManager().getHostUrl() + "/v1/apps/api/studies/study1";
+        
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder().url(url).build();
+        Response response = client.newCall(request).execute();
+        
+        assertEquals(200, response.code());
+        assertEquals("application/json;charset=UTF-8", response.header("Content-Type"));
+        
+        ResponseBody body = response.body();
+        String output = new String(body.bytes());
+        // enums need to be upper-cased for the vanilla ObjectMapper to deserialize properly
+        output = output.replace("design", "DESIGN");
+        output = output.replace("email_message", "EMAIL_MESSAGE");
+        output = output.replace("phone_message", "PHONE_MESSAGE");
+        
+        StudyInfo deser = new ObjectMapper().readValue(output, StudyInfo.class);
+        assertEquals(STUDY_ID_1, deser.getIdentifier());
+        
+        TestUser user = TestUserHelper.createAndSignInUser(StudyTest.class, true);
+        userIdsToDelete.add(user.getUserId());
+        
+        // This person by default has been put into study 1.
+        
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        Study usersStudy = usersApi.getStudy(STUDY_ID_1).execute().body();
+        assertEquals(STUDY_ID_1, usersStudy.getIdentifier());
+        
+        try {
+            usersApi.getStudy("study4").execute();
+            fail("Should have thrown exception");
+        } catch(EntityNotFoundException e) {
+            
+        }
+        try {
+            usersApi.getStudy(STUDY_ID_2).execute().body();
+            fail("Should have thrown exception");
+        } catch(UnauthorizedException e) {
+            
+        }
+    }
 }
