@@ -11,6 +11,7 @@ import static org.sagebionetworks.bridge.rest.model.AdherenceRecordType.ASSESSME
 import static org.sagebionetworks.bridge.rest.model.AdherenceRecordType.SESSION;
 import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
+import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.SortOrder.DESC;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
@@ -36,6 +37,7 @@ import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
+import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
@@ -326,11 +328,11 @@ public class AdherenceRecordsTest {
                 .adherenceRecordType(SESSION), 
                 "S2D00W1 T1", "S2D00W1 T2", "S2D07W1 T1", "S2D07W1 T2", "S2D14W1 T1", 
                 "S2D14W1 T2", "S2D21W1 T1", "S2D21W1 T2");
-        
+
         // paging works
         AdherenceRecordsSearch ars = new AdherenceRecordsSearch().pageSize(20);
         ForConsentedUsersApi usersApi = participant.getClient(ForConsentedUsersApi.class);
-        
+
         AdherenceRecordList list = usersApi.searchForAdherenceRecords(STUDY_ID_1, ars).execute().body();
         assertEquals(Integer.valueOf(61), list.getTotal());
         assertEquals(Integer.valueOf(20), list.getRequestParams().getPageSize());
@@ -360,7 +362,7 @@ public class AdherenceRecordsTest {
                 .sortOrder(SortOrder.DESC)).execute().body();
         assertEquals("2020-05-31T00:00:00.000Z", 
                 list.getItems().get(0).getStartedOn().toString());
-        
+
         // Test finishing and that they create events.
         instanceGuids = getInstanceGuidsByTag(false, "S1D02W1", "S1D08W1A");
         list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch()
@@ -393,7 +395,7 @@ public class AdherenceRecordsTest {
             }
         }
         assertTrue(foundSessionEvent && foundAssessmentEvent);
-        
+
         // Test optional fields
         instanceGuids = getInstanceGuidsByTag(false, "S1D02W1");
         list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch()
@@ -405,18 +407,44 @@ public class AdherenceRecordsTest {
         Map<String,String> map = new HashMap<>();
         map.put("A", "B");
         record.setClientData(map);
-        
+
         usersApi.updateAdherenceRecords(STUDY_ID_1, new AdherenceRecordUpdates()
                 .addRecordsItem(record)).execute();
         list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch()
                 .instanceGuids(instanceGuids)).execute().body();
         record = list.getItems().get(0);
-        
+
         assertTrue(record.isDeclined());
         assertEquals("America/Los_Angeles", record.getClientTimeZone());
         @SuppressWarnings("unchecked")
         Map<String,String> retValue = (Map<String,String>)RestUtils.toType(record.getClientData(), Map.class); 
         assertEquals("B", retValue.get("A"));
+
+        // Deleting an adherence record from a non-persistent time window (tag: S1D02W1)
+        TestUser researcher = TestUserHelper.createAndSignInUser(ActivityEventTest.class, false, RESEARCHER);
+        ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
+        
+        researchersApi.deleteAdherenceRecord(STUDY_ID_1, participant.getUserId(),
+                record.getInstanceGuid(),
+                record.getEventTimestamp(),
+                record.getStartedOn()).execute();
+
+        instanceGuids = getInstanceGuidsByTag(false, "S1D02W1");
+        assertEquals(0, instanceGuids.size());
+
+        // Deleting an adherence record from a persistent time window (tag: S1D08W2A)
+        instanceGuids = getInstanceGuidsByTag(false, "S1D08W2A");
+        list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch()
+                .instanceGuids(instanceGuids)).execute().body();
+        record = list.getItems().get(0);
+
+        researchersApi.deleteAdherenceRecord(STUDY_ID_1, participant.getUserId(),
+                record.getInstanceGuid(),
+                record.getEventTimestamp(),
+                record.getStartedOn()).execute();
+
+        instanceGuids = getInstanceGuidsByTag(false, "S1D08W2A");
+        assertEquals(0, instanceGuids.size());
     }
     
     @Test
