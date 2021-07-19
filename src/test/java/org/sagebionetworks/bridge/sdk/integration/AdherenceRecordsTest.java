@@ -429,10 +429,6 @@ public class AdherenceRecordsTest {
                 record.getEventTimestamp(),
                 record.getStartedOn()).execute();
 
-        list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch())
-                .execute().body();
-        assertEquals(list.getItems().size(), 60);
-
         instanceGuids = getInstanceGuidsByTag(false, "S1D02W1");
         assertEquals(0, instanceGuids.size());
 
@@ -446,10 +442,6 @@ public class AdherenceRecordsTest {
                 record.getInstanceGuid(),
                 record.getEventTimestamp(),
                 record.getStartedOn()).execute();
-
-        list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch())
-                .execute().body();
-        assertEquals(list.getItems().size(), 59);
 
         instanceGuids = getInstanceGuidsByTag(false, "S1D08W2A");
         assertEquals(0, instanceGuids.size());
