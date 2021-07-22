@@ -1,7 +1,6 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
@@ -20,9 +19,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
+import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
+import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyPhase;
 import org.sagebionetworks.bridge.user.TestUserHelper;
@@ -81,12 +83,54 @@ public class StudyLifecycleTest {
         shouldFail(() -> coordinatorApi.transitionStudyToCompleted(studyId));
         
         shouldSucceed(() -> coordinatorApi.transitionStudyToRecruitment(studyId), RECRUITMENT);
+        
+        // Can change metadata, but not schedule, and cannot delete
+        
+        study = designerApi.getStudy(studyId).execute().body();
+        String name = study.getName();
+        study.setName(name + " changed");
+        designerApi.updateStudy(studyId, study).execute();
+        
+        study = designerApi.getStudy(studyId).execute().body();
+        assertEquals(name + " changed", study.getName());
+        
+        // Adding a schedule is not allowed.
+        SchedulesV2Api schedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+        Schedule2 schedule = new Schedule2();
+        schedule.setName("Test Schedule [StudyLifecycleTest]");
+        schedule.setDuration("P10W");
+        schedule = schedulesApi.createSchedule(schedule).execute().body();
+        study.setScheduleGuid(schedule.getGuid());
+        try {
+            designerApi.updateStudy(studyId, study).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {}
+        
+        // deleting is not allowed.
+        try {
+            designerApi.deleteStudy(studyId, false).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {}
+        
         shouldSucceed(() -> coordinatorApi.transitionStudyToInFlight(studyId), IN_FLIGHT);
         shouldFail(() -> coordinatorApi.transitionStudyToDesign(studyId));
         shouldFail(() -> coordinatorApi.transitionStudyToCompleted(studyId));
         
         shouldSucceed(() -> coordinatorApi.transitionStudyToAnalysis(studyId), ANALYSIS);
         shouldFail(() -> coordinatorApi.transitionStudyToDesign(studyId));
+        
+        // Cannot update or delete a study in the analysis state. Again, we're not
+        // going to check all possible phase states. Just verifying this logic exists.
+        try {
+            designerApi.deleteStudy(studyId, false).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {}
+        
+        study = designerApi.getStudy(studyId).execute().body();
+        try {
+            designerApi.updateStudy(studyId, study).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {}
 
         shouldSucceed(() -> coordinatorApi.transitionStudyToCompleted(studyId), COMPLETED);
         shouldFail(() -> coordinatorApi.transitionStudyToDesign(studyId));
