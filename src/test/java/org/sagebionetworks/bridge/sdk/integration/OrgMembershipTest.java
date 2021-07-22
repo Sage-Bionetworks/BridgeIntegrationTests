@@ -63,6 +63,7 @@ public class OrgMembershipTest {
     public void testMembership() throws Exception {
         String email = IntegTestUtils.makeEmail(OrgMembershipTest.class);
         ForOrgAdminsApi orgAdminApi = orgAdmin.getClient(ForOrgAdminsApi.class);
+        OrganizationsApi orgApi = orgAdmin.getClient(OrganizationsApi.class);
         
         // Create a test user. OrgId is automatically set correctly through this API
         Account account = new Account().email(email).roles(ImmutableList.of(STUDY_COORDINATOR));        
@@ -74,7 +75,7 @@ public class OrgMembershipTest {
         
         // User can be retrieved in a list. User search scoped to the user's email list
         AccountSummarySearch search = new AccountSummarySearch().emailFilter(email);
-        AccountSummaryList list = orgAdminApi.getMembers(orgId, search).execute().body();
+        AccountSummaryList list = orgApi.getMembers(orgId, search).execute().body();
         assertEquals(userId, list.getItems().get(0).getId());
         
         // User can be updated
@@ -89,7 +90,7 @@ public class OrgMembershipTest {
         // User can be removed from the organization
         orgAdminApi.removeMember(orgId, userId).execute().body();
         
-        list = orgAdminApi.getMembers(orgId, search).execute().body();
+        list = orgApi.getMembers(orgId, search).execute().body();
         assertTrue(list.getItems().isEmpty());
         
         // These should now fail because it's not in the target organization of the caller
@@ -111,7 +112,7 @@ public class OrgMembershipTest {
         
         // Put the account back
         orgAdminApi.addMember(orgId, userId).execute().body();
-        list = orgAdminApi.getMembers(orgId, search).execute().body();
+        list = orgApi.getMembers(orgId, search).execute().body();
         assertEquals(list.getTotal(), Integer.valueOf(1));
         
         // Test deletion of the ORGANIZATION when there is an account still associated to the
@@ -126,7 +127,7 @@ public class OrgMembershipTest {
         // Test deletion
         orgAdminApi.deleteAccount(userId).execute();
         
-        list = orgAdminApi.getMembers(orgId, search).execute().body();
+        list = orgApi.getMembers(orgId, search).execute().body();
         assertTrue(list.getItems().isEmpty());
     }
 }
