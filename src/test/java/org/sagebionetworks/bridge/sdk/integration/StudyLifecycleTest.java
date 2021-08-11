@@ -22,7 +22,6 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
-import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -38,13 +37,15 @@ public class StudyLifecycleTest {
     public interface Supplier {
         Call<Study> run() throws IOException;
     }
-    
+
+    private String scheduleGuid;
     private TestUser studyDesigner;
     private TestUser studyCoordinator;
     private List<String> studiesToDelete;
     
     @Before
     public void before() throws IOException {
+        scheduleGuid = null;
         studiesToDelete = new ArrayList<>();
         studyDesigner = TestUserHelper.createAndSignInUser(StudyLifecycleTest.class, false, STUDY_DESIGNER);
         studyCoordinator = TestUserHelper.createAndSignInUser(StudyLifecycleTest.class, false, STUDY_COORDINATOR);
@@ -52,10 +53,15 @@ public class StudyLifecycleTest {
     
     @After
     public void after() throws IOException {
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        if (scheduleGuid != null) {
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(scheduleGuid, true).execute();
+        }
+
         for (String studyId : studiesToDelete) {
-            TestUser admin = TestUserHelper.getSignedInAdmin();
             admin.getClient(StudiesApi.class).deleteStudy(studyId, true).execute();
         }
+
         if (studyDesigner != null) {
             studyDesigner.signOutAndDeleteUser();
         }
@@ -100,7 +106,8 @@ public class StudyLifecycleTest {
         schedule.setName("Test Schedule [StudyLifecycleTest]");
         schedule.setDuration("P10W");
         schedule = schedulesApi.createSchedule(schedule).execute().body();
-        study.setScheduleGuid(schedule.getGuid());
+        scheduleGuid = schedule.getGuid();
+        study.setScheduleGuid(scheduleGuid);
         try {
             designerApi.updateStudy(studyId, study).execute();
             fail("Should have thrown exception");
@@ -141,7 +148,7 @@ public class StudyLifecycleTest {
         // From design...
         shouldSucceed(() -> coordinatorApi.transitionStudyToWithdrawn(studyId2), WITHDRAWN);
 
-        String studyId3 = createStudy(coordinatorApi);;
+        String studyId3 = createStudy(coordinatorApi);
         
         // From analysis...
         shouldSucceed(() -> coordinatorApi.transitionStudyToRecruitment(studyId3), RECRUITMENT);
