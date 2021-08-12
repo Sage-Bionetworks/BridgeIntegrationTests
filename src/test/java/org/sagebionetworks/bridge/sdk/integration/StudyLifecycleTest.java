@@ -38,14 +38,12 @@ public class StudyLifecycleTest {
         Call<Study> run() throws IOException;
     }
 
-    private String scheduleGuid;
     private TestUser studyDesigner;
     private TestUser studyCoordinator;
     private List<String> studiesToDelete;
     
     @Before
     public void before() throws IOException {
-        scheduleGuid = null;
         studiesToDelete = new ArrayList<>();
         studyDesigner = TestUserHelper.createAndSignInUser(StudyLifecycleTest.class, false, STUDY_DESIGNER);
         studyCoordinator = TestUserHelper.createAndSignInUser(StudyLifecycleTest.class, false, STUDY_COORDINATOR);
@@ -54,14 +52,9 @@ public class StudyLifecycleTest {
     @After
     public void after() throws IOException {
         TestUser admin = TestUserHelper.getSignedInAdmin();
-        if (scheduleGuid != null) {
-            admin.getClient(SchedulesV2Api.class).deleteSchedule(scheduleGuid, true).execute();
-        }
-
         for (String studyId : studiesToDelete) {
             admin.getClient(StudiesApi.class).deleteStudy(studyId, true).execute();
         }
-
         if (studyDesigner != null) {
             studyDesigner.signOutAndDeleteUser();
         }
@@ -105,11 +98,9 @@ public class StudyLifecycleTest {
         Schedule2 schedule = new Schedule2();
         schedule.setName("Test Schedule [StudyLifecycleTest]");
         schedule.setDuration("P10W");
-        schedule = schedulesApi.createSchedule(schedule).execute().body();
-        scheduleGuid = schedule.getGuid();
-        study.setScheduleGuid(scheduleGuid);
+
         try {
-            designerApi.updateStudy(studyId, study).execute();
+            schedule = schedulesApi.saveScheduleForStudy(studyId, schedule).execute().body();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {}
         

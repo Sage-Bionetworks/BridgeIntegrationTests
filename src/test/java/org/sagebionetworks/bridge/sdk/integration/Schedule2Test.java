@@ -34,7 +34,6 @@ import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
-import org.sagebionetworks.bridge.rest.exceptions.PublishedEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentInfo;
@@ -46,7 +45,6 @@ import org.sagebionetworks.bridge.rest.model.NotificationInfo;
 import org.sagebionetworks.bridge.rest.model.NotificationMessage;
 import org.sagebionetworks.bridge.rest.model.PerformanceOrder;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
-import org.sagebionetworks.bridge.rest.model.Schedule2List;
 import org.sagebionetworks.bridge.rest.model.ScheduledAssessment;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
@@ -61,7 +59,7 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 import retrofit2.Response;
 
 public class Schedule2Test {
-    
+
     TestUser developer;
     TestUser studyDesigner;
     TestUser studyCoordinator;
@@ -81,6 +79,18 @@ public class Schedule2Test {
                 .identifier(Tests.randomIdentifier(Schedule2Test.class));
         
         assessment = developer.getClient(AssessmentsApi.class).createAssessment(assessment).execute().body();
+        
+        // If there's a schedule associated to study 1, we need to delete it.
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+        Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
+        if (study.getScheduleGuid() != null) {
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        }
+        study = studiesApi.getStudy(STUDY_ID_2).execute().body();
+        if (study.getScheduleGuid() != null) {
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        }
     }
     
     @After
@@ -95,13 +105,13 @@ public class Schedule2Test {
             studiesApi.updateStudy(STUDY_ID_1, study).execute().body();
         }
         if (schedule != null && schedule.getGuid() != null) {
-            adminSchedulesApi.deleteSchedule(schedule.getGuid(), true).execute();
+            adminSchedulesApi.deleteSchedule(schedule.getGuid()).execute();
         }
         if (org1ScheduleGuid != null) {
-            adminSchedulesApi.deleteSchedule(org1ScheduleGuid, true).execute();
+            adminSchedulesApi.deleteSchedule(org1ScheduleGuid).execute();
         }
         if (org2ScheduleGuid != null) {
-            adminSchedulesApi.deleteSchedule(org2ScheduleGuid, true).execute();
+            adminSchedulesApi.deleteSchedule(org2ScheduleGuid).execute();
         }
         if (assessment != null && assessment.getGuid() != null) {
             admin.getClient(AssessmentsApi.class).deleteAssessment(assessment.getGuid(), true).execute();
@@ -127,7 +137,7 @@ public class Schedule2Test {
         
         schedule = new Schedule2();
         try {
-            schedulesApi.createSchedule(schedule).execute();
+            schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute();
             fail("Should have thrown exception");
         } catch(InvalidEntityException e) {
         }
@@ -142,7 +152,7 @@ public class Schedule2Test {
         schedule.setVersion(10L);
         
         // create schedule.
-        schedule = schedulesApi.createSchedule(schedule).execute().body();
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
         assertEquals("Test Schedule [Schedule2Test]", schedule.getName());
         assertEquals("P10W", schedule.getDuration());
         assertFalse(schedule.isDeleted());
@@ -193,11 +203,11 @@ public class Schedule2Test {
         
         schedule.addSessionsItem(session);
 
-        schedule = schedulesApi.updateSchedule(schedule.getGuid(), schedule).execute().body();
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
         assertSchedule(schedule);
         
         // get schedule
-        schedule = schedulesApi.getSchedule(schedule.getGuid()).execute().body();
+        schedule = schedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
         assertSchedule(schedule);
         
         // update schedule, fails validation
@@ -205,7 +215,7 @@ public class Schedule2Test {
         schedule.getSessions().get(0).addLabelsItem(new Label().lang("ja").value("評価を受ける"));
 
         // update schedule, succeeds
-        schedule = schedulesApi.updateSchedule(schedule.getGuid(), schedule).execute().body();
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
         assertEquals("Updated name for session", schedule.getSessions().get(0).getName());
         assertEquals("ja", schedule.getSessions().get(0).getLabels().get(1).getLang());
         assertEquals("評価を受ける", schedule.getSessions().get(0).getLabels().get(1).getValue());
@@ -214,7 +224,7 @@ public class Schedule2Test {
         assertNotNull(timeWindowGuid);
         
         // You can retrieve the timeline for this schedule
-        Timeline timeline = schedulesApi.getTimelineForSchedule(schedule.getGuid()).execute().body();
+        Timeline timeline = schedulesApi.getTimelineForStudy(STUDY_ID_1).execute().body();
         assertEquals(schedule.getDuration(), timeline.getDuration());
         assertFalse(timeline.getAssessments().isEmpty());
         assertFalse(timeline.getSessions().isEmpty());
@@ -275,7 +285,7 @@ public class Schedule2Test {
         assertEquals(scheduledAssessmentCount, asmtInstanceGuids.size());
         
         // And, these values are identical between runs
-        Timeline timeline2 = schedulesApi.getTimelineForSchedule(schedule.getGuid()).execute().body();
+        Timeline timeline2 = schedulesApi.getTimelineForStudy(STUDY_ID_1).execute().body();
         Set<String> sessionInstanceGuids2 = new HashSet<>();
         Set<String> asmtInstanceGuids2 = new HashSet<>();
         for (ScheduledSession scheduledSession : timeline2.getSchedule()) {
@@ -287,72 +297,12 @@ public class Schedule2Test {
         assertEquals(sessionInstanceGuids, sessionInstanceGuids2);
         assertEquals(asmtInstanceGuids, asmtInstanceGuids2);
         
-        // get schedules works (try the parameters)
-        Schedule2List page = schedulesApi.getSchedules(null, null, null).execute().body();
-        assertTrue(page.getItems().stream().anyMatch(item -> item.getGuid().equals(schedule.getGuid())));
-        assertEquals(Integer.valueOf(0), page.getRequestParams().getOffsetBy());
-        assertEquals(Integer.valueOf(50), page.getRequestParams().getPageSize());
-        
-        page = schedulesApi.getSchedules(50, null, null).execute().body();
-        assertTrue(page.getTotal() > 0);
-        assertTrue(page.getItems().isEmpty());
-
-        // delete schedule logically (even though set to physical=true)
-        schedulesApi.deleteSchedule(schedule.getGuid(), true).execute().body();
-        
-        // it still exists
-        schedule = schedulesApi.getSchedule(schedule.getGuid()).execute().body();
-        assertTrue(schedule.isDeleted());
-        
-        // get schedules deleted/not deleted works
-        page = schedulesApi.getSchedules(null, null, false).execute().body();
-        assertTrue(page.getItems().stream().noneMatch(item -> item.getGuid().equals(schedule.getGuid())));
-        
-        page = schedulesApi.getSchedules(null, null, true).execute().body();
-        assertTrue(page.getItems().stream().anyMatch(item -> item.getGuid().equals(schedule.getGuid())));
-        
-        // cannot update logically deleted schedule
-        try {
-            schedulesApi.updateSchedule(schedule.getGuid(), schedule).execute();
-            fail("Should have thrown exception");
-        } catch(EntityNotFoundException e) {
-        }
-        
-        // cannot publish it
-        try {
-            schedulesApi.publishSchedule(schedule.getGuid()).execute();
-            fail("Should have thrown exception");
-        } catch(EntityNotFoundException e) {
-        }
-        
-        // undelete it through update
-        schedule.setDeleted(false);
-        schedule = schedulesApi.updateSchedule(schedule.getGuid(), schedule).execute().body();
-        
-        // publish works
-        schedulesApi.publishSchedule(schedule.getGuid()).execute();
-        
-        // update now fails
-        try {
-            schedulesApi.updateSchedule(schedule.getGuid(), schedule).execute();
-            fail("Should have thrown exception");
-        } catch(PublishedEntityException e) {
-        }
-        
-        // republish fails
-        try {
-            schedulesApi.publishSchedule(schedule.getGuid()).execute();
-            fail("Should have thrown exception");
-        } catch(PublishedEntityException e) {
-        }
-        
         // physically delete it
         TestUser admin = TestUserHelper.getSignedInAdmin();
-        admin.getClient(SchedulesV2Api.class)
-            .deleteSchedule(schedule.getGuid(), true).execute();
+        admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
         
         try {
-            schedulesApi.getSchedule(schedule.getGuid()).execute();
+            schedulesApi.getScheduleForStudy(STUDY_ID_1).execute();
             fail("Should have thrown exception");
         } catch(EntityNotFoundException e) {
         }
@@ -372,33 +322,38 @@ public class Schedule2Test {
         schedule = new Schedule2();
         schedule.setName("ORG1: Test Schedule [Schedule2Test]");
         schedule.setDuration("P30D");
-        org1ScheduleGuid = schedulesApi.createSchedule(schedule).execute().body().getGuid();
+        org1ScheduleGuid = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body().getGuid();
         
         adminOrgApi.removeMember(ORG_ID_1, studyDesigner.getUserId()).execute();
         adminOrgApi.addMember(ORG_ID_2, studyDesigner.getUserId()).execute();
         
         schedule.setName("ORG2: Test Schedule [Schedule2Test]");
-        org2ScheduleGuid = schedulesApi.createSchedule(schedule).execute().body().getGuid();
+        org2ScheduleGuid = schedulesApi.saveScheduleForStudy(STUDY_ID_2, schedule).execute().body().getGuid();
         
-        // Designer should not be able to see study schedule1 
-        Schedule2List list = schedulesApi.getSchedules(null, null, null).execute().body();
-        assertEquals(1, list.getItems().size());
-        assertFalse(list.getItems().stream().anyMatch(sch -> sch.getName().contains("ORG1")));
-        assertTrue(list.getItems().stream().anyMatch(sch -> sch.getName().contains("ORG2")));
+        // Designer should not be able to see study schedule1
+        try {
+            schedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
+            fail("Should have thrown exception");
+        } catch(UnauthorizedException e) {
+        }
+        Schedule2 schedule = schedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
+        assertEquals(ORG_ID_2, schedule.getOwnerId());
         
         adminOrgApi.removeMember(ORG_ID_2, studyDesigner.getUserId()).execute();
         adminOrgApi.addMember(Tests.ORG_ID_1, studyDesigner.getUserId()).execute();
 
-        list = schedulesApi.getSchedules(null, null, null).execute().body();
-        assertEquals(1, list.getItems().size());
-        assertTrue(list.getItems().stream().anyMatch(sch -> sch.getName().contains("ORG1")));
-        assertFalse(list.getItems().stream().anyMatch(sch -> sch.getName().contains("ORG2")));
+        try {
+            schedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
+            fail("Should have thrown exception");
+        } catch(UnauthorizedException e) {
+        }
+        schedule = schedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
+        assertEquals(ORG_ID_1, schedule.getOwnerId());
         
         // Developers see everything
-        list = developer.getClient(SchedulesV2Api.class).getSchedules(null, null, null).execute().body();
-        assertTrue(list.getItems().size() >= 2);
-        assertTrue(list.getItems().stream().anyMatch(sch -> sch.getName().contains("ORG1")));
-        assertTrue(list.getItems().stream().anyMatch(sch -> sch.getName().contains("ORG2")));
+        SchedulesV2Api devSchedulesApi = developer.getClient(SchedulesV2Api.class);
+        devSchedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
+        devSchedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
     }
     
     @Test
@@ -427,7 +382,7 @@ public class Schedule2Test {
         schedule.addSessionsItem(session);
         
         // create schedule.
-        schedule = schedulesApi.createSchedule(schedule).execute().body();
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
         
         // Add it to study 1
         Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
@@ -528,4 +483,5 @@ public class Schedule2Test {
         assertEquals("subject in French", msg2.getSubject());
         assertEquals("body in French", msg2.getMessage());
     }
+
 }
