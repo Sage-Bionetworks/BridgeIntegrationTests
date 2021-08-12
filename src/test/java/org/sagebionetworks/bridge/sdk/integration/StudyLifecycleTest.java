@@ -22,7 +22,6 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
-import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -99,10 +98,9 @@ public class StudyLifecycleTest {
         Schedule2 schedule = new Schedule2();
         schedule.setName("Test Schedule [StudyLifecycleTest]");
         schedule.setDuration("P10W");
-        schedule = schedulesApi.createSchedule(schedule).execute().body();
-        study.setScheduleGuid(schedule.getGuid());
+        
         try {
-            designerApi.updateStudy(studyId, study).execute();
+            schedule = schedulesApi.saveScheduleForStudy(studyId, schedule).execute().body();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {}
         

@@ -39,6 +39,7 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
@@ -59,7 +60,6 @@ import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
-import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
@@ -160,22 +160,25 @@ public class AdherenceRecordsTest {
         // This is the Demonstration Schedule from the public documentation, 
         // because we’ve specified exactly what should be returned from queries 
         // of that example dataset, making it useful for understanding the tests 
-        // in this class. 
-        schedule = new Schedule2()
-                .name("AdheredRecordsTest Schedule")
-                .duration("P22D")
-                .addSessionsItem(s1)
-                .addSessionsItem(s2)
-                .addSessionsItem(s3);
-        schedule = developersApi.createSchedule(schedule).execute().body();
-        session1 = schedule.getSessions().get(0);
-        session2 = schedule.getSessions().get(1);
-        session3 = schedule.getSessions().get(2);
-        
+        // in this class.
+        try {
+            schedule = developersApi.getScheduleForStudy(STUDY_ID_1).execute().body();    
+            session1 = schedule.getSessions().get(0);
+            session2 = schedule.getSessions().get(1);
+            session3 = schedule.getSessions().get(2);
+        } catch(EntityNotFoundException e) {
+            schedule = new Schedule2()
+                    .name("AdheredRecordsTest Schedule")
+                    .duration("P22D")
+                    .addSessionsItem(s1)
+                    .addSessionsItem(s2)
+                    .addSessionsItem(s3);
+            schedule = developersApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+            session1 = schedule.getSessions().get(0);
+            session2 = schedule.getSessions().get(1);
+            session3 = schedule.getSessions().get(2);
+        }
         study1 = developersApi.getStudy(STUDY_ID_1).execute().body();
-        study1.setScheduleGuid(schedule.getGuid());
-        VersionHolder keys = developersApi.updateStudy(study1.getIdentifier(), study1).execute().body();
-        study1.setVersion(keys.getVersion());
     }
     
     @After
@@ -190,7 +193,7 @@ public class AdherenceRecordsTest {
             participant.signOutAndDeleteUser();
         }
         if (schedule != null && schedule.getGuid() != null) {
-            schedulesApi.deleteSchedule(schedule.getGuid(), true).execute();
+            schedulesApi.deleteSchedule(schedule.getGuid()).execute();
         }
         if (assessmentA != null && assessmentA.getGuid() != null) {
             assessmentsApi.deleteAssessment(assessmentA.getGuid(), true).execute();
