@@ -87,6 +87,10 @@ public class Schedule2Test {
         if (study.getScheduleGuid() != null) {
             admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
         }
+        study = studiesApi.getStudy(STUDY_ID_2).execute().body();
+        if (study.getScheduleGuid() != null) {
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        }
     }
     
     @After

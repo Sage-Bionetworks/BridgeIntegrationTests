@@ -39,7 +39,7 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
-import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
@@ -157,27 +157,25 @@ public class AdherenceRecordsTest {
                 .addAssessmentsItem(asmtToReference(assessmentB))
                 .addTimeWindowsItem(new TimeWindow().startTime("08:00").persistent(true));
         
-        // This is the Demonstration Schedule from the public documentation, 
-        // because we’ve specified exactly what should be returned from queries 
-        // of that example dataset, making it useful for understanding the tests 
-        // in this class.
-        try {
-            schedule = developersApi.getScheduleForStudy(STUDY_ID_1).execute().body();    
-            session1 = schedule.getSessions().get(0);
-            session2 = schedule.getSessions().get(1);
-            session3 = schedule.getSessions().get(2);
-        } catch(EntityNotFoundException e) {
-            schedule = new Schedule2()
-                    .name("AdheredRecordsTest Schedule")
-                    .duration("P22D")
-                    .addSessionsItem(s1)
-                    .addSessionsItem(s2)
-                    .addSessionsItem(s3);
-            schedule = developersApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
-            session1 = schedule.getSessions().get(0);
-            session2 = schedule.getSessions().get(1);
-            session3 = schedule.getSessions().get(2);
-        }
+        // If there's a schedule associated to study 1, we need to delete it.
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+        Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
+        if (study.getScheduleGuid() != null) {
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        }        
+
+        schedule = new Schedule2()
+                .name("AdheredRecordsTest Schedule")
+                .duration("P22D")
+                .addSessionsItem(s1)
+                .addSessionsItem(s2)
+                .addSessionsItem(s3);
+        schedule = developersApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+        session1 = schedule.getSessions().get(0);
+        session2 = schedule.getSessions().get(1);
+        session3 = schedule.getSessions().get(2);
+
         study1 = developersApi.getStudy(STUDY_ID_1).execute().body();
     }
     
