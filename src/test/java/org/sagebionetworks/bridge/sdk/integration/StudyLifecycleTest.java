@@ -37,7 +37,7 @@ public class StudyLifecycleTest {
     public interface Supplier {
         Call<Study> run() throws IOException;
     }
-    
+
     private TestUser studyDesigner;
     private TestUser studyCoordinator;
     private List<String> studiesToDelete;
@@ -51,8 +51,8 @@ public class StudyLifecycleTest {
     
     @After
     public void after() throws IOException {
+        TestUser admin = TestUserHelper.getSignedInAdmin();
         for (String studyId : studiesToDelete) {
-            TestUser admin = TestUserHelper.getSignedInAdmin();
             admin.getClient(StudiesApi.class).deleteStudy(studyId, true).execute();
         }
         if (studyDesigner != null) {
@@ -98,7 +98,7 @@ public class StudyLifecycleTest {
         Schedule2 schedule = new Schedule2();
         schedule.setName("Test Schedule [StudyLifecycleTest]");
         schedule.setDuration("P10W");
-        
+
         try {
             schedule = schedulesApi.saveScheduleForStudy(studyId, schedule).execute().body();
             fail("Should have thrown exception");
@@ -139,7 +139,7 @@ public class StudyLifecycleTest {
         // From design...
         shouldSucceed(() -> coordinatorApi.transitionStudyToWithdrawn(studyId2), WITHDRAWN);
 
-        String studyId3 = createStudy(coordinatorApi);;
+        String studyId3 = createStudy(coordinatorApi);
         
         // From analysis...
         shouldSucceed(() -> coordinatorApi.transitionStudyToRecruitment(studyId3), RECRUITMENT);
