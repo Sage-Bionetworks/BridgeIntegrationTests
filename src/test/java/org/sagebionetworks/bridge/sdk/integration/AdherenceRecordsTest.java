@@ -181,9 +181,6 @@ public class AdherenceRecordsTest {
     
     @After
     public void after() throws Exception {
-        study1.setScheduleGuid(null);
-        developersApi.updateStudy(study1.getIdentifier(), study1).execute().body();
-        
         TestUser admin = TestUserHelper.getSignedInAdmin();
         AssessmentsApi assessmentsApi = admin.getClient(AssessmentsApi.class);
         SchedulesV2Api schedulesApi = admin.getClient(SchedulesV2Api.class);
