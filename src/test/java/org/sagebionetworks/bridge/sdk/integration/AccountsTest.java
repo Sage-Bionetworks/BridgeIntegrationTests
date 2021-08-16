@@ -106,7 +106,8 @@ public class AccountsTest {
                 .clientData("Test")
                 .languages(ImmutableList.of("en", "fr"))
                 .password(PASSWORD)
-                .note("test note 1");
+                .note("test note 1")
+                .clientTimeZone("America/Los_Angeles");
         
         emailUserId = orgAdminApi.createAccount(account).execute().body().getIdentifier();
         
@@ -125,6 +126,7 @@ public class AccountsTest {
         assertEquals(ImmutableList.of("en", "fr"), retrieved.getLanguages());
         assertEquals(orgId, retrieved.getOrgMembership());
         assertEquals("test note 1", retrieved.getNote());
+        assertEquals("America/Los_Angeles", retrieved.getClientTimeZone());
         assertNull(retrieved.getPassword());
         
         AccountSummarySearch search = new AccountSummarySearch().emailFilter(email);
@@ -134,11 +136,13 @@ public class AccountsTest {
         // update the account
         retrieved.setFirstName("Alternate first name");
         retrieved.setNote("test note 2");
+        retrieved.setClientTimeZone("Africa/Sao_Tome");
         orgAdminApi.updateAccount(emailUserId, retrieved).execute();
         
         Account retrieved2 = orgAdminApi.getAccount(emailUserId).execute().body();
         assertEquals("Alternate first name", retrieved2.getFirstName());
         assertEquals("test note 2", retrieved2.getNote());
+        assertEquals("Africa/Sao_Tome", retrieved2.getClientTimeZone());
         
         // request info. There's not a lot in it since the user cannot sign in (not verified).
         RequestInfo info = orgAdminApi.getAccountRequestInfo(emailUserId).execute().body();

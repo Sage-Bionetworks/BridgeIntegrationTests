@@ -320,6 +320,7 @@ public class ParticipantsTest {
         participant.setStatus(DISABLED); // should be ignored
         participant.setAttributes(attributes);
         participant.setNote("test note 1");
+        participant.setClientTimeZone("America/Los_Angeles");
         
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
         IdentifierHolder idHolder = participantsApi.createParticipant(participant).execute().body();
@@ -363,6 +364,7 @@ public class ParticipantsTest {
             assertFalse(retrieved.isPhoneVerified());
             createdOn = retrieved.getCreatedOn();
             assertEquals("test note 1", retrieved.getNote());
+            assertEquals("America/Los_Angeles", retrieved.getClientTimeZone());
 
             // Can also get by the Synapse ID
             retrieved = participantsApi.getParticipantById(retrieved.getId(), true).execute().body();
@@ -389,6 +391,7 @@ public class ParticipantsTest {
             Phone newPhone = new Phone().number("4152588569").regionCode("CA");
             newParticipant.setPhone(newPhone);
             newParticipant.setNote("note2");
+            newParticipant.setClientTimeZone("Africa/Sao_Tome");
             // cannot set Synapse User ID or the account will be enabled.
             
             participantsApi.updateParticipant(id, newParticipant).execute();
@@ -417,6 +420,7 @@ public class ParticipantsTest {
             assertEquals(UNVERIFIED, retrieved.getStatus()); // researchers cannot enable users
             assertEquals(createdOn, retrieved.getCreatedOn()); // hasn't been changed, still exists
             assertEquals("note2", retrieved.getNote());
+            assertEquals("Africa/Sao_Tome", retrieved.getClientTimeZone());
         } finally {
             if (id != null) {
                 admin.getClient(ForAdminsApi.class).deleteUser(id).execute();
