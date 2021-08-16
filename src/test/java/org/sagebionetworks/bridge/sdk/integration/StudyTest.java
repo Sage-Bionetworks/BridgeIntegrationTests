@@ -6,6 +6,8 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
 import static org.sagebionetworks.bridge.rest.model.ContactRole.PRINCIPAL_INVESTIGATOR;
 import static org.sagebionetworks.bridge.rest.model.ContactRole.TECHNICAL_SUPPORT;
 import static org.sagebionetworks.bridge.rest.model.IrbDecisionType.EXEMPT;
@@ -45,6 +47,7 @@ import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Contact;
+import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.OrganizationList;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignInType;
@@ -147,6 +150,11 @@ public class StudyTest {
                 .email(contactEmail);
         study.contacts(ImmutableList.of(contact1, contact2));
         
+        CustomEvent event1 = new CustomEvent().eventId("event1").updateType(MUTABLE);
+        CustomEvent event2 = new CustomEvent().eventId("event2").updateType(IMMUTABLE);
+        study.addCustomEventsItem(event1);
+        study.addCustomEventsItem(event2);
+        
         VersionHolder holder = studiesApi.createStudy(study).execute().body();
         study.setVersion(holder.getVersion());
         studyIdsToDelete.add(id);
@@ -181,6 +189,14 @@ public class StudyTest {
         assertEquals("Tim Powers", retrievedContact2.getName());
         assertEquals("Miskatonic University", retrievedContact2.getAffiliation());
         assertEquals(contactEmail, retrievedContact2.getEmail());
+        
+        CustomEvent retEvent1 = retrieved.getCustomEvents().get(0);
+        assertEquals("event1", retEvent1.getEventId());
+        assertEquals(MUTABLE, retEvent1.getUpdateType());
+        
+        CustomEvent retEvent2 = retrieved.getCustomEvents().get(1);
+        assertEquals("event2", retEvent2.getEventId());
+        assertEquals(IMMUTABLE, retEvent2.getUpdateType());
         
         Map<String,String> theMap = RestUtils.toType(study.getClientData(), Map.class);
         assertEquals("byExternalId", theMap.get("enrollmentType"));
