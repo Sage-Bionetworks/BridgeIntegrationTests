@@ -52,7 +52,6 @@ import org.sagebionetworks.bridge.rest.model.SessionInfo;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
-import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
@@ -97,16 +96,7 @@ public class Schedule2Test {
     public void after() throws Exception {
         TestUser admin = TestUserHelper.getSignedInAdmin();
         SchedulesV2Api adminSchedulesApi = admin.getClient(SchedulesV2Api.class);
-        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
         
-        Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
-        if (study.getScheduleGuid() != null) {
-            study.setScheduleGuid(null);
-            studiesApi.updateStudy(STUDY_ID_1, study).execute().body();
-        }
-        if (schedule != null && schedule.getGuid() != null) {
-            adminSchedulesApi.deleteSchedule(schedule.getGuid()).execute();
-        }
         if (org1ScheduleGuid != null) {
             adminSchedulesApi.deleteSchedule(org1ScheduleGuid).execute();
         }
@@ -386,10 +376,6 @@ public class Schedule2Test {
         
         // Add it to study 1
         Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
-        study.setScheduleGuid(schedule.getGuid());
-        VersionHolder versionHolder = studiesApi.updateStudy(STUDY_ID_1, study).execute().body();
-        study.setVersion(versionHolder.getVersion());
-        
         user = TestUserHelper.createAndSignInUser(Schedule2Test.class, true);
 
         // This user should now have a timeline via study1:
@@ -414,8 +400,8 @@ public class Schedule2Test {
         assertEquals(200, res.code());
         assertNotNull(res.body());
         
-        study.setScheduleGuid(null);
-        studiesApi.updateStudy(STUDY_ID_1, study).execute().body();
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
         
         // and this is just a flat-out error
         try {
