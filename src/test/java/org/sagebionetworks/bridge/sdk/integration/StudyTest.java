@@ -47,12 +47,12 @@ import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Contact;
+import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.OrganizationList;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignInType;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
-import org.sagebionetworks.bridge.rest.model.StudyCustomEvent;
 import org.sagebionetworks.bridge.rest.model.StudyInfo;
 import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
@@ -150,8 +150,8 @@ public class StudyTest {
                 .email(contactEmail);
         study.contacts(ImmutableList.of(contact1, contact2));
         
-        StudyCustomEvent event1 = new StudyCustomEvent().eventId("event1").updateType(MUTABLE);
-        StudyCustomEvent event2 = new StudyCustomEvent().eventId("event2").updateType(IMMUTABLE);
+        CustomEvent event1 = new CustomEvent().eventId("event1").updateType(MUTABLE);
+        CustomEvent event2 = new CustomEvent().eventId("event2").updateType(IMMUTABLE);
         study.addCustomEventsItem(event1);
         study.addCustomEventsItem(event2);
         
@@ -190,11 +190,11 @@ public class StudyTest {
         assertEquals("Miskatonic University", retrievedContact2.getAffiliation());
         assertEquals(contactEmail, retrievedContact2.getEmail());
         
-        StudyCustomEvent retEvent1 = retrieved.getCustomEvents().get(0);
+        CustomEvent retEvent1 = retrieved.getCustomEvents().get(0);
         assertEquals("event1", retEvent1.getEventId());
         assertEquals(MUTABLE, retEvent1.getUpdateType());
         
-        StudyCustomEvent retEvent2 = retrieved.getCustomEvents().get(1);
+        CustomEvent retEvent2 = retrieved.getCustomEvents().get(1);
         assertEquals("event2", retEvent2.getEventId());
         assertEquals(IMMUTABLE, retEvent2.getUpdateType());
         
