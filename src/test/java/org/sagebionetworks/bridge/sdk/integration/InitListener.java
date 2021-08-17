@@ -1,5 +1,8 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.FUTURE_ONLY;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
@@ -8,6 +11,9 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_NAME;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.runner.Description;
@@ -23,6 +29,7 @@ import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.SubpopulationsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -38,6 +45,12 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
  */
 public class InitListener extends RunListener {
     private static final Logger LOG = LoggerFactory.getLogger(InitListener.class);
+
+    public static final String EVENT_KEY1 = "event1";
+    public static final String EVENT_KEY2 = "event2";
+    public static final String EVENT_KEY3 = "event3";
+    public static final String FAKE_ENROLLMENT = "fake_enrollment";
+    public static final String CLINIC_VISIT = "clinic_visit";
 
     private boolean testRunInitialized;
 
@@ -59,6 +72,17 @@ public class InitListener extends RunListener {
             studiesApi.createStudy(study).execute();
             LOG.info("  Creating study “{}”", STUDY_ID_1);
         }
+        
+        Study study1 = studiesApi.getStudy(STUDY_ID_1).execute().body();
+        List<CustomEvent> events = new ArrayList<>();
+        events.add(new CustomEvent().eventId(EVENT_KEY1).updateType(MUTABLE));
+        events.add(new CustomEvent().eventId(EVENT_KEY2).updateType(IMMUTABLE));
+        events.add(new CustomEvent().eventId(EVENT_KEY3).updateType(FUTURE_ONLY));
+        events.add(new CustomEvent().eventId(FAKE_ENROLLMENT).updateType(MUTABLE));
+        events.add(new CustomEvent().eventId(CLINIC_VISIT).updateType(MUTABLE));
+        study1.setCustomEvents(events);
+        studiesApi.updateStudy(study1.getIdentifier(), study1).execute();
+        
         try {
             studiesApi.getStudy(STUDY_ID_2).execute();
         } catch(EntityNotFoundException e) {

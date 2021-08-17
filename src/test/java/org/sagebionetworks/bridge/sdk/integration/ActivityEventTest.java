@@ -8,9 +8,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.FUTURE_ONLY;
-import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
-import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
+import static org.sagebionetworks.bridge.sdk.integration.InitListener.EVENT_KEY1;
+import static org.sagebionetworks.bridge.sdk.integration.InitListener.EVENT_KEY2;
+import static org.sagebionetworks.bridge.sdk.integration.InitListener.EVENT_KEY3;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 
@@ -24,18 +24,15 @@ import com.google.common.collect.ImmutableSet;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.Period;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
-import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ActivityEvent;
 import org.sagebionetworks.bridge.rest.model.ActivityEventList;
-import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.CustomActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
@@ -46,11 +43,6 @@ import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class ActivityEventTest {
-    private static final String EVENT_KEY1 = "event1";
-    private static final String EVENT_KEY2 = "event2";
-    private static final String EVENT_KEY3 = "event3";
-    private static final String TWO_WEEKS_AFTER_KEY = "2-weeks-after";
-    private static final String TWO_WEEKS_AFTER_VALUE = "enrollment:P2W";
 
     private static TestUserHelper.TestUser developer;
     private static TestUserHelper.TestUser researcher;
@@ -64,37 +56,6 @@ public class ActivityEventTest {
         researchersApi = researcher.getClient(ForResearchersApi.class);
 
         developer = TestUserHelper.createAndSignInUser(ActivityEventTest.class, false, Role.DEVELOPER);
-        ForDevelopersApi developersApi = developer.getClient(ForDevelopersApi.class);
-
-        App app = developersApi.getUsersApp().execute().body();
-        boolean updateApp = false;
-
-        // Add custom event keys, if not already present, with three different update behaviors.
-        if (!app.getCustomEvents().keySet().contains(EVENT_KEY1) || 
-                app.getCustomEvents().get(EVENT_KEY1) != MUTABLE) {
-            app.getCustomEvents().put(EVENT_KEY1, MUTABLE);
-            updateApp = true;
-        }
-        if (!app.getCustomEvents().keySet().contains(EVENT_KEY2) ||
-                app.getCustomEvents().get(EVENT_KEY2) != IMMUTABLE) {
-            app.getCustomEvents().put(EVENT_KEY2, IMMUTABLE);
-            updateApp = true;
-        }
-        if (!app.getCustomEvents().keySet().contains(EVENT_KEY3) ||
-                app.getCustomEvents().get(EVENT_KEY3) != FUTURE_ONLY) {
-            app.getCustomEvents().put(EVENT_KEY3, FUTURE_ONLY);
-            updateApp = true;
-        }
-
-        // Add automatic custom event.
-        if (!app.getAutomaticCustomEvents().containsKey(TWO_WEEKS_AFTER_KEY)) {
-            app.putAutomaticCustomEventsItem(TWO_WEEKS_AFTER_KEY, TWO_WEEKS_AFTER_VALUE);
-            updateApp = true;
-        }
-
-        if (updateApp) {
-            developersApi.updateUsersApp(app).execute();
-        }
 
         // Create user last, so the automatic custom events are created
         user = TestUserHelper.createAndSignInUser(ActivityEventTest.class, true);
@@ -190,28 +151,28 @@ public class ActivityEventTest {
                 .collect(Collectors.toSet()).contains(EVENT_KEY1));
     }
 
-    @Test
-    public void automaticCustomEvents() throws Exception {
-        // Get activity events and convert to map for ease of use
-        List<ActivityEvent> activityEventList = usersApi.getActivityEvents().execute().body().getItems();
-        Map<String, ActivityEvent> activityEventMap = activityEventList.stream().collect(
-                Collectors.toMap(ActivityEvent::getEventId, e -> e));
-
-        // Verify enrollment events exist
-        ActivityEvent enrollmentEvent = activityEventMap.get("enrollment");
-        assertNotNull(enrollmentEvent);
-        DateTime enrollmentTime = enrollmentEvent.getTimestamp();
-        assertNotNull(enrollmentTime);
-
-        // Verify custom event exists and that it's 2 weeks after enrollment
-        ActivityEvent twoWeeksAfterEvent = activityEventMap.get("custom:" + TWO_WEEKS_AFTER_KEY);
-        assertNotNull(twoWeeksAfterEvent);
-        DateTime twoWeeksAfterTime = twoWeeksAfterEvent.getTimestamp();
-        // This can fail when you're near the time zone change to DST. Add one hour to overshoot 
-        // and compensate for the time zone change.
-        Period twoWeeksAfterPeriod = new Period(enrollmentTime, twoWeeksAfterTime.plusHours(1));
-        assertEquals(2, twoWeeksAfterPeriod.getWeeks());
-    }
+//    @Test
+//    public void automaticCustomEvents() throws Exception {
+//        // Get activity events and convert to map for ease of use
+//        List<ActivityEvent> activityEventList = usersApi.getActivityEvents().execute().body().getItems();
+//        Map<String, ActivityEvent> activityEventMap = activityEventList.stream().collect(
+//                Collectors.toMap(ActivityEvent::getEventId, e -> e));
+//
+//        // Verify enrollment events exist
+//        ActivityEvent enrollmentEvent = activityEventMap.get("enrollment");
+//        assertNotNull(enrollmentEvent);
+//        DateTime enrollmentTime = enrollmentEvent.getTimestamp();
+//        assertNotNull(enrollmentTime);
+//
+//        // Verify custom event exists and that it's 2 weeks after enrollment
+//        ActivityEvent twoWeeksAfterEvent = activityEventMap.get("custom:" + TWO_WEEKS_AFTER_KEY);
+//        assertNotNull(twoWeeksAfterEvent);
+//        DateTime twoWeeksAfterTime = twoWeeksAfterEvent.getTimestamp();
+//        // This can fail when you're near the time zone change to DST. Add one hour to overshoot 
+//        // and compensate for the time zone change.
+//        Period twoWeeksAfterPeriod = new Period(enrollmentTime, twoWeeksAfterTime.plusHours(1));
+//        assertEquals(2, twoWeeksAfterPeriod.getWeeks());
+//    }
     
     @Test
     public void researcherCanSubmitCustomEvents() throws Exception {
