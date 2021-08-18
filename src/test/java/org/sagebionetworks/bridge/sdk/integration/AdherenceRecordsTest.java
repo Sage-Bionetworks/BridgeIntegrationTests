@@ -94,7 +94,6 @@ public class AdherenceRecordsTest {
     private Session session1;
     private Session session2;
     private Session session3;
-    private Study study1;
     private String asmtATag;
     private String asmtBTag;
     private Timeline timeline;
@@ -130,7 +129,7 @@ public class AdherenceRecordsTest {
         
         Session s1 = new Session()
                 .name("Session #1")
-                .startEventId(FAKE_ENROLLMENT)
+                .addStartEventIdsItem(FAKE_ENROLLMENT)
                 .delay("P2D")
                 .interval("P3D")
                 .performanceOrder(SEQUENTIAL)
@@ -142,7 +141,7 @@ public class AdherenceRecordsTest {
 
         Session s2 = new Session()
                 .name("Session #2")
-                .startEventId(CLINIC_VISIT)
+                .addStartEventIdsItem(CLINIC_VISIT)
                 .interval("P7D")
                 .performanceOrder(SEQUENTIAL)
                 .addAssessmentsItem(asmtToReference(assessmentA))
@@ -152,7 +151,7 @@ public class AdherenceRecordsTest {
         
         Session s3 = new Session()
                 .name("Session #3")
-                .startEventId(FAKE_ENROLLMENT)
+                .addStartEventIdsItem(FAKE_ENROLLMENT)
                 .performanceOrder(SEQUENTIAL)
                 .addAssessmentsItem(asmtToReference(assessmentB))
                 .addTimeWindowsItem(new TimeWindow().startTime("08:00").persistent(true));
@@ -175,8 +174,6 @@ public class AdherenceRecordsTest {
         session1 = schedule.getSessions().get(0);
         session2 = schedule.getSessions().get(1);
         session3 = schedule.getSessions().get(2);
-
-        study1 = developersApi.getStudy(STUDY_ID_1).execute().body();
     }
     
     @After
