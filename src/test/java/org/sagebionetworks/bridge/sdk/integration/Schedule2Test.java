@@ -262,6 +262,7 @@ public class Schedule2Test {
         for (ScheduledSession scheduledSession : timeline.getSchedule()) {
             
             assertEquals(timeWindowGuid, scheduledSession.getTimeWindowGuid());
+            assertEquals("enrollment", scheduledSession.getStartEventId());
             
             scheduledSessionCount++;
             sessionInstanceGuids.add(scheduledSession.getInstanceGuid());
