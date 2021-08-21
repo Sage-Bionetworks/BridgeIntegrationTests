@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.sagebionetworks.client.SynapseAdminClientImpl;
 import org.sagebionetworks.client.SynapseClient;
@@ -66,7 +67,7 @@ public class Exporter3Test {
         }
     }
 
-    //@Ignore
+    @Ignore
     @Test
     public void test() throws Exception {
         ForAdminsApi adminsApi = admin.getClient(ForAdminsApi.class);
