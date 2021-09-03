@@ -88,6 +88,7 @@ public class AdherenceRecordsTest {
     private static final DateTime T2 = DateTime.parse("2020-09-03T00:00:00.000Z");
     private TestUser developer;
     private TestUser participant;
+    private TestUser researcher;
     private Schedule2 schedule;
     private Assessment assessmentA;
     private Assessment assessmentB;
@@ -102,7 +103,7 @@ public class AdherenceRecordsTest {
     
     @Before
     public void before() throws Exception {
-        developer = TestUserHelper.createAndSignInUser(ActivityEventTest.class, false, DEVELOPER);
+        developer = TestUserHelper.createAndSignInUser(AdherenceRecordsTest.class, false, DEVELOPER);
         developersApi = developer.getClient(ForDevelopersApi.class);
         AssessmentsApi asmtsApi = developer.getClient(AssessmentsApi.class);
         
@@ -198,6 +199,9 @@ public class AdherenceRecordsTest {
         }
         if (developer != null) {
             developer.signOutAndDeleteUser();
+        }
+        if (researcher != null) {
+            researcher.signOutAndDeleteUser();
         }
     }
 
@@ -419,7 +423,7 @@ public class AdherenceRecordsTest {
         assertEquals("B", retValue.get("A"));
 
         // Deleting an adherence record from a non-persistent time window (tag: S1D02W1)
-        TestUser researcher = TestUserHelper.createAndSignInUser(ActivityEventTest.class, false, RESEARCHER);
+        researcher = TestUserHelper.createAndSignInUser(AdherenceRecordsTest.class, false, RESEARCHER);
         ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
         
         researchersApi.deleteAdherenceRecord(STUDY_ID_1, participant.getUserId(),
