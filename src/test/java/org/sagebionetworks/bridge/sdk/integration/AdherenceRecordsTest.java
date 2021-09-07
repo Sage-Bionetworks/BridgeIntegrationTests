@@ -6,13 +6,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
 import static org.sagebionetworks.bridge.rest.model.AdherenceRecordType.ASSESSMENT;
 import static org.sagebionetworks.bridge.rest.model.AdherenceRecordType.SESSION;
 import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.SortOrder.DESC;
+import static org.sagebionetworks.bridge.sdk.integration.InitListener.CLINIC_VISIT;
+import static org.sagebionetworks.bridge.sdk.integration.InitListener.FAKE_ENROLLMENT;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
@@ -39,12 +40,10 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
-import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordsSearch;
-import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentInfo;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
@@ -81,8 +80,6 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
  */
 public class AdherenceRecordsTest {
 
-    private static final String FAKE_ENROLLMENT = "fake_enrollment";
-    private static final String CLINIC_VISIT = "clinic_visit";
     private static final DateTime ENROLLMENT = DateTime.parse("2020-05-10T00:00:00.000Z");
     private static final DateTime T1 = DateTime.parse("2020-05-18T00:00:00.000Z");
     private static final DateTime T2 = DateTime.parse("2020-09-03T00:00:00.000Z");
@@ -94,7 +91,6 @@ public class AdherenceRecordsTest {
     private Session session1;
     private Session session2;
     private Session session3;
-    private Study study1;
     private String asmtATag;
     private String asmtBTag;
     private Timeline timeline;
@@ -106,10 +102,13 @@ public class AdherenceRecordsTest {
         developersApi = developer.getClient(ForDevelopersApi.class);
         AssessmentsApi asmtsApi = developer.getClient(AssessmentsApi.class);
         
-        App app = developersApi.getUsersApp().execute().body();
-        app.putCustomEventsItem(FAKE_ENROLLMENT, MUTABLE)
-            .putCustomEventsItem(CLINIC_VISIT, MUTABLE);
-        developersApi.updateUsersApp(app).execute();
+        Study study = developersApi.getStudy(STUDY_ID_1).execute().body();
+        
+        // If there's a schedule associated to study 1, we need to delete it.
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        if (study.getScheduleGuid() != null) {
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        }        
         
         asmtATag = Tests.randomIdentifier(AdherenceRecordsTest.class);
         asmtBTag = Tests.randomIdentifier(AdherenceRecordsTest.class);
@@ -157,14 +156,6 @@ public class AdherenceRecordsTest {
                 .addAssessmentsItem(asmtToReference(assessmentB))
                 .addTimeWindowsItem(new TimeWindow().startTime("08:00").persistent(true));
         
-        // If there's a schedule associated to study 1, we need to delete it.
-        TestUser admin = TestUserHelper.getSignedInAdmin();
-        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
-        Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
-        if (study.getScheduleGuid() != null) {
-            admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
-        }        
-
         schedule = new Schedule2()
                 .name("AdheredRecordsTest Schedule")
                 .duration("P22D")
@@ -175,8 +166,6 @@ public class AdherenceRecordsTest {
         session1 = schedule.getSessions().get(0);
         session2 = schedule.getSessions().get(1);
         session3 = schedule.getSessions().get(2);
-
-        study1 = developersApi.getStudy(STUDY_ID_1).execute().body();
     }
     
     @After
