@@ -137,7 +137,9 @@ public class ReportTest {
 
     @Test
     public void developerCanCrudParticipantReport() throws Exception {
-        user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
+        user = new TestUserHelper.Builder(ReportTest.class)
+                .withConsentUser(true)
+                .isTestUser().createAndSignInUser();
         
         String userId = user.getSession().getId();
         ParticipantReportsApi reportsApi = developer.getClient(ParticipantReportsApi.class);
@@ -186,7 +188,9 @@ public class ReportTest {
 
     @Test
     public void workerCanCrudParticipantReportByDate() throws Exception {
-        user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
+        user = new TestUserHelper.Builder(ReportTest.class)
+                .withConsentUser(true)
+                .isTestUser().createAndSignInUser();
 
         String healthCode = worker.getClient(ParticipantsApi.class).getParticipantById(user.getSession().getId(),
                 false).execute().body().getHealthCode();
@@ -226,7 +230,9 @@ public class ReportTest {
 
     @Test
     public void workerCanCrudParticipantReportByDateTime() throws Exception {
-        user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
+        user = new TestUserHelper.Builder(ReportTest.class)
+                .withConsentUser(true)
+                .isTestUser().createAndSignInUser();
 
         String healthCode = worker.getClient(ParticipantsApi.class).getParticipantById(user.getSession().getId(),
                 false).execute().body().getHealthCode();
@@ -399,7 +405,10 @@ public class ReportTest {
     
     @Test
     public void userCanCRUDSelfReports() throws Exception {
-        user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
+        user = new TestUserHelper.Builder(ReportTest.class)
+                .withConsentUser(true)
+                .isTestUser().createAndSignInUser();
+
         UsersApi userApi = user.getClient(UsersApi.class);
 
         userApi.saveParticipantReportRecordsV4(reportId, makeReportData(DATETIME1, "foo", "A")).execute();
@@ -459,7 +468,7 @@ public class ReportTest {
         // Just assign an external ID in order to enroll the account in a study
         study2User = new TestUserHelper.Builder(ReportTest.class).withConsentUser(false)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(ReportTest.class)))
-                .createAndSignInUser();
+                .isTestUser().createAndSignInUser();
         StudyReportsApi reportsApi = study2User.getClient(StudyReportsApi.class);
         ReportIndex index = reportsApi.getStudyReportIndex(reportId).execute().body();
         assertTrue(index.getStudyIds().contains(STUDY_ID_1));
@@ -507,7 +516,7 @@ public class ReportTest {
         // the user anyway.
         study2User = new TestUserHelper.Builder(ReportTest.class).withConsentUser(false)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(ReportTest.class)))
-                .createAndSignInUser();
+                .isTestUser().createAndSignInUser();
         
         String healthCode = worker.getClient(ParticipantsApi.class)
                 .getParticipantById(study2User.getUserId(), false).execute().body().getHealthCode();

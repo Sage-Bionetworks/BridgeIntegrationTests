@@ -57,7 +57,6 @@ import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.Phone;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SchedulePlan;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
@@ -539,7 +538,8 @@ public class ParticipantsTest {
     @Test
     public void getActivityHistory() throws Exception {
         // Make the user a developer so with one account, we can generate some tasks
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = new TestUserHelper.Builder(ParticipantsTest.class)
+                .withRoles(DEVELOPER).withConsentUser(true).isTestUser().createAndSignInUser();
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
         SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);
@@ -598,7 +598,9 @@ public class ParticipantsTest {
     
     @Test
     public void getActivityHistoryV4() throws Exception {
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = new TestUserHelper.Builder(ParticipantsTest.class)
+                .withRoles(DEVELOPER).withConsentUser(true).isTestUser().createAndSignInUser();
+
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
         SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);

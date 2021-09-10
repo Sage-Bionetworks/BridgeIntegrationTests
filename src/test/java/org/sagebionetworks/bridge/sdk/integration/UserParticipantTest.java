@@ -156,7 +156,7 @@ public class UserParticipantTest {
         developer.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
-        assertTrue(participant.getDataGroups().isEmpty());
+        assertEquals(participant.getDataGroups(), ImmutableList.of("test_user"));
     }
 
     @Test
