@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -24,7 +23,6 @@ import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Exporter3Configuration;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class Exporter3Test {
@@ -56,17 +54,10 @@ public class Exporter3Test {
         synapseClient.setUsername(synapseUserName);
         synapseClient.setApiKey(synapseApiKey);
 
-        // Create admin account.
-        admin = TestUserHelper.createAndSignInUser(Exporter3Test.class, false, Role.ADMIN);
+        admin = TestUserHelper.getSignedInAdmin();
     }
 
-    @AfterClass
-    public static void afterClass() throws Exception {
-        if (admin != null) {
-            admin.signOutAndDeleteUser();
-        }
-    }
-
+    // This is Ignored until we point our dev and staging stacks to Synapse Dev.
     @Ignore
     @Test
     public void test() throws Exception {
