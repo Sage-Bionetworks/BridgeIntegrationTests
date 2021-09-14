@@ -155,7 +155,7 @@ public class Schedule2Test {
         Session session = new Session();
         session.setName("Simple repeating assessment");
         session.addLabelsItem(new Label().lang("en").value("Take the assessment"));
-        session.setStartEventId("enrollment");
+        session.addStartEventIdsItem("enrollment");
         session.setDelay("P1W");
         session.setInterval("P4W");
         session.setPerformanceOrder(SEQUENTIAL);
@@ -239,7 +239,6 @@ public class Schedule2Test {
         SessionInfo sessionInfo = timeline.getSessions().get(0);
         assertEquals(schedule.getSessions().get(0).getGuid(), sessionInfo.getGuid());
         assertEquals("Take the assessment", sessionInfo.getLabel());
-        assertEquals("enrollment", sessionInfo.getStartEventId());
         assertEquals(PerformanceOrder.SEQUENTIAL, sessionInfo.getPerformanceOrder());
         assertEquals(1, sessionInfo.getTimeWindowGuids().size());
         assertEquals(timeWindowGuid, sessionInfo.getTimeWindowGuids().get(0));
@@ -263,6 +262,7 @@ public class Schedule2Test {
         for (ScheduledSession scheduledSession : timeline.getSchedule()) {
             
             assertEquals(timeWindowGuid, scheduledSession.getTimeWindowGuid());
+            assertEquals("enrollment", scheduledSession.getStartEventId());
             
             scheduledSessionCount++;
             sessionInstanceGuids.add(scheduledSession.getInstanceGuid());
@@ -365,7 +365,7 @@ public class Schedule2Test {
         session.setName("Simple repeating assessment");
         session.setInterval("P1D");
         session.setAssessments(null);
-        session.setStartEventId("enrollment");
+        session.addStartEventIdsItem("enrollment");
         session.setPerformanceOrder(SEQUENTIAL);
         session.addAssessmentsItem(ref);
         session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT1H"));
@@ -430,7 +430,7 @@ public class Schedule2Test {
         assertEquals(1, session.getLabels().size());
         assertEquals("en", session.getLabels().get(0).getLang());
         assertEquals("Take the assessment", session.getLabels().get(0).getValue());
-        assertEquals("enrollment", session.getStartEventId());
+        assertEquals("enrollment", session.getStartEventIds().get(0));
         assertEquals(SEQUENTIAL, session.getPerformanceOrder());
         assertEquals("P1W", session.getDelay());
         assertEquals("P4W", session.getInterval());

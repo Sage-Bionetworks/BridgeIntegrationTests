@@ -130,7 +130,7 @@ public class AdherenceRecordsTest {
         
         Session s1 = new Session()
                 .name("Session #1")
-                .startEventId(FAKE_ENROLLMENT)
+                .addStartEventIdsItem(FAKE_ENROLLMENT)
                 .delay("P2D")
                 .interval("P3D")
                 .performanceOrder(SEQUENTIAL)
@@ -142,7 +142,7 @@ public class AdherenceRecordsTest {
 
         Session s2 = new Session()
                 .name("Session #2")
-                .startEventId(CLINIC_VISIT)
+                .addStartEventIdsItem(CLINIC_VISIT)
                 .interval("P7D")
                 .performanceOrder(SEQUENTIAL)
                 .addAssessmentsItem(asmtToReference(assessmentA))
@@ -152,7 +152,7 @@ public class AdherenceRecordsTest {
         
         Session s3 = new Session()
                 .name("Session #3")
-                .startEventId(FAKE_ENROLLMENT)
+                .addStartEventIdsItem(FAKE_ENROLLMENT)
                 .performanceOrder(SEQUENTIAL)
                 .addAssessmentsItem(asmtToReference(assessmentB))
                 .addTimeWindowsItem(new TimeWindow().startTime("08:00").persistent(true));
