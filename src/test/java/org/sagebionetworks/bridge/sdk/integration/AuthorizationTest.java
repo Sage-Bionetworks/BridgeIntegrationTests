@@ -21,6 +21,7 @@ import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
@@ -44,9 +45,6 @@ public class AuthorizationTest {
     private String prodUserEmail;
     private String testUserId;
     private String testUserEmail;
-    
-    private StudyParticipant testParticipant;
-    private StudyParticipant prodParticipant;
 
     @BeforeClass
     public static void beforeTests() throws Exception {
@@ -248,17 +246,11 @@ public class AuthorizationTest {
         coordPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant).execute();
     }
     
-//    private void updateStudyParticipantRecords() {
-//        ParticipantsApi resPartApi = researcher.getClient(ParticipantsApi.class);
-//        testParticipant = resPartApi.getParticipantById(testUserId, false).execute().body();
-//        prodParticipant = resPartApi.getParticipantById(prodUserId, false).execute().body();
-//    }
-    
-    private void shouldFail(Callable<Call<?>> callable) {
+    private void shouldFail(Callable<Call<?>> callable) throws Exception {
         try {
             callable.call().execute();
             fail("Should have thrown exception");
-        } catch(Exception e) {
+        } catch(EntityNotFoundException e) {
         }
     }
     
