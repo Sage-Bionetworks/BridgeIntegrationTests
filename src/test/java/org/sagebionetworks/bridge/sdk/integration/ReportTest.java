@@ -188,8 +188,7 @@ public class ReportTest {
 
     @Test
     public void workerCanCrudParticipantReportByDate() throws Exception {
-        user = new TestUserHelper.Builder(ReportTest.class)
-                .withConsentUser(true).createAndSignInUser();
+        user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
 
         String healthCode = worker.getClient(ParticipantsApi.class).getParticipantById(user.getSession().getId(),
                 false).execute().body().getHealthCode();
@@ -229,8 +228,7 @@ public class ReportTest {
 
     @Test
     public void workerCanCrudParticipantReportByDateTime() throws Exception {
-        user = new TestUserHelper.Builder(ReportTest.class)
-                .withConsentUser(true).createAndSignInUser();
+        user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
 
         String healthCode = worker.getClient(ParticipantsApi.class).getParticipantById(user.getSession().getId(),
                 false).execute().body().getHealthCode();
@@ -403,8 +401,7 @@ public class ReportTest {
     
     @Test
     public void userCanCRUDSelfReports() throws Exception {
-        user = new TestUserHelper.Builder(ReportTest.class)
-                .withConsentUser(true).createAndSignInUser();
+        user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
 
         UsersApi userApi = user.getClient(UsersApi.class);
 

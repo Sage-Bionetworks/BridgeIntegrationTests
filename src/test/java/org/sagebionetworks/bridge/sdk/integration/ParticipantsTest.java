@@ -537,8 +537,7 @@ public class ParticipantsTest {
     
     @Test
     public void getActivityHistory() throws Exception {
-        TestUser user = new TestUserHelper.Builder(ParticipantsTest.class)
-                .withConsentUser(true).createAndSignInUser();
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
         SchedulesV1Api schedulePlanApi = developer.getClient(SchedulesV1Api.class);
@@ -597,8 +596,7 @@ public class ParticipantsTest {
     
     @Test
     public void getActivityHistoryV4() throws Exception {
-        TestUser user = new TestUserHelper.Builder(ParticipantsTest.class)
-                .withConsentUser(true).createAndSignInUser();
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
 
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
