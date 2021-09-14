@@ -28,7 +28,6 @@ import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
-import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
@@ -102,17 +101,19 @@ public class ReportTest {
 
     @After
     public void after() throws Exception {
-        ForDevelopersApi developerApi = developer.getClient(ForDevelopersApi.class);
-        developerApi.deleteAllStudyReportRecords(reportId).execute();
+        StudyReportsApi reportsApi = admin.getClient(StudyReportsApi.class);
+        reportsApi.deleteAllStudyReportRecords(reportId).execute();
 
-        admin.getClient(ForAdminsApi.class).deleteParticipantReportIndex(reportId).execute();
+        ForAdminsApi forAdminsApi = admin.getClient(ForAdminsApi.class);
+        forAdminsApi.deleteParticipantReportIndex(reportId).execute();
         
+        ForWorkersApi forWorkersApi = admin.getClient(ForWorkersApi.class);
         if (user != null) {
-            developerApi.deleteAllParticipantReportRecords(user.getUserId(), reportId).execute();
+            forWorkersApi.deleteAllParticipantReportRecords(user.getUserId(), reportId).execute();
             user.signOutAndDeleteUser();
         }
         if (study2User != null) {
-            developerApi.deleteAllParticipantReportRecords(study2User.getUserId(), reportId).execute();
+            forWorkersApi.deleteAllParticipantReportRecords(study2User.getUserId(), reportId).execute();
             study2User.signOutAndDeleteUser();
         }
     }
@@ -138,8 +139,7 @@ public class ReportTest {
     @Test
     public void developerCanCrudParticipantReport() throws Exception {
         user = new TestUserHelper.Builder(ReportTest.class)
-                .withConsentUser(true)
-                .isTestUser().createAndSignInUser();
+                .withTestDataGroup().withConsentUser(true).createAndSignInUser();
         
         String userId = user.getSession().getId();
         ParticipantReportsApi reportsApi = developer.getClient(ParticipantReportsApi.class);
@@ -189,8 +189,7 @@ public class ReportTest {
     @Test
     public void workerCanCrudParticipantReportByDate() throws Exception {
         user = new TestUserHelper.Builder(ReportTest.class)
-                .withConsentUser(true)
-                .isTestUser().createAndSignInUser();
+                .withConsentUser(true).createAndSignInUser();
 
         String healthCode = worker.getClient(ParticipantsApi.class).getParticipantById(user.getSession().getId(),
                 false).execute().body().getHealthCode();
@@ -231,8 +230,7 @@ public class ReportTest {
     @Test
     public void workerCanCrudParticipantReportByDateTime() throws Exception {
         user = new TestUserHelper.Builder(ReportTest.class)
-                .withConsentUser(true)
-                .isTestUser().createAndSignInUser();
+                .withConsentUser(true).createAndSignInUser();
 
         String healthCode = worker.getClient(ParticipantsApi.class).getParticipantById(user.getSession().getId(),
                 false).execute().body().getHealthCode();
@@ -406,8 +404,7 @@ public class ReportTest {
     @Test
     public void userCanCRUDSelfReports() throws Exception {
         user = new TestUserHelper.Builder(ReportTest.class)
-                .withConsentUser(true)
-                .isTestUser().createAndSignInUser();
+                .withConsentUser(true).createAndSignInUser();
 
         UsersApi userApi = user.getClient(UsersApi.class);
 
@@ -446,10 +443,11 @@ public class ReportTest {
             // expected exception
         }
 
-        ParticipantReportsApi reportsApi = developer.getClient(ParticipantReportsApi.class);
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        ParticipantReportsApi reportsApi = admin.getClient(ParticipantReportsApi.class);
         reportsApi.deleteAllParticipantReportRecords(user.getSession().getId(), reportId).execute();
-        results = userApi
-                .getParticipantReportRecordsV4("foo", SEARCH_START_TIME, SEARCH_END_TIME, 20, null).execute().body();
+        results = userApi.getParticipantReportRecordsV4(
+                "foo", SEARCH_START_TIME, SEARCH_END_TIME, 20, null).execute().body();
         assertTrue(results.getItems().isEmpty());
     }
     
@@ -468,7 +466,7 @@ public class ReportTest {
         // Just assign an external ID in order to enroll the account in a study
         study2User = new TestUserHelper.Builder(ReportTest.class).withConsentUser(false)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(ReportTest.class)))
-                .isTestUser().createAndSignInUser();
+                .createAndSignInUser();
         StudyReportsApi reportsApi = study2User.getClient(StudyReportsApi.class);
         ReportIndex index = reportsApi.getStudyReportIndex(reportId).execute().body();
         assertTrue(index.getStudyIds().contains(STUDY_ID_1));
@@ -516,7 +514,7 @@ public class ReportTest {
         // the user anyway.
         study2User = new TestUserHelper.Builder(ReportTest.class).withConsentUser(false)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(ReportTest.class)))
-                .isTestUser().createAndSignInUser();
+                .createAndSignInUser();
         
         String healthCode = worker.getClient(ParticipantsApi.class)
                 .getParticipantById(study2User.getUserId(), false).execute().body().getHealthCode();
