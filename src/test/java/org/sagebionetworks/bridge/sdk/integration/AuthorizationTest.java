@@ -29,7 +29,6 @@ import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import retrofit2.Call;
-import retrofit2.Response;
 
 public class AuthorizationTest {
 
@@ -45,6 +44,9 @@ public class AuthorizationTest {
     private String prodUserEmail;
     private String testUserId;
     private String testUserEmail;
+    
+    private StudyParticipant testParticipant;
+    private StudyParticipant prodParticipant;
 
     @BeforeClass
     public static void beforeTests() throws Exception {
@@ -200,7 +202,59 @@ public class AuthorizationTest {
         shouldInclude(() -> coordPartApi.getStudyParticipants(STUDY_ID_1, search(testUserEmail)));
     }
     
-    private void shouldFail(Callable<Call<StudyParticipant>> callable) {
+    @Test
+    public void updateStudyParticipant() throws Exception {
+        ParticipantsApi devPartApi = developer.getClient(ParticipantsApi.class);
+        ParticipantsApi resPartApi = researcher.getClient(ParticipantsApi.class);
+        StudyParticipantsApi desPartApi = studyDesigner.getClient(StudyParticipantsApi.class);
+        StudyParticipantsApi coordPartApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        StudiesApi coordStudiesApi = studyCoordinator.getClient(StudiesApi.class);
+
+        StudyParticipant testParticipant = resPartApi.getParticipantById(testUserId, false).execute().body();
+        StudyParticipant prodParticipant = resPartApi.getParticipantById(prodUserId, false).execute().body();
+     
+        // Developers can only update test accounts.
+        shouldFail(() -> devPartApi.updateParticipant(prodUserId, prodParticipant));
+        devPartApi.updateParticipant(testUserId, testParticipant).execute();
+
+        // Researchers can update both kinds of accounts
+        resPartApi.updateParticipant(prodUserId, prodParticipant);
+        resPartApi.updateParticipant(testUserId, testParticipant);
+        
+        // As other tests, study coordinators and designers can't do anything with these
+        // accounts because they are not in an accessible study
+        shouldFail(() -> desPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant));
+        shouldFail(() -> desPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant));
+
+        shouldFail(() -> coordPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant));
+        shouldFail(() -> coordPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant));
+        
+        // ENROLL USERS IN STUDY 1
+        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(prodUserId)).execute();
+        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(testUserId)).execute();
+
+        // Devs and researchers don't change
+        shouldFail(() -> devPartApi.updateParticipant(prodUserId, prodParticipant));
+        devPartApi.updateParticipant(testUserId, testParticipant).execute();
+        resPartApi.updateParticipant(prodUserId, prodParticipant);
+        resPartApi.updateParticipant(testUserId, testParticipant);
+        
+        // Study designers can work with test accounts
+        shouldFail(() -> desPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant));
+        desPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant).execute();
+        
+        // Study coordinators can work with both
+        coordPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant).execute();
+        coordPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant).execute();
+    }
+    
+//    private void updateStudyParticipantRecords() {
+//        ParticipantsApi resPartApi = researcher.getClient(ParticipantsApi.class);
+//        testParticipant = resPartApi.getParticipantById(testUserId, false).execute().body();
+//        prodParticipant = resPartApi.getParticipantById(prodUserId, false).execute().body();
+//    }
+    
+    private void shouldFail(Callable<Call<?>> callable) {
         try {
             callable.call().execute();
             fail("Should have thrown exception");
