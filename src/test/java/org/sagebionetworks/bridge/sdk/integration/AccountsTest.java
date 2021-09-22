@@ -10,6 +10,7 @@ import static org.sagebionetworks.bridge.rest.model.Role.ORG_ADMIN;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PHONE;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.SYNAPSE_USER_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
@@ -27,12 +28,16 @@ import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Account;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
 import org.sagebionetworks.bridge.rest.model.App;
+import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Phone;
 import org.sagebionetworks.bridge.rest.model.RequestInfo;
@@ -49,6 +54,7 @@ public class AccountsTest {
     private static final ImmutableList<String> USER_DATA_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
     private TestUser admin;
     private TestUser developer;
+    private TestUser studyCoordinator;
     private TestUser orgAdmin;
     private String orgId;
     private String phoneUserId;
@@ -59,6 +65,7 @@ public class AccountsTest {
     public void before() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
         developer = TestUserHelper.createAndSignInUser(AccountsTest.class, false, DEVELOPER);
+        studyCoordinator = TestUserHelper.createAndSignInUser(AccountsTest.class, false, STUDY_COORDINATOR);
         orgAdmin = TestUserHelper.createAndSignInUser(AccountsTest.class, true, ORG_ADMIN);
         orgAdminApi = orgAdmin.getClient(ForOrgAdminsApi.class);
         orgId = orgAdmin.getSession().getOrgMembership();
@@ -79,6 +86,9 @@ public class AccountsTest {
     public void after() throws Exception {
         if (developer != null) {
             developer.signOutAndDeleteUser();
+        }
+        if (studyCoordinator != null) {
+            studyCoordinator.signOutAndDeleteUser();
         }
         if (orgAdmin != null) {
             orgAdmin.signOutAndDeleteUser();
@@ -274,5 +284,50 @@ public class AccountsTest {
         // Verifying that original note was retained
         Account adminAccessUpdatedTestUserAccount = orgAdminApi.getAccount(emailUserId).execute().body();
         assertEquals("original test note", adminAccessUpdatedTestUserAccount.getNote());
+    }
+
+    @Test
+    public void deleteUnusedAccount() throws Exception {
+        String email = IntegTestUtils.makeEmail(AccountsTest.class);
+        SignUp signUp = new SignUp()
+                .email(email)
+                .password(PASSWORD);
+        
+        StudyParticipantsApi coordParticipantApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        IdentifierHolder idHolder = coordParticipantApi.createStudyParticipant(STUDY_ID_1, signUp).execute().body();
+        
+        coordParticipantApi.deleteTestStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
+        
+        try {
+            coordParticipantApi.getStudyParticipantById(STUDY_ID_1, idHolder.getIdentifier(), false).execute();    
+            fail("Should have thrown exception");
+        } catch(EntityNotFoundException e) {
+            
+        }
+    }
+
+    @Test
+    public void cannotDeleteUsedAccount() throws Exception {
+        String externalId = IntegTestUtils.makeEmail(AccountsTest.class).split("@")[0];
+        SignUp signUp = new SignUp()
+                .externalIds(ImmutableMap.of(STUDY_ID_1, externalId))
+                .password(PASSWORD);
+        
+        StudyParticipantsApi coordParticipantApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        IdentifierHolder idHolder = coordParticipantApi.createStudyParticipant(STUDY_ID_1, signUp).execute().body();
+        
+        try {
+            SignIn signIn = new SignIn().appId(TEST_APP_ID).externalId(externalId).password(PASSWORD);
+            TestUserHelper.getSignedInUser(signIn); // this is enough to prevent a physical delete
+        } catch(ConsentRequiredException e) {
+            
+        }
+        try {
+            coordParticipantApi.deleteTestStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();    
+        } catch(UnauthorizedException e) {
+            assertEquals("Account is not a test account or it is already in use.", e.getMessage());
+        }
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        admin.getClient(AccountsApi.class).deleteAccount(idHolder.getIdentifier()).execute();
     }
 }
