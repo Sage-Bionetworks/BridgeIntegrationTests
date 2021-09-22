@@ -125,7 +125,9 @@ public class CRCTest {
         }
     }
 
+    // See BRIDGE-3088
     @Test
+    @Ignore
     public void requestShipmentAsParticipant() throws IOException {
         user.signInAgain();
 

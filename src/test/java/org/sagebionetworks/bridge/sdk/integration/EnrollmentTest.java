@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.APP_ID;
@@ -23,6 +24,7 @@ import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.EnrollmentDetailList;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
@@ -55,6 +57,18 @@ public class EnrollmentTest {
         OrganizationsApi orgsApi = admin.getClient(OrganizationsApi.class);
 
         orgsApi.addMember(ORG_ID_1, researcher.getUserId()).execute();
+    }
+    
+    @Test
+    public void badStudyParameterReturnsCorrectErrorMessage() throws Exception {
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+        try {
+            studiesApi.enrollParticipant("junk", new Enrollment()
+                    .userId("should not matter")).execute().body();
+            fail("Should have thrown exception");
+        } catch(EntityNotFoundException e) {
+            assertEquals("Study not found.", e.getMessage());
+        }
     }
     
     @Test
