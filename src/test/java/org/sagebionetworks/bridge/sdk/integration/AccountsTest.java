@@ -323,7 +323,8 @@ public class AccountsTest {
             
         }
         try {
-            coordParticipantApi.deleteTestStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();    
+            coordParticipantApi.deleteTestStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
+            fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
             assertEquals("Account is not a test account or it is already in use.", e.getMessage());
         }

@@ -390,7 +390,7 @@ public class StudyTest {
     }
     
     @Test
-    public void physicallyDeleteStudyInDesign() throws Exception {
+    public void canphysicallyDeleteStudyInDesign() throws Exception {
         StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
         
         String tempStudyId = Tests.randomIdentifier(StudyTest.class);
@@ -408,7 +408,7 @@ public class StudyTest {
     }
     
     @Test
-    public void cannotPhysicallyDeleteStudyOtherPhases() throws Exception {
+    public void cannotPhysicallyDeleteStudyInWrongPhase() throws Exception {
         StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
         
         String tempStudyId = Tests.randomIdentifier(StudyTest.class);
@@ -419,7 +419,8 @@ public class StudyTest {
             .transitionStudyToRecruitment(tempStudyId).execute();
         
         try {
-            desStudiesApi.deleteStudy(tempStudyId, true).execute();    
+            desStudiesApi.deleteStudy(tempStudyId, true).execute();
+            fail("Should have thrown exception");
         } catch(BadRequestException e) {
             assertEquals("Study cannot be deleted during phase “recruitment”", e.getMessage());
         }
