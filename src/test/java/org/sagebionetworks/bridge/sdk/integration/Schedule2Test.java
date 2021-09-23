@@ -233,8 +233,8 @@ public class Schedule2Test {
         assertFalse(timeline.getAssessments().isEmpty());
         assertFalse(timeline.getSessions().isEmpty());
         assertFalse(timeline.getSchedule().isEmpty());
-        assertEquals(timeline.getTotalMinutes(), Integer.valueOf(30));
-        assertEquals(timeline.getTotalNotifications(), Integer.valueOf(3));
+        assertEquals(Integer.valueOf(120), timeline.getTotalMinutes()); // 30 + (30 * 3 study burst scheduled sessions)
+        assertEquals(Integer.valueOf(12), timeline.getTotalNotifications()); // 3 + (3 * 3 study burst notifications)
         
         AssessmentInfo assessmentInfo = timeline.getAssessments().get(0);
         assertEquals(schedule.getSessions().get(0).getAssessments().get(0).getGuid(), assessmentInfo.getGuid());
