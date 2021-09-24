@@ -296,7 +296,7 @@ public class AccountsTest {
         StudyParticipantsApi coordParticipantApi = studyCoordinator.getClient(StudyParticipantsApi.class);
         IdentifierHolder idHolder = coordParticipantApi.createStudyParticipant(STUDY_ID_1, signUp).execute().body();
         
-        coordParticipantApi.deleteTestStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
+        coordParticipantApi.deleteStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
         
         try {
             coordParticipantApi.getStudyParticipantById(STUDY_ID_1, idHolder.getIdentifier(), false).execute();    
@@ -323,7 +323,7 @@ public class AccountsTest {
             
         }
         try {
-            coordParticipantApi.deleteTestStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
+            coordParticipantApi.deleteStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
             fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
             assertEquals("Account is not a test account or it is already in use.", e.getMessage());
