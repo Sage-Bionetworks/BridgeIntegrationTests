@@ -216,8 +216,8 @@ public class AuthorizationTest {
         devPartApi.updateParticipant(testUserId, testParticipant).execute();
 
         // Researchers can update both kinds of accounts
-        resPartApi.updateParticipant(prodUserId, prodParticipant);
-        resPartApi.updateParticipant(testUserId, testParticipant);
+        resPartApi.updateParticipant(prodUserId, prodParticipant).execute();
+        resPartApi.updateParticipant(testUserId, testParticipant).execute();
         
         // As other tests, study coordinators and designers can't do anything with these
         // accounts because they are not in an accessible study
@@ -234,8 +234,8 @@ public class AuthorizationTest {
         // Devs and researchers don't change
         shouldFail(() -> devPartApi.updateParticipant(prodUserId, prodParticipant));
         devPartApi.updateParticipant(testUserId, testParticipant).execute();
-        resPartApi.updateParticipant(prodUserId, prodParticipant);
-        resPartApi.updateParticipant(testUserId, testParticipant);
+        resPartApi.updateParticipant(prodUserId, prodParticipant).execute();
+        resPartApi.updateParticipant(testUserId, testParticipant).execute();
         
         // Study designers can work with test accounts
         shouldFail(() -> desPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant));
