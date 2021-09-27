@@ -77,7 +77,7 @@ public class ForStudyCoordinatorsTest {
     @After
     public void afterMethod() throws Exception {
         if (id != null) {
-            coordApi.deleteTestStudyParticipant(STUDY_ID_1, id.getIdentifier()).execute();
+            coordApi.deleteStudyParticipant(STUDY_ID_1, id.getIdentifier()).execute();
         }
         if (user != null) {
             user.signOutAndDeleteUser();
@@ -186,7 +186,7 @@ public class ForStudyCoordinatorsTest {
         assertEquals("New First Name", participant.getFirstName());
         assertEquals("New Last Name", participant.getLastName());
         
-        coordApi.deleteTestStudyParticipant(STUDY_ID_1, userId).execute();
+        coordApi.deleteStudyParticipant(STUDY_ID_1, userId).execute();
         id = null;
         
         try {
@@ -270,7 +270,7 @@ public class ForStudyCoordinatorsTest {
         
         // User is not a test user so this fails
         try {
-            coordApi.deleteTestStudyParticipant(STUDY_ID_1, user.getUserId()).execute();
+            coordApi.deleteStudyParticipant(STUDY_ID_1, user.getUserId()).execute();
             fail("Should have thrown an exception");
         } catch(UnauthorizedException e) {
         }
@@ -280,7 +280,7 @@ public class ForStudyCoordinatorsTest {
         coordApi.updateStudyParticipant(STUDY_ID_1, user.getUserId(), participant).execute();
         
         // this now succeeds
-        coordApi.deleteTestStudyParticipant(STUDY_ID_1, user.getUserId()).execute();
+        coordApi.deleteStudyParticipant(STUDY_ID_1, user.getUserId()).execute();
         
         try {
             coordApi.getStudyParticipantById(STUDY_ID_1, user.getUserId(), false).execute();
