@@ -251,8 +251,10 @@ public class AppConfigTest {
         AssessmentReference retAssessmentRef = resolvedAppConfig.getAssessmentReferences().get(0);
         assertEquals(assessmentGuid, retAssessmentRef.getGuid());
         assertEquals(id, retAssessmentRef.getId());
-        assertNull(retAssessmentRef.getSharedId());
+        assertNull(retAssessmentRef.getOriginSharedId());
         assertTrue(retAssessmentRef.getConfigHref().contains("/v1/assessments/" + assessmentGuid + "/config"));
+        // TODO: find expected appId
+        assertEquals("api", retAssessmentRef.getAppId());
 
         Tests.setVariableValueInObject(firstOneRetrieved.getSurveyReferences().get(0), "href", null);
         assertEquals(appConfig.getLabel(), firstOneRetrieved.getLabel());
