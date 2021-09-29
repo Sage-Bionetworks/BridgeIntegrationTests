@@ -135,7 +135,37 @@ public class UserParticipantTest {
     
     @Test
     public void canUpdateDataGroups() throws Exception {
+        // Developer in this test is not a test user.
         List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2");
+
+        ForConsentedUsersApi usersApi = developer.getClient(ForConsentedUsersApi.class);
+
+        StudyParticipant participant = new StudyParticipant();
+        participant.setDataGroups(dataGroups);
+        usersApi.updateUsersParticipantRecord(participant).execute();
+
+        developer.signOut();
+        developer.signInAgain();
+        
+        participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertListsEqualIgnoringOrder(ImmutableList.of("sdk-int-1", "sdk-int-2", "test_user"), participant.getDataGroups());
+
+        // now clear the values, it should be possible to remove them.
+        participant.setDataGroups(ImmutableList.of());
+        usersApi.updateUsersParticipantRecord(participant).execute();
+        
+        developer.signOut();
+        developer.signInAgain();
+
+        participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertListsEqualIgnoringOrder(ImmutableList.of("test_user"), participant.getDataGroups());
+    }
+
+    @Test
+    public void canUpdateDataGroupsDoesNotOverrideTestFlag() throws Exception {
+        // Developer in this test is not a test user.
+        
+        List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2", "test_user");
 
         ForConsentedUsersApi usersApi = developer.getClient(ForConsentedUsersApi.class);
 
@@ -157,9 +187,9 @@ public class UserParticipantTest {
         developer.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
-        assertEquals(participant.getDataGroups(), ImmutableList.of("test_user"));
+        assertEquals(ImmutableList.of("test_user"), participant.getDataGroups());
     }
-
+    
     @Test
     public void nonAdminCanNotUpdateOrViewRecordNote() throws Exception {
         ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
