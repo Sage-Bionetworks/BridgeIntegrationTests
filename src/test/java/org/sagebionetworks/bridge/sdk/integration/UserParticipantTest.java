@@ -108,10 +108,11 @@ public class UserParticipantTest {
         
         TestUser user = new TestUserHelper.Builder(UserParticipantTest.class)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_1, externalId1)).createAndSignInUser();
+        
         try {
             ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
             StudyParticipant participant = usersApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals(participant.getExternalIds().get(STUDY_ID_1), externalId1);
+            assertEquals(externalId1, participant.getExternalIds().get(STUDY_ID_1));
 
             UserSessionInfo session = usersApi.updateUsersParticipantRecord(participant).execute().body();
             assertEquals(externalId1, session.getExternalIds().get(STUDY_ID_1));
@@ -125,7 +126,7 @@ public class UserParticipantTest {
             usersApi.updateUsersParticipantRecord(participant).execute();
             
             StudyParticipant retValue = usersApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals(retValue.getExternalIds().get(STUDY_ID_1), externalId1);
+            assertEquals(externalId1, retValue.getExternalIds().get(STUDY_ID_1));
             assertNull(retValue.getExternalIds().get(STUDY_ID_2));
         } finally {
             user.signOutAndDeleteUser();
@@ -156,7 +157,7 @@ public class UserParticipantTest {
         developer.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
-        assertTrue(participant.getDataGroups().isEmpty());
+        assertEquals(participant.getDataGroups(), ImmutableList.of("test_user"));
     }
 
     @Test
