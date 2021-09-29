@@ -39,6 +39,10 @@ import com.google.common.collect.ImmutableList;
  */
 public class StudyBurstTest {
     
+    // These are established in the initializer for study 1.
+    private static final String MUTABLE_EVENT = "custom:event1";
+    private static final String IMMUTABLE_EVENT = "custom:event2";
+    
     private TestUser user;
     private TestUser studyDesigner;
     private Schedule2 schedule;
@@ -83,7 +87,6 @@ public class StudyBurstTest {
     private void setupSchedule(String originEventId, ActivityEventUpdateType burstUpdateType)
             throws Exception {
         // clean up any schedule that is there
-        
         try {
             TestUser admin = TestUserHelper.getSignedInAdmin();
             schedule = admin.getClient(SchedulesV2Api.class).getScheduleForStudy(STUDY_ID_1).execute().body();
@@ -91,8 +94,7 @@ public class StudyBurstTest {
         } catch(EntityNotFoundException e) {
             
         }
-        // Create a schedule that has study burst based on mutable event (event1 in study1).
-        
+
         designerSchedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
         schedule = new Schedule2();
         schedule.setName("Test Schedule [StudyBurstTest]");
@@ -106,7 +108,6 @@ public class StudyBurstTest {
                 .updateType(burstUpdateType);
         schedule.setStudyBursts(ImmutableList.of(burst));
         
-        // add a session
         Session session = new Session();
         session.setName("Simple assessment");
         session.addLabelsItem(new Label().lang("en").value("Take the assessment"));
@@ -131,13 +132,13 @@ public class StudyBurstTest {
     
     @Test
     public void mutableOriginEventMutableStudyBurst() throws Exception {
-        setupSchedule(/* MUTABLE */ "custom:event1", MUTABLE);
+        setupSchedule(MUTABLE_EVENT, MUTABLE);
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent("custom:event1", timestamp1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
         // Verify the follow-on events were created
-        verifyTimestampsStartFrom("custom:event1", timestamp1, timestamp1);
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it works
         createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(10));
@@ -146,20 +147,20 @@ public class StudyBurstTest {
         
         // Update the original mutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent("custom:event1", timestamp2);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp2);
         // All the study burst events should be changed in line with the new timestamp
-        verifyTimestampsStartFrom("custom:event1", timestamp2, timestamp2);
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp2, timestamp2);
     }
     
     @Test
     public void mutableOriginEventImmutableStudyBurst() throws Exception {
-        setupSchedule(/* MUTABLE */ "custom:event1", IMMUTABLE);
+        setupSchedule(MUTABLE_EVENT, IMMUTABLE);
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent("custom:event1", timestamp1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
         // Verify the follow-on events were created
-        verifyTimestampsStartFrom("custom:event1", timestamp1, timestamp1);
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it does not work
         createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(2)); // NOT CHANGED
@@ -168,20 +169,20 @@ public class StudyBurstTest {
         
         // Update the original mutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent("custom:event1", timestamp2);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp2);
         // All the study burst events should be unchanged, because they are immutable
-        verifyTimestampsStartFrom("custom:event1", timestamp2, timestamp1);
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp2, timestamp1);
     }
     
     @Test
     public void immutableOriginEventImmutableStudyBurst() throws Exception {
-        setupSchedule(/* IMMUTABLE */ "custom:event2", IMMUTABLE);
+        setupSchedule(IMMUTABLE_EVENT, IMMUTABLE);
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent("custom:event2", timestamp1);
+        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1);
         // Verify the follow-on events were created
-        verifyTimestampsStartFrom("custom:event2", timestamp1, timestamp1);
+        verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it doesn't work
         createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(2));
@@ -190,9 +191,9 @@ public class StudyBurstTest {
         
         // Update the original mutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent("custom:event2", timestamp2);
+        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp2);
         // All the study burst events should be unchanged
-        verifyTimestampsStartFrom("custom:event2", timestamp1, timestamp1);
+        verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
     }
     
     private void createOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
