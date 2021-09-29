@@ -57,7 +57,6 @@ import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.Phone;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SchedulePlan;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
@@ -538,11 +537,10 @@ public class ParticipantsTest {
     
     @Test
     public void getActivityHistory() throws Exception {
-        // Make the user a developer so with one account, we can generate some tasks
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
-        SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);
+        SchedulesV1Api schedulePlanApi = developer.getClient(SchedulesV1Api.class);
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
 
         // Set an identifiable label on the activity so we can find the generated activities later.
@@ -598,10 +596,11 @@ public class ParticipantsTest {
     
     @Test
     public void getActivityHistoryV4() throws Exception {
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
+
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
-        SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);
+        SchedulesV1Api schedulePlanApi = developer.getClient(SchedulesV1Api.class);
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
 
         // Set an identifiable label on the activity so we can find the generated activities later.
@@ -611,7 +610,6 @@ public class ParticipantsTest {
         
         String taskReferentGuid = oneActivity.getTask().getIdentifier();
         oneActivity.setLabel(activityLabel);
-        
         
         GuidVersionHolder planKeys = schedulePlanApi.createSchedulePlan(plan).execute().body();
         try {

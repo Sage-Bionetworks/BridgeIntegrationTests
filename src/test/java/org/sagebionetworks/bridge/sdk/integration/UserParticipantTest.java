@@ -11,7 +11,9 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualI
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -40,15 +42,15 @@ public class UserParticipantTest {
     private static TestUser researcher;
     private static TestUser consentedUser;
 
-    @BeforeClass
-    public static void before() throws Exception {
+    @Before
+    public void before() throws Exception {
         developer = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true, Role.DEVELOPER);
         researcher = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true, Role.RESEARCHER);
         consentedUser = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true);
     }
 
-    @AfterClass
-    public static void after() throws Exception {
+    @After
+    public void after() throws Exception {
         if (developer != null) {
             developer.signOutAndDeleteUser();    
         }
@@ -108,10 +110,11 @@ public class UserParticipantTest {
         
         TestUser user = new TestUserHelper.Builder(UserParticipantTest.class)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_1, externalId1)).createAndSignInUser();
+        
         try {
             ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
             StudyParticipant participant = usersApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals(participant.getExternalIds().get(STUDY_ID_1), externalId1);
+            assertEquals(externalId1, participant.getExternalIds().get(STUDY_ID_1));
 
             UserSessionInfo session = usersApi.updateUsersParticipantRecord(participant).execute().body();
             assertEquals(externalId1, session.getExternalIds().get(STUDY_ID_1));
@@ -125,7 +128,7 @@ public class UserParticipantTest {
             usersApi.updateUsersParticipantRecord(participant).execute();
             
             StudyParticipant retValue = usersApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals(retValue.getExternalIds().get(STUDY_ID_1), externalId1);
+            assertEquals(externalId1, retValue.getExternalIds().get(STUDY_ID_1));
             assertNull(retValue.getExternalIds().get(STUDY_ID_2));
         } finally {
             user.signOutAndDeleteUser();
@@ -134,6 +137,7 @@ public class UserParticipantTest {
     
     @Test
     public void canUpdateDataGroups() throws Exception {
+        // Developer in this test is not a test user.
         List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2");
 
         ForConsentedUsersApi usersApi = developer.getClient(ForConsentedUsersApi.class);
@@ -156,9 +160,39 @@ public class UserParticipantTest {
         developer.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
-        assertTrue(participant.getDataGroups().isEmpty());
+        assertListsEqualIgnoringOrder(ImmutableList.of(), participant.getDataGroups());
     }
 
+    @Test
+    public void canUpdateDataGroupsDoesNotOverrideTestFlag() throws Exception {
+        // Developer in this test is set as a test user.
+        List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2", "test_user");
+
+        ForConsentedUsersApi usersApi = developer.getClient(ForConsentedUsersApi.class);
+
+        StudyParticipant participant = new StudyParticipant();
+        participant.setDataGroups(dataGroups);
+        usersApi.updateUsersParticipantRecord(participant).execute();
+
+        developer.signOut();
+        developer.signInAgain();
+        
+        // Because this is only a developer, their own account is modified to be a test account
+        // on update.
+        participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertListsEqualIgnoringOrder(dataGroups, participant.getDataGroups());
+
+        // now clear the values, it should be possible to remove all but the test_user.
+        participant.setDataGroups(ImmutableList.of());
+        usersApi.updateUsersParticipantRecord(participant).execute();
+        
+        developer.signOut();
+        developer.signInAgain();
+
+        participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals(ImmutableList.of("test_user"), participant.getDataGroups());
+    }
+    
     @Test
     public void nonAdminCanNotUpdateOrViewRecordNote() throws Exception {
         ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
