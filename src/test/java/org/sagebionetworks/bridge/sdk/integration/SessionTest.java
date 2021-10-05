@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.model.AccountStatus;
 import org.sagebionetworks.bridge.rest.model.ConsentStatus;
+import org.sagebionetworks.bridge.rest.model.EnrollmentInfo;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
@@ -66,6 +68,13 @@ public class SessionTest {
             assertFalse(status2.isConsented());
             assertFalse(status2.isSignedMostRecentConsent());
             assertNull(status2.getSignedOn());
+            
+            EnrollmentInfo info = session2.getEnrollments().get(STUDY_ID_1);
+            assertFalse(info.isConsentRequired());
+            assertTrue(info.getEnrolledOn() != null && info.getWithdrawnOn() != null && 
+                    info.getEnrolledOn().isBefore(info.getWithdrawnOn()));
+            assertNull(info.isEnrolledBySelf());
+            assertNull(info.isWithdrawnBySelf());
         } finally {
             if (user != null) {
                 user.signOutAndDeleteUser();
