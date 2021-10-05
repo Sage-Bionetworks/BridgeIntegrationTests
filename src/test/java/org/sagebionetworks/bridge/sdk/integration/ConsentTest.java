@@ -1,5 +1,6 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static java.lang.Boolean.TRUE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -44,6 +45,7 @@ import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
 import org.sagebionetworks.bridge.rest.model.ConsentStatus;
+import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.GuidVersionHolder;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
 import org.sagebionetworks.bridge.rest.model.Message;
@@ -540,6 +542,7 @@ public class ConsentTest {
             // verify that the session contains all the correct information
             assertEquals(studyIds, updatedSession.getStudyIds());
             assertTrue(updatedSession.getDataGroups().isEmpty());
+            assertEquals(TRUE, updatedSession.getEnrollments().get(STUDY_ID_1).isWithdrawnBySelf());
         });
     }
     
@@ -555,6 +558,41 @@ public class ConsentTest {
             StudyParticipant participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
             assertTrue(participant.getStudyIds().isEmpty());
             assertTrue(participant.getDataGroups().isEmpty());
+            assertEquals(TRUE, participant.getEnrollments().get(STUDY_ID_1).isWithdrawnBySelf());
+        });
+    }
+    
+    @Test
+    public void canWithdrawOnParticipantsBehalf() throws Exception {
+        withdrawalTest((user, studyIds, subpop) -> {
+            ForResearchersApi researchersApi = researchUser.getClient(ForResearchersApi.class);
+            Enrollment en = researchersApi.withdrawParticipant(STUDY_ID_1, user.getUserId(), "Withdrawn").execute().body();
+            
+            assertEquals(researchUser.getUserId(), en.getWithdrawnBy());
+            
+            ParticipantsApi participantsApi = researchUser.getClient(ParticipantsApi.class);
+
+            // verify the participant is now not enrolled in any study
+            StudyParticipant participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
+            assertNull(participant.getEnrollments().get(STUDY_ID_1).isWithdrawnBySelf());
+            assertNotNull(researchUser.getUserId(), participant.getEnrollments().get(STUDY_ID_1).getWithdrawnOn());
+        });
+    }
+    
+    @Test
+    public void canWithdrawFromAppOnParticipantsBehalf() throws Exception {
+        withdrawalTest((user, studyIds, subpop) -> {
+            ForResearchersApi researchersApi = researchUser.getClient(ForResearchersApi.class);
+            researchersApi.withdrawParticipantFromApp(user.getUserId(), 
+                    new Withdrawal().reason("Withdrawn")).execute().body();
+            
+            ParticipantsApi participantsApi = researchUser.getClient(ParticipantsApi.class);
+
+            // verify the participant is now not enrolled in any study
+            StudyParticipant participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
+            assertNull(participant.getEmail());
+            assertNull(participant.getEnrollments().get(STUDY_ID_1).isWithdrawnBySelf());
+            assertNotNull(researchUser.getUserId(), participant.getEnrollments().get(STUDY_ID_1).getWithdrawnOn());
         });
     }
     
