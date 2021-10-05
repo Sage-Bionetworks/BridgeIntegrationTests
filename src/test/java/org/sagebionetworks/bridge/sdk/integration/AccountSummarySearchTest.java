@@ -22,7 +22,6 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -344,13 +343,8 @@ public class AccountSummarySearchTest {
         assertEquals(rp.getEmailFilter(), emailPrefix);
         
         // verify information is present in an individual account summary record
-        search = makeAccountSummarySearch();
-        list = supplier.apply(search);
-        Optional<AccountSummary> opt = list.getItems().stream()
-            .filter(s -> s.getId().equals(taggedUser.getUserId()))
-            .findFirst();
-        assertTrue(opt.isPresent());
-        summary = opt.get();
+        search = makeAccountSummarySearch().allOfGroups(TAGGED_USER_GROUPS);
+        summary = supplier.apply(search).getItems().get(0);
         assertEquals(ImmutableList.of(DEVELOPER), summary.getRoles());
         assertEquals(IntegTestUtils.SAGE_ID, summary.getOrgMembership());
         assertEquals(taggedUser.getEmail(), summary.getEmail());
