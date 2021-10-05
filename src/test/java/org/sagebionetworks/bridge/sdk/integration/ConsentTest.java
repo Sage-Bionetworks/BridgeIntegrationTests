@@ -575,7 +575,7 @@ public class ConsentTest {
             // verify the participant is now not enrolled in any study
             StudyParticipant participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
             assertNull(participant.getEnrollments().get(STUDY_ID_1).isWithdrawnBySelf());
-            assertNotNull(researchUser.getUserId(), participant.getEnrollments().get(STUDY_ID_1).getWithdrawnOn());
+            assertNotNull(participant.getEnrollments().get(STUDY_ID_1).getWithdrawnOn());
         });
     }
     
@@ -592,7 +592,7 @@ public class ConsentTest {
             StudyParticipant participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
             assertNull(participant.getEmail());
             assertNull(participant.getEnrollments().get(STUDY_ID_1).isWithdrawnBySelf());
-            assertNotNull(researchUser.getUserId(), participant.getEnrollments().get(STUDY_ID_1).getWithdrawnOn());
+            assertNotNull(participant.getEnrollments().get(STUDY_ID_1).getWithdrawnOn());
         });
     }
     
