@@ -139,6 +139,11 @@ public class ParticipantsTest {
 
             StudyParticipant self = userApi.getUsersParticipantRecord(false).execute().body();
             assertEquals(user.getEmail(), self.getEmail());
+            
+            UserSessionInfo session = user.getSession();
+            assertEquals(session.getEnrollments().get(STUDY_ID_1).getEnrolledOn(), 
+                    self.getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertEquals(session.getEnrollments().size(), self.getEnrollments().size());
 
             // Update and verify changes. Right now there's not a lot that can be changed
             List<String> languages = ImmutableList.of("nl", "fr", "en");
@@ -200,6 +205,12 @@ public class ParticipantsTest {
             assertEquals(user.getEmail(), participant.getEmail());
             assertEquals(user.getSession().getId(), participant.getId());
             assertFalse(participant.getConsentHistories().isEmpty());
+            
+            assertNotNull(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertTrue(user.getSession().getEnrollments().size() > 0);
+            assertEquals(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn(), 
+                    participant.getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertEquals(user.getSession().getEnrollments().size(), participant.getEnrollments().size());
             
             StudyParticipant participant2 = researcherParticipantsApi.getParticipantByHealthCode(
                     participant.getHealthCode(), false).execute().body();
