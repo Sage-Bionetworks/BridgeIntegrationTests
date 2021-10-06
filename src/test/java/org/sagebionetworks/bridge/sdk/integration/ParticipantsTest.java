@@ -57,7 +57,6 @@ import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.Phone;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SchedulePlan;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
@@ -140,6 +139,11 @@ public class ParticipantsTest {
 
             StudyParticipant self = userApi.getUsersParticipantRecord(false).execute().body();
             assertEquals(user.getEmail(), self.getEmail());
+            
+            UserSessionInfo session = user.getSession();
+            assertEquals(session.getEnrollments().get(STUDY_ID_1).getEnrolledOn(), 
+                    self.getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertEquals(session.getEnrollments().size(), self.getEnrollments().size());
 
             // Update and verify changes. Right now there's not a lot that can be changed
             List<String> languages = ImmutableList.of("nl", "fr", "en");
@@ -201,6 +205,12 @@ public class ParticipantsTest {
             assertEquals(user.getEmail(), participant.getEmail());
             assertEquals(user.getSession().getId(), participant.getId());
             assertFalse(participant.getConsentHistories().isEmpty());
+            
+            assertNotNull(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertTrue(user.getSession().getEnrollments().size() > 0);
+            assertEquals(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn(), 
+                    participant.getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertEquals(user.getSession().getEnrollments().size(), participant.getEnrollments().size());
             
             StudyParticipant participant2 = researcherParticipantsApi.getParticipantByHealthCode(
                     participant.getHealthCode(), false).execute().body();
@@ -538,11 +548,10 @@ public class ParticipantsTest {
     
     @Test
     public void getActivityHistory() throws Exception {
-        // Make the user a developer so with one account, we can generate some tasks
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
-        SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);
+        SchedulesV1Api schedulePlanApi = developer.getClient(SchedulesV1Api.class);
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
 
         // Set an identifiable label on the activity so we can find the generated activities later.
@@ -598,10 +607,11 @@ public class ParticipantsTest {
     
     @Test
     public void getActivityHistoryV4() throws Exception {
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
+
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
-        SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);
+        SchedulesV1Api schedulePlanApi = developer.getClient(SchedulesV1Api.class);
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
 
         // Set an identifiable label on the activity so we can find the generated activities later.
@@ -611,7 +621,6 @@ public class ParticipantsTest {
         
         String taskReferentGuid = oneActivity.getTask().getIdentifier();
         oneActivity.setLabel(activityLabel);
-        
         
         GuidVersionHolder planKeys = schedulePlanApi.createSchedulePlan(plan).execute().body();
         try {
