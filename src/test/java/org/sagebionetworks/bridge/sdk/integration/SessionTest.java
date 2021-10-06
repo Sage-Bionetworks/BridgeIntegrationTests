@@ -74,7 +74,7 @@ public class SessionTest {
             assertTrue(info.getEnrolledOn() != null && info.getWithdrawnOn() != null && 
                     info.getEnrolledOn().isBefore(info.getWithdrawnOn()));
             assertNull(info.isEnrolledBySelf());
-            assertNull(info.isWithdrawnBySelf());
+            assertTrue(info.isWithdrawnBySelf()); // see above
         } finally {
             if (user != null) {
                 user.signOutAndDeleteUser();
