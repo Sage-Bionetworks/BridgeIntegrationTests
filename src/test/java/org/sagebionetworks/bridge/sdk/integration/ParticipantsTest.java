@@ -206,10 +206,11 @@ public class ParticipantsTest {
             assertEquals(user.getSession().getId(), participant.getId());
             assertFalse(participant.getConsentHistories().isEmpty());
             
+            assertNotNull(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertTrue(user.getSession().getEnrollments().size() > 0);
             assertEquals(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn(), 
                     participant.getEnrollments().get(STUDY_ID_1).getEnrolledOn());
             assertEquals(user.getSession().getEnrollments().size(), participant.getEnrollments().size());
-            assertEquals((String)null, (String)null);
             
             StudyParticipant participant2 = researcherParticipantsApi.getParticipantByHealthCode(
                     participant.getHealthCode(), false).execute().body();
