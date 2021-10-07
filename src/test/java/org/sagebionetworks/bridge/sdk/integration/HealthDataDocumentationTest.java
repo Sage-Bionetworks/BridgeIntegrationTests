@@ -50,6 +50,7 @@ public class HealthDataDocumentationTest {
     @After
     public void after() throws IOException {
         ForAdminsApi adminsApi = admin.getClient(ForAdminsApi.class);
+        adminsApi.deleteAllHealthDataDocumentationForParentId(PARENT_ID);
 
         if (developer != null) {
             developer.signOutAndDeleteUser();
@@ -200,9 +201,6 @@ public class HealthDataDocumentationTest {
 
     @Test
     public void testPaginationGetAllHealthDataDocumentation() throws IOException {
-        ForAdminsApi adminsApi = admin.getClient(ForAdminsApi.class);
-        adminsApi.deleteAllHealthDataDocumentationForParentId(PARENT_ID).execute();
-
         ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
 
         // create 10 health data documentations and save data
