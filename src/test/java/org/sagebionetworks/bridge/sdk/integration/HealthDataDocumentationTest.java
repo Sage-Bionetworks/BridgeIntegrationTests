@@ -8,7 +8,6 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
-import org.sagebionetworks.bridge.rest.model.ForwardCursorPagedResourceList;
 import org.sagebionetworks.bridge.rest.model.HealthDataDocumentation;
 import org.sagebionetworks.bridge.rest.model.HealthDataDocumentationList;
 import org.sagebionetworks.bridge.rest.model.Role;
@@ -32,17 +31,15 @@ public class HealthDataDocumentationTest {
     private String identifier2;
     private String identifier3;
 
-    private TestUser user;
-
     private String DOCUMENTATION = "test-documentation";
     private Integer PAGE_SIZE = 10;
+    private String PARENT_ID = "test-parent-id";
 
     @Before
     public void before() throws IOException {
         admin = TestUserHelper.getSignedInAdmin();
         researcher = TestUserHelper.createAndSignInUser(HealthDataDocumentationTest.class, false, Role.RESEARCHER);
         developer = TestUserHelper.createAndSignInUser(HealthDataDocumentationTest.class, false, Role.DEVELOPER);
-        user = TestUserHelper.createAndSignInUser(HealthDataDocumentationTest.class, true);
         modifiedOn = DateTime.now(DateTimeZone.UTC);
 
         identifier1 = Tests.randomIdentifier(HealthDataDocumentationTest.class);
@@ -53,11 +50,7 @@ public class HealthDataDocumentationTest {
     @After
     public void after() throws IOException {
         ForAdminsApi adminsApi = admin.getClient(ForAdminsApi.class);
-        adminsApi.deleteAllParticipantDataForAdmin(user.getAppId(), user.getUserId());
 
-        if (user != null) {
-            user.signOutAndDeleteUser();
-        }
         if (developer != null) {
             developer.signOutAndDeleteUser();
         }
@@ -172,17 +165,16 @@ public class HealthDataDocumentationTest {
         HealthDataDocumentation doc2 = createHealthDataDocumentation("bar", identifier2, DOCUMENTATION);
         HealthDataDocumentation doc3 = createHealthDataDocumentation("baz", identifier3, DOCUMENTATION);
 
-        String parentId = "test-parent-id";
-        doc1.setParentId(parentId);
-        doc2.setParentId(parentId);
-        doc3.setParentId(parentId);
+        doc1.setParentId(PARENT_ID);
+        doc2.setParentId(PARENT_ID);
+        doc3.setParentId(PARENT_ID);
 
         researchersApi.createOrUpdateHealthDataDocumentation(doc1).execute();
         researchersApi.createOrUpdateHealthDataDocumentation(doc2).execute();
         researchersApi.createOrUpdateHealthDataDocumentation(doc3).execute();
 
         ForAdminsApi adminsApi = admin.getClient(ForAdminsApi.class);
-        adminsApi.deleteAllHealthDataDocumentationForParentId(parentId).execute();
+        adminsApi.deleteAllHealthDataDocumentationForParentId(PARENT_ID).execute();
 
         try {
             researchersApi.getHealthDataDocumentationForId(identifier1).execute().body();
@@ -208,37 +200,49 @@ public class HealthDataDocumentationTest {
 
     @Test
     public void testPaginationGetAllHealthDataDocumentation() throws IOException {
-        ForDevelopersApi devsApi = developer.getClient(ForDevelopersApi.class);
+        ForAdminsApi adminsApi = admin.getClient(ForAdminsApi.class);
+        adminsApi.deleteAllHealthDataDocumentationForParentId(PARENT_ID).execute();
+
+        ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
 
         // create 10 health data documentations and save data
-        HealthDataDocumentation[] docArray = new HealthDataDocumentation[PAGE_SIZE];
-        String parentId = "test-parent-id";
-        for (int i = 0; i < PAGE_SIZE; i++) {
-            docArray[i] = createHealthDataDocumentation("title" + i, "id-" + i, "doc-" + i);
-            docArray[i].setParentId(parentId);
-            devsApi.createOrUpdateHealthDataDocumentation(docArray[i]).execute();
-        }
+        HealthDataDocumentation doc;
+       for (int i = 0; i < PAGE_SIZE; i++) {
+            doc = createHealthDataDocumentation("title" + i, "" + i, "doc-" + i);
+            doc.setParentId(PARENT_ID);
+            researchersApi.createOrUpdateHealthDataDocumentation(doc).execute();
+       }
+
+        int indexCheck = 0;
 
         // get first 5 health data documentation
-        HealthDataDocumentationList pagedResults = devsApi.getAllHealthDataDocumentationForParentId(
-                parentId, null, 5).execute().body();
+        HealthDataDocumentationList pagedResults = researchersApi.getAllHealthDataDocumentationForParentId(
+                PARENT_ID, null, 5).execute().body();
 
         // check the first 5
-        assertPages(pagedResults, 0);
+        indexCheck += assertPages(pagedResults);
         String nextKey = pagedResults.getNextPageOffsetKey();
         assertNotNull(nextKey);
 
         // check the remaining 5
-        pagedResults = devsApi.getAllHealthDataDocumentationForParentId(parentId, nextKey, 5).execute().body();
-        assertPages(pagedResults, 5);
+        pagedResults = researchersApi.getAllHealthDataDocumentationForParentId(PARENT_ID, nextKey, 5).execute().body();
+        indexCheck += assertPages(pagedResults);
         assertNull(pagedResults.getNextPageOffsetKey());
+
+        // make sure that the indices of all the health data documentation total to 45, which means each one was returned
+        if (indexCheck != 45) {
+            fail();
+        }
     }
 
-    private static void assertPages(HealthDataDocumentationList list, int start) {
+    // because the returned results aren't in order, we will assert that each item appeared by their assigned index
+    private static int assertPages(HealthDataDocumentationList list) {
         assertEquals(5, list.getItems().size());
-        for (int i = start; i < 5 + start; i++) {
-            assertEquals(list.getItems().get(i - start).getTitle(), "title" + (i));
+        int sum = 0;
+        for (int i = 0; i < 5; i++) {
+            sum += Integer.parseInt(list.getItems().get(i).getIdentifier());
         }
+        return sum;
     }
 
     private static HealthDataDocumentation createHealthDataDocumentation(String title, String identifier, String documentation) {
