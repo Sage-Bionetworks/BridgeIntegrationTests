@@ -241,8 +241,7 @@ public class AccountsTest {
     @Test
     public void nonAdminCannotViewNote() throws Exception {
         String email = IntegTestUtils.makeEmail(AccountsTest.class);
-        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD).consent(true)
-                .orgMembership(SAGE_ID);
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD).consent(true);
 
         emailUserId = admin.getClient(ForAdminsApi.class).createUser(signUp).execute().body().getId();
 
@@ -264,8 +263,7 @@ public class AccountsTest {
     @Test
     public void nonAdminCannotUpdateNote() throws Exception {
         String email = IntegTestUtils.makeEmail(AccountsTest.class);
-        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD).consent(true)
-                .orgMembership(SAGE_ID);
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD).consent(true);
 
         emailUserId = admin.getClient(ForAdminsApi.class).createUser(signUp).execute().body().getId();
 
