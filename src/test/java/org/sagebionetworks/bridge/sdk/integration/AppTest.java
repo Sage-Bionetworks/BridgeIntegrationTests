@@ -32,7 +32,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.sagebionetworks.client.SynapseAdminClientImpl;
 import org.sagebionetworks.client.SynapseClient;
 import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.reflection.model.PaginatedResults;
@@ -83,14 +82,10 @@ public class AppTest {
     private Project project;
     private Team team;
 
-    private static final String USER_NAME = "synapse.user";
-    private static final String SYNAPSE_API_KEY_NAME = "synapse.api.key";
     private static final String EXPORTER_SYNAPSE_USER_ID_NAME = "exporter.synapse.user.id";
     private static final String TEST_USER_ID_NAME = "test.synapse.user.id";
 
     // synapse related attributes
-    private static String SYNAPSE_USER;
-    private static String SYNAPSE_API_KEY;
     private static String EXPORTER_SYNAPSE_USER_ID;
     private static Long TEST_USER_ID; // test user exists in synapse
     private static final String CONFIG_FILE = "bridge-sdk-test.properties";
@@ -105,9 +100,7 @@ public class AppTest {
         setupProperties();
 
         admin = TestUserHelper.getSignedInAdmin();
-        synapseClient = new SynapseAdminClientImpl();
-        synapseClient.setUsername(SYNAPSE_USER);
-        synapseClient.setApiKey(SYNAPSE_API_KEY);
+        synapseClient = Tests.getSynapseClient();
     }
 
     @After
@@ -137,8 +130,6 @@ public class AppTest {
     private void setupProperties() throws IOException {
         org.sagebionetworks.bridge.config.Config config = bridgeIntegTestConfig();
 
-        SYNAPSE_USER = config.get(USER_NAME);
-        SYNAPSE_API_KEY = config.get(SYNAPSE_API_KEY_NAME);
         EXPORTER_SYNAPSE_USER_ID = config.get(EXPORTER_SYNAPSE_USER_ID_NAME);
         TEST_USER_ID = Long.parseLong(config.get(TEST_USER_ID_NAME));
     }

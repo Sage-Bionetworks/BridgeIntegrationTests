@@ -5,14 +5,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.sagebionetworks.client.SynapseAdminClientImpl;
 import org.sagebionetworks.client.SynapseClient;
 import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.repo.model.Folder;
@@ -22,8 +18,6 @@ import org.sagebionetworks.repo.model.project.StsStorageLocationSetting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.sagebionetworks.bridge.config.Config;
-import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Exporter3Configuration;
@@ -32,34 +26,12 @@ import org.sagebionetworks.bridge.user.TestUserHelper;
 public class Exporter3Test {
     private static final Logger LOG = LoggerFactory.getLogger(Exporter3Test.class);
 
-    private static final String USER_NAME = "synapse.user";
-    private static final String SYNAPSE_API_KEY_NAME = "synapse.api.key";
-
-    private static final String CONFIG_FILE = "bridge-sdk-test.properties";
-    private static final String DEFAULT_CONFIG_FILE = CONFIG_FILE;
-    private static final String USER_CONFIG_FILE = System.getProperty("user.home") + "/" + CONFIG_FILE;
-
     private static TestUserHelper.TestUser admin;
     private static SynapseClient synapseClient;
 
     @BeforeClass
     public static void beforeClass() throws Exception {
-        // Set up SynapseClient.
-        Config config;
-        Path localConfigPath = Paths.get(USER_CONFIG_FILE);
-        if (Files.exists(localConfigPath)) {
-            config = new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
-        } else {
-            config = new PropertiesConfig(DEFAULT_CONFIG_FILE);
-        }
-
-        String synapseUserName = config.get(USER_NAME);
-        String synapseApiKey = config.get(SYNAPSE_API_KEY_NAME);
-
-        synapseClient = new SynapseAdminClientImpl();
-        synapseClient.setUsername(synapseUserName);
-        synapseClient.setApiKey(synapseApiKey);
-
+        synapseClient = Tests.getSynapseClient();
         admin = TestUserHelper.getSignedInAdmin();
 
         // Clean up stray Synapse resources before test.
