@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.EnrollmentFilter.ENROLLED;
 import static org.sagebionetworks.bridge.rest.model.EnrollmentFilter.WITHDRAWN;
+import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.Role.WORKER;
@@ -48,6 +49,7 @@ import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
+import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -339,6 +341,16 @@ public class AccountSummarySearchTest {
         rp = list.getRequestParams();
         assertEquals(rp.getOrgMembership(), ORG_ID_2);
         assertEquals(rp.getEmailFilter(), emailPrefix);
+        
+        // verify information is present in an individual account summary record
+        search = makeAccountSummarySearch().allOfGroups(TAGGED_USER_GROUPS);
+        summary = supplier.apply(search).getItems().get(0);
+        assertEquals(ImmutableList.of(DEVELOPER), summary.getRoles());
+        assertEquals(IntegTestUtils.SAGE_ID, summary.getOrgMembership());
+        assertEquals(taggedUser.getEmail(), summary.getEmail());
+        assertEquals(taggedUser.getUserId(), summary.getId());
+        assertEquals(AccountStatus.ENABLED, summary.getStatus());
+        assertEquals(ImmutableSet.copyOf(TAGGED_USER_GROUPS), ImmutableSet.copyOf(summary.getDataGroups()));
     }
     
     // These depend on the collection of enrollment records, so we particularly want to test
