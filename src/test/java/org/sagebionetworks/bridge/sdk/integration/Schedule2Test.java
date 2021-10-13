@@ -452,6 +452,7 @@ public class Schedule2Test {
                 
         Session session = schedule.getSessions().get(0);
         assertEquals("Simple repeating assessment", session.getName());
+        assertEquals("✯", session.getSymbol());
         assertEquals(1, session.getLabels().size());
         assertEquals("en", session.getLabels().get(0).getLang());
         assertEquals("Take the assessment", session.getLabels().get(0).getValue());
