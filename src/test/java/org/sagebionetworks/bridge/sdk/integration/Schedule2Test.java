@@ -167,6 +167,7 @@ public class Schedule2Test {
         // add a session
         Session session = new Session();
         session.setName("Simple repeating assessment");
+        session.setSymbol("✯");
         session.addLabelsItem(new Label().lang("en").value("Take the assessment"));
         session.addStartEventIdsItem("enrollment");
         session.addStudyBurstIdsItem("burst1");
@@ -253,6 +254,7 @@ public class Schedule2Test {
         SessionInfo sessionInfo = timeline.getSessions().get(0);
         assertEquals(schedule.getSessions().get(0).getGuid(), sessionInfo.getGuid());
         assertEquals("Take the assessment", sessionInfo.getLabel());
+        assertEquals("✯", sessionInfo.getSymbol());
         assertEquals(PerformanceOrder.SEQUENTIAL, sessionInfo.getPerformanceOrder());
         assertEquals(1, sessionInfo.getTimeWindowGuids().size());
         assertEquals(timeWindowGuid, sessionInfo.getTimeWindowGuids().get(0));
