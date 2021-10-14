@@ -6,18 +6,22 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.ALL_QUALIFIED_RESEARCHERS;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.NO_SHARING;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.SPONSORS_AND_PARTNERS;
 import static org.sagebionetworks.bridge.rest.model.SmsType.TRANSACTIONAL;
-//import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
+import static org.sagebionetworks.bridge.sdk.integration.InitListener.FAKE_ENROLLMENT;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.randomIdentifier;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.PHONE;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import org.joda.time.DateTime;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -29,29 +33,39 @@ import retrofit2.Response;
 
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
+import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ConsentsApi;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.SubpopulationsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.model.App;
+import org.sagebionetworks.bridge.rest.model.Assessment;
+import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
 import org.sagebionetworks.bridge.rest.model.ConsentStatus;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.GuidVersionHolder;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
 import org.sagebionetworks.bridge.rest.model.Message;
+import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.SmsMessage;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Subpopulation;
+import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.UserConsentHistory;
 import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
 import org.sagebionetworks.bridge.rest.model.Withdrawal;
@@ -76,6 +90,11 @@ public class ConsentTest {
     private static TestUser adminUser;
     private static TestUser phoneOnlyTestUser;
     private static TestUser researchUser;
+    
+    private TestUser user;
+    private Schedule2 schedule;
+    private Assessment assessmentA;
+    private Assessment assessmentB;
 
     @BeforeClass
     public static void before() throws Exception {
@@ -109,6 +128,23 @@ public class ConsentTest {
     public static void deletePhoneUser() throws Exception {
         if (phoneOnlyTestUser != null) {
             phoneOnlyTestUser.signOutAndDeleteUser();
+        }
+    }
+    
+    @After
+    public void deleteUser() throws Exception {
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        if (user != null) {
+            user.signOutAndDeleteUser();
+        }
+        if (schedule != null) {
+            admin.getClient(ForAdminsApi.class).deleteSchedule(schedule.getGuid()).execute();
+        }
+        if (assessmentA != null) {
+            admin.getClient(ForAdminsApi.class).deleteAssessment(assessmentA.getGuid(), true).execute();   
+        }
+        if (assessmentB != null) {
+            admin.getClient(ForAdminsApi.class).deleteAssessment(assessmentB.getGuid(), true).execute();   
         }
     }
 
@@ -630,6 +666,65 @@ public class ConsentTest {
                 subpopsApi.deleteSubpopulation(subpop.getGuid(), true).execute();    
             }
         }
+    }
+    
+    @Test
+    public void consentToResearchCorrectlyTriggersScheduleEvents() throws Exception {
+        ForDevelopersApi developersApi = adminUser.getClient(ForDevelopersApi.class);
+        AssessmentsApi asmtsApi = adminUser.getClient(AssessmentsApi.class);
+        
+        Study study = developersApi.getStudy(Tests.STUDY_ID_1).execute().body();
+        
+        // If there's a schedule associated to study 1, we need to delete it.
+        if (study.getScheduleGuid() != null) {
+            adminUser.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        }        
+        
+        assessmentA = asmtsApi.createAssessment(new Assessment()
+                .identifier(randomIdentifier(ConsentTest.class))
+                .osName("Universal")
+                .ownerId(adminUser.getSession().getOrgMembership())
+                .title("Assessment A")).execute().body();
+        assessmentB = asmtsApi.createAssessment(new Assessment()
+                .identifier(randomIdentifier(ConsentTest.class))
+                .osName("Universal")
+                .ownerId(adminUser.getSession().getOrgMembership())
+                .title("Assessment B")).execute().body();
+        
+        Session s1 = new Session()
+                .name("Session #1")
+                .addStartEventIdsItem(FAKE_ENROLLMENT)
+                .delay("P2D")
+                .interval("P3D")
+                .performanceOrder(SEQUENTIAL)
+                .addAssessmentsItem(asmtToReference(assessmentA))
+                .addTimeWindowsItem(new TimeWindow()
+                        .startTime("08:00").expiration("PT6H"))
+                .addTimeWindowsItem(new TimeWindow()
+                        .startTime("16:00").expiration("PT6H").persistent(true));
+        schedule = developersApi.saveScheduleForStudy(STUDY_ID_1, new Schedule2()
+                .name("ConsentTest Schedule")
+                .duration("P22D")
+                .addSessionsItem(s1)).execute().body();
+        
+        user = TestUserHelper.createAndSignInUser(ConsentTest.class, false);
+        
+        ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
+        ConsentSignature sig = new ConsentSignature()
+                .name("Test User [ConsentTest]")
+                .scope(NO_SHARING)
+                .birthdate(LocalDate.parse("2000-01-01"));
+        
+        // This fails without server code to ensure the caller has access to the study they have
+        // just enrolled into.
+        userApi.createConsentSignature("api", sig).execute().body();
+    }
+    
+    private AssessmentReference2 asmtToReference(Assessment asmt) {
+        return new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .identifier(asmt.getIdentifier())
+                .guid(asmt.getGuid());
     }
     
     private void withdrawalTest(WithdrawMethod withdrawMethod) throws Exception {
