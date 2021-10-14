@@ -1,7 +1,9 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -9,10 +11,15 @@ import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.APP_ID;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
+
+import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import org.joda.time.DateTime;
 import org.junit.After;
@@ -24,10 +31,13 @@ import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
+import org.sagebionetworks.bridge.rest.model.EnrollmentDetail;
 import org.sagebionetworks.bridge.rest.model.EnrollmentDetailList;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
+import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.user.TestUserHelper;
@@ -38,6 +48,8 @@ public class EnrollmentTest {
     TestUser admin;
     TestUser researcher;
     TestUser studyCoordinator;
+    TestUser org1StudyCoordinator;
+    TestUser org2StudyCoordinator;
     
     @After
     public void after() throws Exception {
@@ -46,6 +58,12 @@ public class EnrollmentTest {
         }
         if (studyCoordinator != null) {
             studyCoordinator.signOutAndDeleteUser();
+        }
+        if (org1StudyCoordinator != null) {
+            org1StudyCoordinator.signOutAndDeleteUser();
+        }
+        if (org2StudyCoordinator != null) {
+            org2StudyCoordinator.signOutAndDeleteUser();   
         }
     }
     
@@ -179,5 +197,66 @@ public class EnrollmentTest {
                 admin.getClient(ForAdminsApi.class).deleteUser(keys.getIdentifier()).execute();
             }
         }
+    }
+    
+    @Test
+    public void enrollmentsAreFiltered() throws Exception {
+        admin = TestUserHelper.getSignedInAdmin();
+        OrganizationsApi orgsApi = admin.getClient(OrganizationsApi.class);
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+
+        // Can access only study 1
+        org1StudyCoordinator = TestUserHelper.createAndSignInUser(EnrollmentTest.class, false, STUDY_COORDINATOR);
+        orgsApi.addMember(ORG_ID_1, org1StudyCoordinator.getUserId()).execute();
+
+        // Can access only study 2
+        org2StudyCoordinator = TestUserHelper.createAndSignInUser(EnrollmentTest.class, false, STUDY_COORDINATOR);
+        orgsApi.addMember(ORG_ID_2, org2StudyCoordinator.getUserId()).execute();
+        
+        // Enroll user in both studies
+        TestUser user = TestUserHelper.createAndSignInUser(EnrollmentTest.class, true);
+        studiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(user.getUserId())).execute();
+        studiesApi.enrollParticipant(STUDY_ID_2, new Enrollment().userId(user.getUserId())).execute();
+        
+        // This person can only see study 1 enrollment
+        EnrollmentDetailList enrollmentsFor1 = org1StudyCoordinator
+                .getClient(StudyParticipantsApi.class)
+                .getStudyParticipantEnrollments(STUDY_ID_1, user.getUserId()).execute().body();
+        assertEquals(1, enrollmentsFor1.getItems().size());
+        assertEquals(STUDY_ID_1, enrollmentsFor1.getItems().get(0).getStudyId());
+        
+        // This person can only see study 1 enrollment on participant record
+        StudyParticipant participantFor1 = org1StudyCoordinator.getClient(StudyParticipantsApi.class)
+            .getStudyParticipantById(STUDY_ID_1, user.getUserId(), false).execute().body();
+        assertEquals(1, participantFor1.getEnrollments().size());
+        assertNotNull(participantFor1.getEnrollments().get(STUDY_ID_1));
+        
+        // This person can only see study 2 enrollment
+        EnrollmentDetailList enrollmentsFor2 = org2StudyCoordinator
+                .getClient(StudyParticipantsApi.class)
+                .getStudyParticipantEnrollments(STUDY_ID_2, user.getUserId()).execute().body();
+        assertEquals(1, enrollmentsFor2.getItems().size());
+        assertEquals(STUDY_ID_2, enrollmentsFor2.getItems().get(0).getStudyId());
+
+        // This person can only see study 2 enrollment on participant record
+        StudyParticipant participantFor2 = org2StudyCoordinator.getClient(StudyParticipantsApi.class)
+                .getStudyParticipantById(STUDY_ID_2, user.getUserId(), false).execute().body();
+        assertEquals(1, participantFor2.getEnrollments().size());
+        assertNotNull(participantFor2.getEnrollments().get(STUDY_ID_2));
+
+        // An admin can see both enrollments
+        EnrollmentDetailList enrollmentsForAdmin = admin
+                .getClient(StudyParticipantsApi.class)
+                .getStudyParticipantEnrollments(STUDY_ID_2, user.getUserId()).execute().body();
+        assertEquals(2, enrollmentsForAdmin.getItems().size());
+        assertEquals(ImmutableSet.of(STUDY_ID_1, STUDY_ID_2), enrollmentsForAdmin.getItems().stream()
+                .map(EnrollmentDetail::getStudyId).collect(toSet()));
+
+        // An admin can see both enrollments on participant record.
+        StudyParticipant participantForAdmin = admin.getClient(StudyParticipantsApi.class)
+                .getStudyParticipantById(STUDY_ID_1, user.getUserId(), false).execute().body();
+        assertEquals(2, participantForAdmin.getEnrollments().size());
+        assertNotNull(participantForAdmin.getEnrollments().get(STUDY_ID_1));
+        assertNotNull(participantForAdmin.getEnrollments().get(STUDY_ID_2));
     }
 }
