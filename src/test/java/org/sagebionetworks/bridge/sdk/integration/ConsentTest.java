@@ -1,11 +1,13 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
 import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
@@ -49,6 +51,7 @@ import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
+import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
@@ -63,6 +66,9 @@ import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.SmsMessage;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
+import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Subpopulation;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
@@ -76,9 +82,12 @@ import org.sagebionetworks.bridge.util.IntegTestUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 @Category(IntegrationSmokeTest.class)
@@ -94,7 +103,6 @@ public class ConsentTest {
     private TestUser user;
     private Schedule2 schedule;
     private Assessment assessmentA;
-    private Assessment assessmentB;
 
     @BeforeClass
     public static void before() throws Exception {
@@ -142,9 +150,6 @@ public class ConsentTest {
         }
         if (assessmentA != null) {
             admin.getClient(ForAdminsApi.class).deleteAssessment(assessmentA.getGuid(), true).execute();   
-        }
-        if (assessmentB != null) {
-            admin.getClient(ForAdminsApi.class).deleteAssessment(assessmentB.getGuid(), true).execute();   
         }
     }
 
@@ -678,22 +683,19 @@ public class ConsentTest {
         // If there's a schedule associated to study 1, we need to delete it.
         if (study.getScheduleGuid() != null) {
             adminUser.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
-        }        
+        }
         
         assessmentA = asmtsApi.createAssessment(new Assessment()
                 .identifier(randomIdentifier(ConsentTest.class))
                 .osName("Universal")
                 .ownerId(adminUser.getSession().getOrgMembership())
                 .title("Assessment A")).execute().body();
-        assessmentB = asmtsApi.createAssessment(new Assessment()
-                .identifier(randomIdentifier(ConsentTest.class))
-                .osName("Universal")
-                .ownerId(adminUser.getSession().getOrgMembership())
-                .title("Assessment B")).execute().body();
-        
+        StudyBurst burst = new StudyBurst().identifier("foo").interval("P1W")
+                .updateType(IMMUTABLE).occurrences(2).originEventId("enrollment");
         Session s1 = new Session()
                 .name("Session #1")
                 .addStartEventIdsItem(FAKE_ENROLLMENT)
+                .addStudyBurstIdsItem("foo")
                 .delay("P2D")
                 .interval("P3D")
                 .performanceOrder(SEQUENTIAL)
@@ -705,6 +707,7 @@ public class ConsentTest {
         schedule = developersApi.saveScheduleForStudy(STUDY_ID_1, new Schedule2()
                 .name("ConsentTest Schedule")
                 .duration("P22D")
+                .addStudyBurstsItem(burst)
                 .addSessionsItem(s1)).execute().body();
         
         user = TestUserHelper.createAndSignInUser(ConsentTest.class, false);
@@ -718,6 +721,11 @@ public class ConsentTest {
         // This fails without server code to ensure the caller has access to the study they have
         // just enrolled into.
         userApi.createConsentSignature("api", sig).execute().body();
+        
+        StudyActivityEventList list = userApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
+        
+        Set<String> events = list.getItems().stream().map(StudyActivityEvent::getEventId).collect(toSet());
+        assertTrue(events.containsAll(ImmutableSet.of("enrollment", "study_burst:foo:01", "study_burst:foo:02")));
     }
     
     private AssessmentReference2 asmtToReference(Assessment asmt) {
