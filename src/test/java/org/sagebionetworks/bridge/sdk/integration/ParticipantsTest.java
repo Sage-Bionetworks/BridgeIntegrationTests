@@ -42,6 +42,7 @@ import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
@@ -451,18 +452,26 @@ public class ParticipantsTest {
     public void canResendEmailVerification() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
         
-        // This is sending an email, which is difficult to verify, but this at least should not throw an error.
-        Response<Message> response = participantsApi.sendParticipantEmailVerification(researcher.getSession().getId()).execute();
-        assertEquals(200, response.code());
+        // This is sending an email, which is difficult to verify, but this at least should not throw an unexpected error.
+        try {
+            participantsApi.sendParticipantEmailVerification(researcher.getSession().getId()).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals(e.getMessage(), "Email address is already verified.");
+        }
     }
     
     @Test
     public void canResendPhoneVerification() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
         
-        // This is sending an email, which is difficult to verify, but this at least should not throw an error.
-        Response<Message> response = participantsApi.sendParticipantPhoneVerification(researcher.getSession().getId()).execute();
-        assertEquals(200, response.code());
+        // This is sending an SMS message, which is difficult to verify, but this at least should not throw an unexpected error.
+        try {
+            participantsApi.sendParticipantPhoneVerification(researcher.getSession().getId()).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals(e.getMessage(), "Phone number has not been set.");
+        }
     }
 
     @Test
