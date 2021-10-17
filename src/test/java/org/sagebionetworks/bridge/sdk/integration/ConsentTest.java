@@ -737,7 +737,10 @@ public class ConsentTest {
         Set<String> events = list.getItems().stream().map(StudyActivityEvent::getEventId).collect(toSet());
         assertTrue(events.containsAll(ImmutableSet.of("enrollment", "study_burst:foo:01", "study_burst:foo:02")));
         
-        // Verify that sign up also works. Same issue, different code path.
+        // Verify that sign up also works. Same issue, different code path. The set up for this is expensive,
+        // so we’re doing it here and not in a separate test (since we've set up the right study/schedule to 
+        // trigger the issue).
+        
         externalId = Tests.randomIdentifier(ConsentTest.class);
         SignUp signUp = new SignUp().appId(TEST_APP_ID)
                 .dataGroups(ImmutableList.of("test_user"))
