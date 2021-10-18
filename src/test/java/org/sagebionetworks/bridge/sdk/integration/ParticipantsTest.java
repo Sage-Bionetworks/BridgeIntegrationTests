@@ -12,9 +12,11 @@ import static org.sagebionetworks.bridge.rest.model.AccountStatus.ENABLED;
 import static org.sagebionetworks.bridge.rest.model.AccountStatus.UNVERIFIED;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
+import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.ALL_QUALIFIED_RESEARCHERS;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.NO_SHARING;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualIgnoringOrder;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.PHONE;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
@@ -42,10 +44,12 @@ import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
+import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.AccountSummary;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.Activity;
@@ -57,7 +61,9 @@ import org.sagebionetworks.bridge.rest.model.GuidVersionHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Message;
+import org.sagebionetworks.bridge.rest.model.ParticipantRosterRequest;
 import org.sagebionetworks.bridge.rest.model.Phone;
+import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SchedulePlan;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
@@ -92,6 +98,7 @@ public class ParticipantsTest {
     private TestUser researcher;
     private TestUser phoneUser;
     private TestUser emailUser;
+    private TestUser studyCoordinator;
     private String externalId;
     
     @Before
@@ -99,6 +106,7 @@ public class ParticipantsTest {
         admin = TestUserHelper.getSignedInAdmin();
         developer = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, DEVELOPER);
         researcher = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, RESEARCHER);
+        studyCoordinator = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, STUDY_COORDINATOR);;
         
         externalId = Tests.randomIdentifier(ParticipantsTest.class);
         
@@ -128,8 +136,38 @@ public class ParticipantsTest {
         if (emailUser != null) {
             emailUser.signOutAndDeleteUser();
         }
+        if (studyCoordinator != null) {
+            studyCoordinator.signOutAndDeleteUser();
+        }
+    }
+    
+    @Test
+    public void canGetParticipantRoster() throws Exception {
+        ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
+        
+        ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
+        
+        Message message = participantsApi.getParticipantRoster(request).execute().body();
+        assertEquals("Download initiated.", message.getMessage());
     }
 
+    @Test
+    public void canGetStudyParticipantRoster() throws Exception {
+        StudyParticipantsApi participantsApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        
+        ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
+        
+        Message message = participantsApi.getStudyParticipantRoster(STUDY_ID_1, request).execute().body();
+        assertEquals("Download initiated.", message.getMessage());
+        
+        try {
+            participantsApi.getStudyParticipantRoster(STUDY_ID_2, request).execute().body();    
+            fail("Should have thrown exception");
+        } catch(UnauthorizedException e) {
+            
+        }
+    }
+    
     // Note: A very similar test exists in UserParticipantTest
     @SuppressWarnings("unchecked")
     @Test
