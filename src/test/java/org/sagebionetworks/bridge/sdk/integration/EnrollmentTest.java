@@ -26,6 +26,7 @@ import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
+import org.sagebionetworks.bridge.rest.model.EnrollmentDetail;
 import org.sagebionetworks.bridge.rest.model.EnrollmentDetailList;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.SignUp;
@@ -47,6 +48,7 @@ public class EnrollmentTest {
         if (studyCoordinator != null) {
             studyCoordinator.signOutAndDeleteUser();
         }
+        // TODO: does the admin need to be signed out/deleted?
     }
     
     @Before
@@ -84,6 +86,7 @@ public class EnrollmentTest {
             enrollment.setExternalId(externalId);
             enrollment.setUserId(user.getUserId());
             enrollment.setConsentRequired(true);
+            enrollment.setNote("initial test enrollment note should not set");
             Enrollment retValue = studiesApi.enrollParticipant(STUDY_ID_1, enrollment).execute().body();
             
             assertEquals(externalId, retValue.getExternalId());
@@ -91,14 +94,20 @@ public class EnrollmentTest {
             assertTrue(retValue.isConsentRequired());
             assertEquals(timestamp.getMillis(), retValue.getEnrolledOn().getMillis());
             assertEquals(admin.getUserId(), retValue.getEnrolledBy());
-            assertNull(enrollment.getWithdrawnOn());
-            assertNull(enrollment.getWithdrawnBy());
-            assertNull(enrollment.getWithdrawalNote());
+            assertNull(retValue.getWithdrawnOn());
+            assertNull(retValue.getWithdrawnBy());
+            assertNull(retValue.getWithdrawalNote());
+            assertNull(retValue.getNote());
+
+            // Update study-scoped note
+            enrollment.setNote("test enrollment note on update");
+            studiesApi.updateEnrollment(STUDY_ID_1, user.getUserId(), enrollment).execute();
             
             // Now shows up in paged api
             EnrollmentDetailList list = studiesApi.getEnrollments(STUDY_ID_1, "enrolled", false, null, null).execute().body();
             assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
-            
+            assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId()) && e.getNote().equals(enrollment.getNote())));
+
             list = studiesApi.getEnrollments(STUDY_ID_1, null, false, null, null).execute().body();
             assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
             
