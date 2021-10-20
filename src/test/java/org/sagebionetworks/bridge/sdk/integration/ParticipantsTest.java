@@ -63,7 +63,6 @@ import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.ParticipantRosterRequest;
 import org.sagebionetworks.bridge.rest.model.Phone;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SchedulePlan;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
@@ -147,7 +146,7 @@ public class ParticipantsTest {
         
         ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
         
-        Message message = participantsApi.getParticipantRoster(request).execute().body();
+        Message message = participantsApi.requestParticipantRoster(request).execute().body();
         assertEquals("Download initiated.", message.getMessage());
     }
 
@@ -157,11 +156,11 @@ public class ParticipantsTest {
         
         ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
         
-        Message message = participantsApi.getStudyParticipantRoster(STUDY_ID_1, request).execute().body();
+        Message message = participantsApi.requestStudyParticipantRoster(STUDY_ID_1, request).execute().body();
         assertEquals("Download initiated.", message.getMessage());
         
         try {
-            participantsApi.getStudyParticipantRoster(STUDY_ID_2, request).execute().body();    
+            participantsApi.requestStudyParticipantRoster(STUDY_ID_2, request).execute().body();    
             fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
             
