@@ -48,7 +48,6 @@ import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
-import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.SubpopulationsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
@@ -60,13 +59,11 @@ import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
 import org.sagebionetworks.bridge.rest.model.ConsentStatus;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
-import org.sagebionetworks.bridge.rest.model.EnrollmentInfo;
 import org.sagebionetworks.bridge.rest.model.GuidVersionHolder;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
-import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.SmsMessage;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -106,7 +103,6 @@ public class ConsentTest {
     private TestUser user;
     private Schedule2 schedule;
     private Assessment assessmentA;
-    private String externalId;
 
     @BeforeClass
     public static void before() throws Exception {
@@ -148,12 +144,6 @@ public class ConsentTest {
         TestUser admin = TestUserHelper.getSignedInAdmin();
         if (user != null) {
             user.signOutAndDeleteUser();
-        }
-        if (externalId != null) {
-            StudyParticipantsApi participantApi = admin.getClient(StudyParticipantsApi.class);
-            StudyParticipant participant = participantApi.getStudyParticipantById(
-                    STUDY_ID_1, "externalid:"+externalId, false).execute().body();
-            participantApi.deleteStudyParticipant(STUDY_ID_1, participant.getId()).execute();
         }
         if (schedule != null) {
             admin.getClient(ForAdminsApi.class).deleteSchedule(schedule.getGuid()).execute();
@@ -736,12 +726,12 @@ public class ConsentTest {
         
         Set<String> events = list.getItems().stream().map(StudyActivityEvent::getEventId).collect(toSet());
         assertTrue(events.containsAll(ImmutableSet.of("enrollment", "study_burst:foo:01", "study_burst:foo:02")));
-        
-        // Verify that sign up also works. Same issue, different code path. The set up for this is expensive,
-        // so we’re doing it here and not in a separate test (since we've set up the right study/schedule to 
-        // trigger the issue).
-        
-        externalId = Tests.randomIdentifier(ConsentTest.class);
+    }
+    
+    @Test
+    public void publicSignUpWithAnEnrollmentFails() throws Exception {
+        // Anonymous sign up using nothing but an external ID should fail as a validation error.
+        String externalId = Tests.randomIdentifier(ConsentTest.class);
         SignUp signUp = new SignUp().appId(TEST_APP_ID)
                 .dataGroups(ImmutableList.of("test_user"))
                 .externalIds(ImmutableMap.of(STUDY_ID_1, externalId)).password(PASSWORD);
@@ -749,16 +739,10 @@ public class ConsentTest {
         TestUser admin = TestUserHelper.getSignedInAdmin();
         ApiClientProvider provider = Tests.getUnauthenticatedClientProvider(admin.getClientManager(), TEST_APP_ID);
         AuthenticationApi authApi = provider.getClient(AuthenticationApi.class);
-        authApi.signUp(signUp).execute();
-
         try {
-            authApi.signIn(new SignIn().appId(TEST_APP_ID)
-                    .externalId(externalId).password(PASSWORD)).execute().body();
-            fail("Should have thrown exception");
-        } catch(ConsentRequiredException e) {
-            UserSessionInfo session = e.getSession();
-            EnrollmentInfo en = session.getEnrollments().get(STUDY_ID_1);
-            assertEquals(externalId, en.getExternalId());
+            authApi.signUp(signUp).execute();
+        } catch(InvalidEntityException e) {
+            assertTrue(e.getMessage().contains("StudyParticipant email or phone number is required"));
         }
     }
     

@@ -1,8 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static java.util.stream.Collectors.toSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
@@ -28,12 +27,12 @@ import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.ExternalIdentifier;
 import org.sagebionetworks.bridge.rest.model.ExternalIdentifierList;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
-import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
@@ -44,8 +43,6 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-
-import retrofit2.Response;
 
 @SuppressWarnings("ConstantConditions")
 public class ExternalIdsV4Test {
@@ -90,12 +87,13 @@ public class ExternalIdsV4Test {
         assertEquals(STUDY_ID_1, participant.getStudyIds().get(0));
         assertTrue(participant.getExternalIds().values().contains(extIdA));
 
-        // Cannot create another user with this external ID. This should do nothing and fail quietly.
-        SignUp signUp = new SignUp().appId(TEST_APP_ID).externalIds(ImmutableMap.of(STUDY_ID_1, extIdA));
-        researcher.getClient(AuthenticationApi.class).signUp(signUp).execute();
-
-        Response<Message> response = researcher.getClient(AuthenticationApi.class).signUp(signUp).execute();
-        assertEquals(201, response.code());
+        // Cannot create another user with this external ID. This fails explicitly
+        try {
+            SignUp signUp = new SignUp().appId(TEST_APP_ID).externalIds(ImmutableMap.of(STUDY_ID_1, extIdA));
+            researcherApi.createParticipant(signUp).execute();
+            fail("should have thrown exception");
+        } catch(EntityAlreadyExistsException e) {
+        }
 
         // ID wasn't changed
         StudyParticipant participant2 = researcherApi.getParticipantByExternalId(extIdA, false).execute().body();
