@@ -733,6 +733,7 @@ public class ConsentTest {
         // Anonymous sign up using nothing but an external ID should fail as a validation error.
         String externalId = Tests.randomIdentifier(ConsentTest.class);
         SignUp signUp = new SignUp().appId(TEST_APP_ID)
+                .email(IntegTestUtils.makeEmail(ConsentTest.class))
                 .dataGroups(ImmutableList.of("test_user"))
                 .externalIds(ImmutableMap.of(STUDY_ID_1, externalId)).password(PASSWORD);
 

@@ -63,8 +63,7 @@ public class ScheduledActivityRecurringTest {
                 .createAndSignInUser();
         
         App app = admin.getClient(AppsApi.class).getUsersApp().execute().body();
-        if (app.isExternalIdRequiredOnSignup() || !app.getCustomEvents().keySet().contains(CUSTOM_EVENT)) {
-            app.setExternalIdRequiredOnSignup(false);
+        if (!app.getCustomEvents().keySet().contains(CUSTOM_EVENT)) {
             app.getCustomEvents().put(CUSTOM_EVENT, FUTURE_ONLY);
             
             VersionHolder version = admin.getClient(ForSuperadminsApi.class).updateApp(app.getIdentifier(), app).execute().body();

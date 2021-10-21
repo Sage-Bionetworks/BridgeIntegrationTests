@@ -12,14 +12,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
 import org.sagebionetworks.bridge.rest.model.Activity;
 import org.sagebionetworks.bridge.rest.model.ActivityType;
-import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Criteria;
 import org.sagebionetworks.bridge.rest.model.CriteriaScheduleStrategy;
 import org.sagebionetworks.bridge.rest.model.GuidVersionHolder;
@@ -32,7 +29,6 @@ import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.TaskReference;
-import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
@@ -74,13 +70,6 @@ public class ScheduleActivityOnceTest {
     
     @Test
     public void test() throws Exception {
-        App app = admin.getClient(AppsApi.class).getUsersApp().execute().body();
-        if (app.isExternalIdRequiredOnSignup()) {
-            app.setExternalIdRequiredOnSignup(false);
-            
-            VersionHolder version = admin.getClient(ForSuperadminsApi.class).updateApp(app.getIdentifier(), app).execute().body();
-            app.setVersion(version.getVersion());
-        }
         Schedule schedule = new Schedule();
         schedule.setLabel("Schedule Label");
         schedule.setScheduleType(ScheduleType.ONCE);

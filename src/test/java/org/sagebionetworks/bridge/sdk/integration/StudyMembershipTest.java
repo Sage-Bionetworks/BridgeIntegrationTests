@@ -16,10 +16,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
-import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.EnrollmentDetailList;
 import org.sagebionetworks.bridge.rest.model.SignUp;
@@ -56,11 +54,6 @@ public class StudyMembershipTest {
 
     @After
     public void after() throws Exception {
-        ForSuperadminsApi superadminsApi = admin.getClient(ForSuperadminsApi.class);
-        App app = superadminsApi.getApp(TEST_APP_ID).execute().body();
-        app.setExternalIdRequiredOnSignup(false);
-        superadminsApi.updateApp(app.getIdentifier(), app).execute();
-
         // This can only happen after external ID management is disabled.
         for (TestUser user : usersToDelete) {
             user.signOutAndDeleteUser();
@@ -74,10 +67,6 @@ public class StudyMembershipTest {
 
     @Test
     public void addingExternalIdsAssociatesToStudy() throws Exception {
-        App app = admin.getClient(ForAdminsApi.class).getUsersApp().execute().body();
-        app.setExternalIdRequiredOnSignup(true);
-        admin.getClient(ForSuperadminsApi.class).updateApp(app.getIdentifier(), app).execute();
-        
         // Create two studies
         String idA = createStudy();
         String idB = createStudy();
