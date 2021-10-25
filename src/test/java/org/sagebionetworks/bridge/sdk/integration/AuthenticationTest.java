@@ -16,6 +16,7 @@ import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.exceptions.AuthenticationFailedException;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.model.App;
@@ -159,8 +160,12 @@ public class AuthenticationTest {
     public void canResendEmailVerification() throws IOException {
         Identifier email = new Identifier().appId(testUser.getSignIn().getAppId()).email(testUser.getSignIn().getEmail());
 
-        Response<Message> response = authApi.resendEmailVerification(email).execute();
-        assertEquals(202, response.code());
+        try {
+            authApi.resendEmailVerification(email).execute();   
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals(e.getMessage(), "Email address is already verified.");
+        }
     }
     
     @Test
@@ -203,12 +208,13 @@ public class AuthenticationTest {
         // Request resend phone verification.
         Identifier phone = new Identifier().appId(phoneOnlyTestUser.getSignIn().getAppId())
                 .phone(phoneOnlyTestUser.getPhone());
-
-        Response<Message> response = authApi.resendPhoneVerification(phone).execute();
-        assertEquals(202, response.code());
-
-        // Verify message logs contains the expected message.
-        verifyTransactionalMessage();
+ 
+        try {
+            authApi.resendPhoneVerification(phone).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals(e.getMessage(), "Phone number is already verified.");
+        }
     }
     
     @Test

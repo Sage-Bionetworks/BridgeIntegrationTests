@@ -159,9 +159,15 @@ public class ForStudyCoordinatorsTest {
         assertNotNull(info);
         assertEquals("UTC", info.getTimeZone());
         
-        // Again we just want to see that these don't fail...we can't verify
+        // Again we just want to see that these don't fail in a way we don't expect
         coordApi.sendStudyParticipantEmailVerification(STUDY_ID_1, userId).execute();
-        coordApi.sendStudyParticipantPhoneVerification(STUDY_ID_1, userId).execute();
+        try {
+            coordApi.sendStudyParticipantPhoneVerification(STUDY_ID_1, userId).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals(e.getMessage(), "Phone number has not been set.");
+        }
+        
         
         try {
             NotificationMessage message = new NotificationMessage().subject("subject").message("message");
