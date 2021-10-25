@@ -15,6 +15,7 @@ import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.ALL_QUALIFIED_RESEARCHERS;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.NO_SHARING;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualIgnoringOrder;
@@ -105,7 +106,9 @@ public class ParticipantsTest {
         admin = TestUserHelper.getSignedInAdmin();
         developer = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, DEVELOPER);
         researcher = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, RESEARCHER);
-        studyCoordinator = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, STUDY_COORDINATOR);;
+        studyCoordinator = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, STUDY_COORDINATOR);
+        admin.getClient(OrganizationsApi.class).removeMember(SAGE_ID, studyCoordinator.getUserId()).execute();
+        admin.getClient(OrganizationsApi.class).addMember(ORG_ID_1, studyCoordinator.getUserId()).execute();
         
         externalId = Tests.randomIdentifier(ParticipantsTest.class);
         
@@ -157,7 +160,7 @@ public class ParticipantsTest {
         ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
         
         Message message = participantsApi.requestStudyParticipantRoster(STUDY_ID_1, request).execute().body();
-        assertEquals("Download initiated.", message.getMessage());
+        assertEquals("Preparing participant roster.", message.getMessage());
         
         try {
             participantsApi.requestStudyParticipantRoster(STUDY_ID_2, request).execute().body();    
