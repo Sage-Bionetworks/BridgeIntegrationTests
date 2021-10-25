@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
@@ -48,7 +49,6 @@ public class EnrollmentTest {
         if (studyCoordinator != null) {
             studyCoordinator.signOutAndDeleteUser();
         }
-        // TODO: does the admin need to be signed out/deleted?
     }
     
     @Before
@@ -86,7 +86,7 @@ public class EnrollmentTest {
             enrollment.setExternalId(externalId);
             enrollment.setUserId(user.getUserId());
             enrollment.setConsentRequired(true);
-            enrollment.setNote("initial test enrollment note should not set");
+            enrollment.setNote("test note on enrollment");
             Enrollment retValue = studiesApi.enrollParticipant(STUDY_ID_1, enrollment).execute().body();
             
             assertEquals(externalId, retValue.getExternalId());
@@ -97,7 +97,7 @@ public class EnrollmentTest {
             assertNull(retValue.getWithdrawnOn());
             assertNull(retValue.getWithdrawnBy());
             assertNull(retValue.getWithdrawalNote());
-            assertNull(retValue.getNote());
+            assertEquals("test note on enrollment", retValue.getNote());
 
             // Update study-scoped note
             enrollment.setNote("test enrollment note on update");
@@ -105,8 +105,11 @@ public class EnrollmentTest {
             
             // Now shows up in paged api
             EnrollmentDetailList list = studiesApi.getEnrollments(STUDY_ID_1, "enrolled", false, null, null).execute().body();
-            assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
-            assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId()) && e.getNote().equals(enrollment.getNote())));
+            EnrollmentDetail enrollmentDetail = list.getItems().stream().filter(e -> e.getParticipant().getIdentifier().equals(user.getUserId()))
+                    .findAny().orElse(null);
+            assertNotNull(enrollmentDetail);
+            assertEquals(user.getUserId(), enrollmentDetail.getParticipant().getIdentifier());
+            assertEquals(enrollment.getNote(), enrollmentDetail.getNote());
 
             list = studiesApi.getEnrollments(STUDY_ID_1, null, false, null, null).execute().body();
             assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
