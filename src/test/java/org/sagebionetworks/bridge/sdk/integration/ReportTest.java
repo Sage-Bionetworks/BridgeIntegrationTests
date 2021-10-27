@@ -33,7 +33,6 @@ import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudyReportsApi;
-import org.sagebionetworks.bridge.rest.api.UsersApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
@@ -403,7 +402,7 @@ public class ReportTest {
     public void userCanCRUDSelfReports() throws Exception {
         user = TestUserHelper.createAndSignInUser(ReportTest.class, true);
 
-        UsersApi userApi = user.getClient(UsersApi.class);
+        ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
 
         userApi.saveParticipantReportRecordsV4(reportId, makeReportData(DATETIME1, "foo", "A")).execute();
         userApi.saveParticipantReportRecordsV4(reportId, makeReportData(DATETIME2, "bar", "B")).execute();
