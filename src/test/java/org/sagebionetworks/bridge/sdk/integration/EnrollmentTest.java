@@ -115,19 +115,11 @@ public class EnrollmentTest {
         assertNull(retValue.getWithdrawnBy());
         assertNull(retValue.getWithdrawalNote());
         assertEquals("test note on enrollment", retValue.getNote());
-
-        // Update study-scoped note
-        enrollment.setNote("test enrollment note on update");
-        studiesApi.updateEnrollment(STUDY_ID_1, user.getUserId(), enrollment).execute();
         
         // Now shows up in paged api
         EnrollmentDetailList list = studiesApi.getEnrollments(STUDY_ID_1, "enrolled", false, null, null).execute().body();
-        EnrollmentDetail enrollmentDetail = list.getItems().stream().filter(e -> e.getParticipant().getIdentifier().equals(user.getUserId()))
-                .findAny().orElse(null);
-        assertNotNull(enrollmentDetail);
-        assertEquals(user.getUserId(), enrollmentDetail.getParticipant().getIdentifier());
-        assertEquals(enrollment.getNote(), enrollmentDetail.getNote());
-        
+        assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
+                
         list = studiesApi.getEnrollments(STUDY_ID_1, null, false, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
         
@@ -161,6 +153,25 @@ public class EnrollmentTest {
         
         list = studiesApi.getEnrollments(STUDY_ID_1, "all", false, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
+        
+        // Updating should be able to edit notes without affecting other fields.
+        Enrollment noteEnrollment = new Enrollment();
+        noteEnrollment.setNote("test updated note field");
+        noteEnrollment.setWithdrawalNote("test updated withdrawal note field");
+        
+        studiesApi.updateEnrollment(STUDY_ID_1, user.getUserId(), noteEnrollment).execute();
+        list = studiesApi.getEnrollments(STUDY_ID_1, null, false, null, null).execute().body();
+        
+        EnrollmentDetail enrollmentDetail = list.getItems().stream().filter(e -> e.getParticipant().getIdentifier().equals(user.getUserId()))
+                .findAny().orElse(null);
+        assertNotNull(enrollmentDetail);
+        assertEquals(user.getUserId(), enrollmentDetail.getParticipant().getIdentifier());
+        assertEquals(noteEnrollment.getNote(), enrollmentDetail.getNote());
+        assertEquals(noteEnrollment.getWithdrawalNote(), enrollmentDetail.getWithdrawalNote());
+        assertNotNull(enrollmentDetail.getWithdrawnBy());
+        assertNotNull(enrollmentDetail.getEnrolledOn());
+        assertNotNull(enrollmentDetail.getEnrolledBy());
+        assertNotNull(enrollmentDetail.getEnrolledOn());
         
         // test the filter for test accounts
         participant.addDataGroupsItem("test_user");
