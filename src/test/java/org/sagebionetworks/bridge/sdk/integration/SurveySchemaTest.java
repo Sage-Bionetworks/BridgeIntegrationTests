@@ -73,6 +73,7 @@ public class SurveySchemaTest {
         surveysToDelete = new HashSet<>();
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         // cleanup surveys
@@ -86,6 +87,7 @@ public class SurveySchemaTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void deleteSchemas() throws Exception {
         ForAdminsApi adminApi = admin.getClient(ForAdminsApi.class);
@@ -103,6 +105,7 @@ public class SurveySchemaTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void createAndUpdateSurveySchema() throws Exception {
         // Test Case 1: Create the survey schema.
@@ -240,6 +243,7 @@ public class SurveySchemaTest {
         assertEquals(UploadFieldType.LARGE_TEXT_ATTACHMENT, fieldDefList.get(0).getType());
     }
 
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder setupSurveySchemaTest() throws Exception {
         SurveyQuestionOption option1 = new SurveyQuestionOption();
         option1.setLabel("foo");
@@ -293,12 +297,14 @@ public class SurveySchemaTest {
 
     // Helper methods to ensure we always record these calls for cleanup
 
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder createSurvey(Survey survey) throws Exception {
         GuidCreatedOnVersionHolder versionHolder = surveysApi.createSurvey(survey).execute().body();
         surveysToDelete.add(versionHolder);
         return versionHolder;
     }
 
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder versionSurvey(GuidCreatedOnVersionHolder survey) throws Exception {
         GuidCreatedOnVersionHolder versionHolder = surveysApi
                 .versionSurvey(survey.getGuid(), survey.getCreatedOn()).execute().body();

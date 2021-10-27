@@ -1,7 +1,5 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +24,6 @@ public class HealthDataDocumentationTest {
     private static TestUser researcher;
     private static TestUser developer;
     private static TestUser admin;
-    private static DateTime modifiedOn;
     private String identifier1;
     private String identifier2;
     private String identifier3;
@@ -40,7 +37,6 @@ public class HealthDataDocumentationTest {
         admin = TestUserHelper.getSignedInAdmin();
         researcher = TestUserHelper.createAndSignInUser(HealthDataDocumentationTest.class, false, Role.RESEARCHER);
         developer = TestUserHelper.createAndSignInUser(HealthDataDocumentationTest.class, false, Role.DEVELOPER);
-        modifiedOn = DateTime.now(DateTimeZone.UTC);
 
         identifier1 = Tests.randomIdentifier(HealthDataDocumentationTest.class);
         identifier2 = Tests.randomIdentifier(HealthDataDocumentationTest.class);

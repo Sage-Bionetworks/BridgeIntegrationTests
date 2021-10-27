@@ -60,6 +60,7 @@ public class StudyActivityEventTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void createStudyActivityEvent() throws Exception {
         // Because this is set first, it is immutable and will not be changed by the study-scoped value.
@@ -247,6 +248,7 @@ public class StudyActivityEventTest {
                 .map(StudyActivityEvent::getTimestamp).collect(Collectors.toSet()));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void globalEventsDoNotCreateStudyVersions() throws Exception {
         DateTime globalTimestamp = DateTime.now(UTC).minusDays(2);

@@ -54,6 +54,7 @@ public class ScheduledActivityRecurringTest {
     
     private TestUser user;
     
+    @SuppressWarnings("deprecation")
     @Before
     public void before() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
@@ -98,6 +99,7 @@ public class ScheduledActivityRecurringTest {
         schedulePlan.setVersion(keys.getVersion());
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         if (developer != null) {
@@ -113,6 +115,7 @@ public class ScheduledActivityRecurringTest {
     
     // Verifies that time zone changes, even across the date line, behave in a known and predicable way that 
     // should make sense to the end user.
+    @SuppressWarnings("deprecation")
     @Test
     public void retrievalActivitiesAcrossTimeAndTimeZones() throws Exception {
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);

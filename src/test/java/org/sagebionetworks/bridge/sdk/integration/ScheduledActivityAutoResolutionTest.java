@@ -16,7 +16,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.api.ActivitiesApi;
-import org.sagebionetworks.bridge.rest.api.CompoundActivityDefinitionsApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
@@ -57,7 +57,7 @@ public class ScheduledActivityAutoResolutionTest {
             .name("record.json.test-field").type(UploadFieldType.STRING).maxLength(10);
     private static final String TASK_ID = "task:AAA";
 
-    private static CompoundActivityDefinitionsApi compoundActivityDefinitionsApi;
+    private static ForDevelopersApi forDevelopersApi;
     private static SchedulesV1Api schedulePlanApi;
     private static SurveysApi adminSurveyApi;
     private static SurveysApi surveyApi;
@@ -72,13 +72,14 @@ public class ScheduledActivityAutoResolutionTest {
     private String surveyId;
     private TestUserHelper.TestUser user;
 
+    @SuppressWarnings("deprecation")
     @BeforeClass
     public static void beforeClass() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
         // init users and clients
         developer = TestUserHelper.createAndSignInUser(ScheduledActivityAutoResolutionTest.class, false,
                 Role.DEVELOPER);
-        compoundActivityDefinitionsApi = developer.getClient(CompoundActivityDefinitionsApi.class);
+        forDevelopersApi = developer.getClient(ForDevelopersApi.class);
         schedulePlanApi = developer.getClient(SchedulesV1Api.class);
         adminSurveyApi = TestUserHelper.getSignedInAdmin().getClient(SurveysApi.class);
         surveyApi = developer.getClient(SurveysApi.class);
@@ -133,6 +134,7 @@ public class ScheduledActivityAutoResolutionTest {
         user = TestUserHelper.createAndSignInUser(ScheduledActivityAutoResolutionTest.class, true);
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         // Delete the test user.
@@ -147,7 +149,7 @@ public class ScheduledActivityAutoResolutionTest {
 
         // Delete compound activity, if any
         if (compoundTaskIdToDelete != null) {
-            compoundActivityDefinitionsApi.deleteCompoundActivityDefinition(compoundTaskIdToDelete).execute();
+            forDevelopersApi.deleteCompoundActivityDefinition(compoundTaskIdToDelete).execute();
         }
 
         // Deleting surveys requires an admin
@@ -163,6 +165,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void resolveSchemas() throws Exception {
         // Create simple schedule plan with a task ref with a schema ref to this schema.
@@ -201,6 +204,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void resolveSurveys() throws Exception {
         // Similarly, we need surveys to resolve.
@@ -246,6 +250,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void resolveCompoundActivities() throws Exception {
         // We create schemas in beforeClass(). We also need a survey. The one in resolveSurveys won't do because we
@@ -259,9 +264,8 @@ public class ScheduledActivityAutoResolutionTest {
         SurveyReference surveyRef = new SurveyReference().guid(surveyKeys.getGuid()).identifier(surveyId);
         CompoundActivityDefinition compoundActivityDefinition = new CompoundActivityDefinition()
                 .addSchemaListItem(schemaRef).addSurveyListItem(surveyRef).taskId(compoundTaskId);
-        CompoundActivityDefinitionsApi compoundActivityDefinitionsApi = developer.getClient(
-                CompoundActivityDefinitionsApi.class);
-        compoundActivityDefinitionsApi.createCompoundActivityDefinition(compoundActivityDefinition).execute();
+        ForDevelopersApi forDevelopersApi = developer.getClient(ForDevelopersApi.class);
+        forDevelopersApi.createCompoundActivityDefinition(compoundActivityDefinition).execute();
         compoundTaskIdToDelete = compoundTaskId;
 
         // Similarly, create a schedule plan with a compound activity ref.
@@ -291,10 +295,10 @@ public class ScheduledActivityAutoResolutionTest {
         }
 
         // Update the compound activity definition. Simplest update, just remove the survey and leave the schema.
-        CompoundActivityDefinition defToUpdate = compoundActivityDefinitionsApi.getCompoundActivityDefinition(
+        CompoundActivityDefinition defToUpdate = forDevelopersApi.getCompoundActivityDefinition(
                 compoundTaskId).execute().body();
         defToUpdate.setSurveyList(ImmutableList.of());
-        compoundActivityDefinitionsApi.updateCompoundActivityDefinition(compoundTaskId, defToUpdate).execute();
+        forDevelopersApi.updateCompoundActivityDefinition(compoundTaskId, defToUpdate).execute();
 
         // Get scheduled activities again. Now we should get the updated compound activity.
         {
@@ -314,6 +318,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static String createSchedulePlanWithActivity(Activity activity) throws Exception {
         Schedule schedule = new Schedule().scheduleType(ScheduleType.ONCE).addActivitiesItem(activity);
         ScheduleStrategy scheduleStrategy = new SimpleScheduleStrategy().schedule(schedule)
@@ -329,6 +334,7 @@ public class ScheduledActivityAutoResolutionTest {
                 .findFirst().orElse(null);
     }
 
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder createSimpleSurvey() throws Exception {
         Constraints constraints = new IntegerConstraints().dataType(DataType.INTEGER);
         SurveyElement surveyQuestion = new SurveyQuestion().constraints(constraints)

@@ -52,6 +52,7 @@ public class ScheduleTest {
                 .withRoles(Role.DEVELOPER).createAndSignInUser();
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         if (user != null) {
@@ -69,6 +70,7 @@ public class ScheduleTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canScheduleASequence() throws Exception {
         SchedulesV1Api schedulesApi = developer.getClient(SchedulesV1Api.class);
@@ -109,6 +111,7 @@ public class ScheduleTest {
         assertEquals(scheduledOn3, list.get(2).getScheduledOn().toString());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void schedulePlanIsCorrect() throws Exception {
         SchedulesV1Api schedulesApi = developer.getClient(SchedulesV1Api.class);
@@ -135,6 +138,7 @@ public class ScheduleTest {
         assertEquals(originalPlan, plan);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canRetrieveSchedulesForAUser() throws Exception {
         // Make a schedule plan. Stick a probabilistically unique label on it so we can find it again later.
@@ -161,6 +165,7 @@ public class ScheduleTest {
         assertTrue(foundSchedule);
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void persistentSchedulePlanMarkedPersistent() throws Exception {
         SchedulePlan plan = Tests.getPersistentSchedulePlan();
@@ -174,6 +179,7 @@ public class ScheduleTest {
         assertEquals(true, schedule.isPersistent());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void simpleSchedulePlanNotMarkedPersistent() throws Exception {
         SchedulePlan plan = Tests.getSimpleSchedulePlan();
@@ -187,6 +193,7 @@ public class ScheduleTest {
         assertEquals(false, schedule.isPersistent());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void criteriaBasedScheduleIsFilteredForUser() throws Exception {
         SchedulePlan plan = new SchedulePlan();
@@ -263,6 +270,7 @@ public class ScheduleTest {
         return Lists.newArrayList(activity);
     }
 
+    @SuppressWarnings("deprecation")
     private void activitiesShouldContainTask(String activityLabel) throws Exception {
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         ScheduledActivityList activities = usersApi.getScheduledActivities("+00:00", 1, null).execute().body();

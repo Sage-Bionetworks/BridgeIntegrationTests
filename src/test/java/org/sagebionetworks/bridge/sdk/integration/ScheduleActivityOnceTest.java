@@ -39,6 +39,7 @@ public class ScheduleActivityOnceTest {
     private TestUser user;
     private SchedulePlan schedulePlan;
     
+    @SuppressWarnings("deprecation")
     @Before
     public void before() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
@@ -55,6 +56,7 @@ public class ScheduleActivityOnceTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         if (developer != null) {
@@ -68,6 +70,7 @@ public class ScheduleActivityOnceTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void test() throws Exception {
         Schedule schedule = new Schedule();

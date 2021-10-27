@@ -26,9 +26,9 @@ import org.sagebionetworks.bridge.rest.api.AppConfigsApi;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.SharedAssessmentsApi;
-import org.sagebionetworks.bridge.rest.api.FilesApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.HostedFilesApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.PublicApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
@@ -79,7 +79,7 @@ public class AppConfigTest {
     private AppConfigsApi appConfigsApi;
     private UploadSchemasApi schemasApi;
     private SurveysApi surveysApi;
-    private FilesApi filesApi;
+    private HostedFilesApi hostedFilesApi;
     private AssessmentsApi assessmentsApi;
     private SharedAssessmentsApi sharedAssessmentsApi;
     private List<String> configsToDelete = new ArrayList<>();
@@ -108,7 +108,7 @@ public class AppConfigTest {
         appConfigsApi = developer.getClient(AppConfigsApi.class);
         schemasApi = developer.getClient(UploadSchemasApi.class);
         surveysApi = developer.getClient(SurveysApi.class);
-        filesApi = developer.getClient(FilesApi.class);
+        hostedFilesApi = developer.getClient(HostedFilesApi.class);
         assessmentsApi = developer.getClient(AssessmentsApi.class);
 
         appId = admin.getAppId();
@@ -136,6 +136,7 @@ public class AppConfigTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void deleteSurveys() throws IOException {
         if (surveyKeys != null) {
@@ -144,6 +145,7 @@ public class AppConfigTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void deleteUploadSchema() throws IOException {
         if (schemaKeys != null) {
@@ -236,12 +238,12 @@ public class AppConfigTest {
         FileMetadata meta = new FileMetadata();
         meta.setName("test file");
         meta.setDisposition(INLINE);
-        fileKeys = filesApi.createFile(meta).execute().body();
+        fileKeys = hostedFilesApi.createFile(meta).execute().body();
         
         File file = new File("src/test/resources/file-test/test.pdf");
-        RestUtils.uploadHostedFileToS3(filesApi, fileKeys.getGuid(), file);
+        RestUtils.uploadHostedFileToS3(hostedFilesApi, fileKeys.getGuid(), file);
         
-        FileRevisionList list = filesApi.getFileRevisions(fileKeys.getGuid(), 0, 5).execute().body();
+        FileRevisionList list = hostedFilesApi.getFileRevisions(fileKeys.getGuid(), 0, 5).execute().body();
         FileRevision revision = list.getItems().get(0);
         FileReference fileRef = new FileReference().guid(revision.getFileGuid()).createdOn(revision.getCreatedOn());
         

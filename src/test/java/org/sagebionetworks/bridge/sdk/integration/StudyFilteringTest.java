@@ -177,6 +177,7 @@ public class StudyFilteringTest {
     }
     
     // in short, researchers do not have restrictions anymore, and we can verify
+    @SuppressWarnings("deprecation")
     @Test
     public void filterParticipantsForResearchers() throws Exception { 
         // researcher1
@@ -211,6 +212,7 @@ public class StudyFilteringTest {
     // not require authentication: language and the User-Agent string. The primary use case 
     // is to select an app config by app version, even before the user creates an account.
     
+    @SuppressWarnings("deprecation")
     @Test
     public void filterSubpopulations() throws Exception {
         Criteria criteria = new Criteria();
@@ -243,6 +245,7 @@ public class StudyFilteringTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void filterScheduling() throws Exception {
         String activityLabel = Tests.randomIdentifier(StudyFilteringTest.class);
