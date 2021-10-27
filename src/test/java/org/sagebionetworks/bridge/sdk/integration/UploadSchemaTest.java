@@ -89,6 +89,7 @@ public class UploadSchemaTest {
         schemaId = TEST_SCHEMA_ID_PREFIX + RandomStringUtils.randomAlphabetic(4);
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void deleteSchemas() throws Exception {
         try {
@@ -127,6 +128,7 @@ public class UploadSchemaTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testDeleteWithSharedModule() throws Exception {
         // create test upload schema and test shared module
@@ -160,6 +162,7 @@ public class UploadSchemaTest {
         assertNotNull(thrownEx);
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void test() throws Exception {
         // set up some field defs
@@ -429,6 +432,7 @@ public class UploadSchemaTest {
         return schema;
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testV4() throws Exception {
         UploadFieldDefinition def1 = new UploadFieldDefinition();
@@ -525,6 +529,7 @@ public class UploadSchemaTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected=UnauthorizedException.class)
     public void unauthorizedTest() throws Exception {
         user.getClient(UploadSchemasApi.class).getMostRecentUploadSchemas(false).execute();
@@ -561,6 +566,7 @@ public class UploadSchemaTest {
                 fieldDefList);
     }
 
+    @SuppressWarnings("deprecation")
     private void cannotCreateSchemasThatAreTooLarge(String expectedErrorMessage,
             List<UploadFieldDefinition> fieldDefList) throws Exception {
         // Create schema with fields (expected exception).

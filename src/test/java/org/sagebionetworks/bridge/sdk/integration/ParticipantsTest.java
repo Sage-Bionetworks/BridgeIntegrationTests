@@ -275,7 +275,6 @@ public class ParticipantsTest {
         }
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void canRetrieveAndPageThroughParticipants() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
@@ -334,7 +333,6 @@ public class ParticipantsTest {
         return true;
     }
     
-    @SuppressWarnings("deprecation")
     @Test(expected = InvalidEntityException.class)
     public void cannotSetBadOffset() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
@@ -342,7 +340,6 @@ public class ParticipantsTest {
         participantsApi.getParticipants(-1, 10, null, null, null, null).execute();
     }
     
-    @SuppressWarnings("deprecation")
     @Test(expected = InvalidEntityException.class)
     public void cannotSetBadPageSize() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
@@ -350,7 +347,6 @@ public class ParticipantsTest {
         participantsApi.getParticipants(0, 4, null, null, null, null).execute();
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void crudParticipant() throws Exception {
         String email = IntegTestUtils.makeEmail(ParticipantsTest.class);
@@ -527,6 +523,7 @@ public class ParticipantsTest {
         assertEquals(200, response.code());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canWithdrawUserFromApp() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
@@ -554,6 +551,7 @@ public class ParticipantsTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canWithdrawUserFromSubpopulation() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
@@ -596,6 +594,7 @@ public class ParticipantsTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getActivityHistory() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
@@ -655,6 +654,7 @@ public class ParticipantsTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getActivityHistoryV4() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
@@ -737,7 +737,6 @@ public class ParticipantsTest {
         }
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void crudUsersWithPhone() throws Exception {
         SignUp signUp = new SignUp().phone(IntegTestUtils.PHONE).password("P@ssword`1");

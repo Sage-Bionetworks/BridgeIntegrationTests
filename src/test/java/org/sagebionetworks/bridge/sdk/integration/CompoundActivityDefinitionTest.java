@@ -57,6 +57,7 @@ public class CompoundActivityDefinitionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void crud() throws Exception {
         // create and validate
@@ -104,6 +105,7 @@ public class CompoundActivityDefinitionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void list() throws Exception {
         String taskId1 = null;

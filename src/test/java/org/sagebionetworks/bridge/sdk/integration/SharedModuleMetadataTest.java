@@ -94,6 +94,7 @@ public class SharedModuleMetadataTest {
         adminSurveysApi = admin.getClient(SurveysApi.class);
     }
 
+    @SuppressWarnings("deprecation")
     @Before
     public void before() throws IOException {
         moduleId = "integ-test-module-" + RandomStringUtils.randomAlphabetic(4);
@@ -114,6 +115,7 @@ public class SharedModuleMetadataTest {
         superadminsApi.adminChangeApp(API_SIGNIN).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
@@ -141,6 +143,7 @@ public class SharedModuleMetadataTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testNonAuthUserGetAndQueryCalls() throws Exception {
         // first create a test metadata
@@ -171,6 +174,7 @@ public class SharedModuleMetadataTest {
         assertEquals(metadata, retMetadataList.getItems().get(0));
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = BadRequestException.class)
     public void testCreateWithoutSchema() throws Exception {
         String failedSchemaId = "failed-schema-id-" + RandomStringUtils.randomAlphabetic(4);
@@ -180,6 +184,7 @@ public class SharedModuleMetadataTest {
         sharedDeveloperModulesApi.createMetadata(metadataToFail).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = BadRequestException.class)
     public void testCreateWithoutSurvey() throws Exception {
         String failedSurveyId = "failed-survey-id-" + RandomStringUtils.randomAlphabetic(4);
@@ -189,6 +194,7 @@ public class SharedModuleMetadataTest {
         sharedDeveloperModulesApi.createMetadata(metadataToFail).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = BadRequestException.class)
     public void testUpdateWithoutExistSchema() throws Exception {
         SharedModuleMetadata metadataToCreate = new SharedModuleMetadata().id(moduleId).name(MODULE_NAME).version(1)
@@ -202,6 +208,7 @@ public class SharedModuleMetadataTest {
         sharedDeveloperModulesApi.updateMetadata(moduleId, 1, metadataToUpdate).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = BadRequestException.class)
     public void testUpdateWithoutExistSurvey() throws Exception {
         SharedModuleMetadata metadataToCreate = new SharedModuleMetadata().id(moduleId).name(MODULE_NAME).version(1)
@@ -215,6 +222,7 @@ public class SharedModuleMetadataTest {
         sharedDeveloperModulesApi.updateMetadata(moduleId, 1, metadataToUpdate).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void crud() throws Exception {
         // Create a bunch of versions. This test various cases of version auto-incrementing and explicitly setting
@@ -290,6 +298,7 @@ public class SharedModuleMetadataTest {
 
     // Test helper to test create API and verify the get APIs return the expected result. Returns the created module
     // metadata.
+    @SuppressWarnings("deprecation")
     private SharedModuleMetadata testCreateGet(int expectedVersion, Integer inputVersion) throws Exception {
         // create
         SharedModuleMetadata metadataToCreate = new SharedModuleMetadata().id(moduleId).version(inputVersion)
@@ -310,6 +319,7 @@ public class SharedModuleMetadataTest {
         return createdMetadata;
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void schemaModule() throws Exception {
         SharedModuleMetadata metadataToCreate = new SharedModuleMetadata().id(moduleId).name(MODULE_NAME)
@@ -324,6 +334,7 @@ public class SharedModuleMetadataTest {
         assertEquals(SCHEMA_REV, createdMetadata.getSchemaRevision().intValue());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void surveyModule() throws Exception {
         SharedModuleMetadata metadataToCreate = new SharedModuleMetadata().id(moduleId).name(MODULE_NAME)
@@ -338,6 +349,7 @@ public class SharedModuleMetadataTest {
         assertEquals(surveyGuid, createdMetadata.getSurveyGuid());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void optionalParams() throws Exception {
         SharedModuleMetadata metadataToCreate = new SharedModuleMetadata().id(moduleId).version(2).name(MODULE_NAME)
@@ -359,6 +371,7 @@ public class SharedModuleMetadataTest {
         assertEquals("SharedModuleMetadata", createdMetadata.getType());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void queryAll() throws Exception {
         // Create a few modules for the test
@@ -528,6 +541,7 @@ public class SharedModuleMetadataTest {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void queryById() throws Exception {
         // Note that full query logic is tested in queryAll(). This tests an abbreviated set of logic to make sure
@@ -596,28 +610,33 @@ public class SharedModuleMetadataTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = EntityNotFoundException.class)
     public void deleteByIdAllVersions404() throws Exception {
         superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
         adminsApi.deleteMetadataByIdAllVersions(moduleId, true).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = EntityNotFoundException.class)
     public void deleteByIdAndVersion404() throws Exception {
         superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
         adminsApi.deleteMetadataByIdAndVersion(moduleId, 1, true).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = EntityNotFoundException.class)
     public void getByIdAndVersion404() throws Exception {
         sharedDeveloperModulesApi.getMetadataByIdAndVersion(moduleId, 1).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = EntityNotFoundException.class)
     public void getByIdLatest404() throws Exception {
         sharedDeveloperModulesApi.getMetadataByIdLatestVersion(moduleId).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = EntityNotFoundException.class)
     public void update404() throws Exception {
         SharedModuleMetadata metadata = new SharedModuleMetadata().id(moduleId).version(1).name(MODULE_NAME)
@@ -625,6 +644,7 @@ public class SharedModuleMetadataTest {
         sharedDeveloperModulesApi.updateMetadata(moduleId, 1, metadata).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = UnauthorizedException.class)
     public void nonSharedDeveloperCantCreate() throws Exception {
         SharedModuleMetadata metadata = new SharedModuleMetadata().id(moduleId).version(1).name(MODULE_NAME)
@@ -632,16 +652,19 @@ public class SharedModuleMetadataTest {
         apiDeveloperModulesApi.createMetadata(metadata).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = UnauthorizedException.class)
     public void nonSharedDeveloperCantDeleteByIdAllVersions() throws Exception {
         adminsApi.deleteMetadataByIdAllVersions(moduleId, true).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = UnauthorizedException.class)
     public void nonSharedDeveloperCantDeleteByIdAndVersion() throws Exception {
         adminsApi.deleteMetadataByIdAndVersion(moduleId, 1, true).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = UnauthorizedException.class)
     public void nonSharedDeveloperCantUpdate() throws Exception {
         SharedModuleMetadata metadata = new SharedModuleMetadata().id(moduleId).version(1).name(MODULE_NAME)
@@ -649,6 +672,7 @@ public class SharedModuleMetadataTest {
         apiDeveloperModulesApi.updateMetadata(moduleId, 1, metadata).execute();
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void logicalDelete() throws Exception {
         try {

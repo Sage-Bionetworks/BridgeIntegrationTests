@@ -126,6 +126,7 @@ public class ScheduledActivityTest {
         runId = Tests.randomIdentifier(ScheduledActivityTest.class);
     }
 
+    @SuppressWarnings("deprecation")
     private void monthlyAfterOneMonthSchedule() throws IOException {
         monthlyActivityLabel = "monthly-activity-" + runId;
 
@@ -157,6 +158,7 @@ public class ScheduledActivityTest {
         schedulePlanGuidList.add(planGuid);
     }
 
+    @SuppressWarnings("deprecation")
     private void oneTimeScheduleAfter3Days() throws IOException {
         oneTimeActivityLabel = "one-time-activity-" + runId;
 
@@ -186,6 +188,7 @@ public class ScheduledActivityTest {
         schedulePlanGuidList.add(planGuid);
     }
     
+    @SuppressWarnings("deprecation")
     private void dailyTaskAt4Times() throws IOException {
         Schedule schedule = new Schedule();
         schedule.setLabel("Daily Task at 4 times");
@@ -214,6 +217,7 @@ public class ScheduledActivityTest {
         schedulePlanGuidList.add(planGuid);
     }
     
+    @SuppressWarnings("deprecation")
     private void compoundDailyTask() throws IOException {
         UploadFieldDefinition fieldDef = new UploadFieldDefinition();
         fieldDef.setName("field");
@@ -260,6 +264,7 @@ public class ScheduledActivityTest {
         schedulePlanGuidList.add(planGuid);
     }
     
+    @SuppressWarnings("deprecation")
     private void dailySurvey() throws Exception {
         Survey survey = TestSurvey.getSurvey(ScheduledActivityTest.class);
         
@@ -297,6 +302,7 @@ public class ScheduledActivityTest {
         schedulePlanGuidList.add(planGuid);
     }
 
+    @SuppressWarnings("deprecation")
     private void miniStudyBurstSchedule() throws Exception {
         Schedule schedule = new Schedule();
         schedule.setLabel("Mini Study Burst");
@@ -327,6 +333,7 @@ public class ScheduledActivityTest {
         schedulePlanGuidList.add(planGuid);
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         if (schemaKeys != null) {
@@ -355,6 +362,7 @@ public class ScheduledActivityTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getScheduledActivityHistoryV4() throws Exception {
         dailyTaskAt4Times();
@@ -373,6 +381,7 @@ public class ScheduledActivityTest {
         assertEquals(16, list.getItems().size());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void createSchedulePlanGetScheduledActivities() throws Exception {
         oneTimeScheduleAfter3Days();
@@ -455,6 +464,7 @@ public class ScheduledActivityTest {
         assertNotNull(list.getItems().get(0).getFinishedOn());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void createSchedulePlanGetScheduledActivitiesV4() throws Exception {
         oneTimeScheduleAfter3Days();
@@ -544,6 +554,7 @@ public class ScheduledActivityTest {
         assertNotNull(list.getItems().get(0).getFinishedOn());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getScheduledActivitiesWithMinimumActivityValue() throws Exception {
         oneTimeScheduleAfter3Days();
@@ -569,6 +580,7 @@ public class ScheduledActivityTest {
         // returned. /v3/activities is still in heavy use so maybe we should add them.
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void scheduleWithMultipleEventIds() throws Exception {
         DateTime now = DateTime.now(DateTimeZone.forOffsetHours(-8));
@@ -599,6 +611,7 @@ public class ScheduledActivityTest {
                 .getScheduledOn());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getCompoundActivityHistory() throws Exception {
         compoundDailyTask();
@@ -634,6 +647,7 @@ public class ScheduledActivityTest {
         assertTrue(list4.getItems().isEmpty());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getSurveyHistory() throws Exception {
         dailySurvey();
@@ -669,6 +683,7 @@ public class ScheduledActivityTest {
         assertTrue(list4.getItems().isEmpty());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getTaskHistory() throws Exception {
         dailyTaskAt4Times();
@@ -704,6 +719,7 @@ public class ScheduledActivityTest {
         assertTrue(list4.getItems().isEmpty());
     }
     
+    @SuppressWarnings("deprecation")
     @Test(expected = BadRequestException.class)
     public void getScheduledActivityHistoryV3InvalidOffsetKey() throws Exception {
         dailyTaskAt4Times();
@@ -713,6 +729,7 @@ public class ScheduledActivityTest {
         userApi.getTaskHistory(TASK_ID, STARTS_ON, ENDS_ON, "bad-key:key", 10).execute();
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getScheduledActivityHistoryV3NormalPaging() throws Exception {
         dailyTaskAt4Times();
@@ -736,6 +753,7 @@ public class ScheduledActivityTest {
         assertNotNull(list.getNextPageOffsetKey());
     }
     
+    @SuppressWarnings("deprecation")
     @Test(expected = BadRequestException.class)
     public void getScheduledActivityHistoryV3PathologicalPaging() throws Exception {
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);

@@ -71,6 +71,7 @@ public class HealthDataTest {
 
     private DateTime createdOn;
 
+    @SuppressWarnings("deprecation")
     @BeforeClass
     public static void beforeClass() throws Exception {
         developer = TestUserHelper.createAndSignInUser(HealthDataTest.class, false, Role.DEVELOPER);

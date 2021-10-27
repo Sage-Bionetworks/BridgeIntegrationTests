@@ -91,7 +91,6 @@ public class SignInTest {
         assertEquals(dataGroups, session.getDataGroups());
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void createComplexUser() throws Exception {
         AuthenticationApi authApi = researcher.getClient(AuthenticationApi.class);

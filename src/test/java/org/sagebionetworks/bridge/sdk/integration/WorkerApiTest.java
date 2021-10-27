@@ -171,7 +171,6 @@ public class WorkerApiTest {
         assertEquals(participant.getId(), participant4.getId());
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void retrieveUsersWithPhone() throws Exception {
         IntegTestUtils.deletePhoneUser();
@@ -190,6 +189,7 @@ public class WorkerApiTest {
         assertNotNull(participant.getHealthCode());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void retrieveStudiesSchedulePlans() throws Exception {
         SchedulePlan plan = Tests.getABTestSchedulePlan();
@@ -219,6 +219,7 @@ public class WorkerApiTest {
         assertFalse(list.getItems().isEmpty());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void retrieveUsersActivities() throws Exception {
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
@@ -248,6 +249,7 @@ public class WorkerApiTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void retrieveUsersActivitiesByType() throws Exception {
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
@@ -274,6 +276,7 @@ public class WorkerApiTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void sendUserSmsMessage() throws Exception {
         SignUp signUp = new SignUp();

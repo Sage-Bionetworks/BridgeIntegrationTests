@@ -136,6 +136,7 @@ public class AppConfigTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void deleteSurveys() throws IOException {
         if (surveyKeys != null) {
@@ -144,6 +145,7 @@ public class AppConfigTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void deleteUploadSchema() throws IOException {
         if (schemaKeys != null) {
