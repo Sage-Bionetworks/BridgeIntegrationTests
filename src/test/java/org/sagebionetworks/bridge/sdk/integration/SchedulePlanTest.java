@@ -74,6 +74,7 @@ public class SchedulePlanTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canPhysicallyDeleteLogicallyDeletedSchedulePlan() throws Exception {
         SchedulePlan plan = Tests.getSimpleSchedulePlan();
@@ -95,6 +96,7 @@ public class SchedulePlanTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void normalUserCannotAccess() throws Exception {
         TestUser normalUser = null;
@@ -113,6 +115,7 @@ public class SchedulePlanTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void crudSchedulePlan() throws Exception {
         ClientInfo clientInfo = new ClientInfo();
@@ -186,6 +189,7 @@ public class SchedulePlanTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void criteriaScheduleStrategyPlanCRUD() throws Exception {
         SchedulePlan retrievedPlan = null;
@@ -266,6 +270,7 @@ public class SchedulePlanTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void invalidPlanReturns400Error() throws Exception {
         try {
@@ -279,6 +284,7 @@ public class SchedulePlanTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void planCanPointToPublishedSurvey() throws Exception {
         GuidCreatedOnVersionHolder surveyKeys = null;

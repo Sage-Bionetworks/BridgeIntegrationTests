@@ -272,6 +272,7 @@ public class ConsentTest {
         giveAndGetConsentHelper("Eggplant McTester", new LocalDate(1970, 1, 1), FAKE_IMAGE_DATA, "image/fake");
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void signedInUserMustGiveConsent() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(ConsentTest.class, false);
@@ -300,6 +301,7 @@ public class ConsentTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = InvalidEntityException.class)
     public void userMustMeetMinAgeRequirements() throws Exception {
         TestUser user = null;
@@ -352,6 +354,7 @@ public class ConsentTest {
     }
 
     // helper method to test consent with and without images
+    @SuppressWarnings("deprecation")
     private static void giveAndGetConsentHelper(String name, LocalDate birthdate, String imageData,
             String imageMimeType) throws Exception {
         TestUser testUser = TestUserHelper.createAndSignInUser(ConsentTest.class, false);
@@ -520,6 +523,7 @@ public class ConsentTest {
         assertEquals(messageSentOn.getMillis(), DateTime.parse(recordDataMap.get("sentOn")).getMillis());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canWithdrawFromApp() throws Exception {
         TestUser testUser = TestUserHelper.createAndSignInUser(ConsentTest.class, true);

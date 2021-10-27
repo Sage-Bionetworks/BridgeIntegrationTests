@@ -72,6 +72,7 @@ public class ScheduledActivityAutoResolutionTest {
     private String surveyId;
     private TestUserHelper.TestUser user;
 
+    @SuppressWarnings("deprecation")
     @BeforeClass
     public static void beforeClass() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
@@ -133,6 +134,7 @@ public class ScheduledActivityAutoResolutionTest {
         user = TestUserHelper.createAndSignInUser(ScheduledActivityAutoResolutionTest.class, true);
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         // Delete the test user.
@@ -163,6 +165,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void resolveSchemas() throws Exception {
         // Create simple schedule plan with a task ref with a schema ref to this schema.
@@ -201,6 +204,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void resolveSurveys() throws Exception {
         // Similarly, we need surveys to resolve.
@@ -246,6 +250,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void resolveCompoundActivities() throws Exception {
         // We create schemas in beforeClass(). We also need a survey. The one in resolveSurveys won't do because we
@@ -313,6 +318,7 @@ public class ScheduledActivityAutoResolutionTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static String createSchedulePlanWithActivity(Activity activity) throws Exception {
         Schedule schedule = new Schedule().scheduleType(ScheduleType.ONCE).addActivitiesItem(activity);
         ScheduleStrategy scheduleStrategy = new SimpleScheduleStrategy().schedule(schedule)
@@ -328,6 +334,7 @@ public class ScheduledActivityAutoResolutionTest {
                 .findFirst().orElse(null);
     }
 
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder createSimpleSurvey() throws Exception {
         Constraints constraints = new IntegerConstraints().dataType(DataType.INTEGER);
         SurveyElement surveyQuestion = new SurveyQuestion().constraints(constraints)

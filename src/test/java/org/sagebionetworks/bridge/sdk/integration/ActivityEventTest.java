@@ -111,6 +111,7 @@ public class ActivityEventTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canCreateCreatedOnAndStudyStartDate() throws IOException {
         // Get activity events and convert to map for ease of use
@@ -139,6 +140,7 @@ public class ActivityEventTest {
         assertEquals(studyStateDateTime, enrollmentTime);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canCrudCustomEvent() throws IOException {
         // Setup
@@ -179,6 +181,7 @@ public class ActivityEventTest {
                 .collect(Collectors.toSet()).contains(EVENT_KEY1));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void automaticCustomEvents() throws Exception {
         // Get activity events and convert to map for ease of use
@@ -202,6 +205,7 @@ public class ActivityEventTest {
         assertEquals(2, twoWeeksAfterPeriod.getWeeks());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void researcherCanSubmitCustomEvents() throws Exception {
         ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
@@ -232,6 +236,7 @@ public class ActivityEventTest {
         assertEquals(timestamp2.toString(), optional.get().getTimestamp().toString());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void testMutableGlobalEvent() throws Exception {
         DateTime now = DateTime.now(DateTimeZone.UTC);
@@ -264,6 +269,7 @@ public class ActivityEventTest {
         assertNull(getTimestamp(list, EVENT_KEY1));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void testImmutableGlobalEvent() throws Exception {
         DateTime now = DateTime.now(DateTimeZone.UTC);
@@ -296,6 +302,7 @@ public class ActivityEventTest {
         assertEquals(getTimestamp(list, EVENT_KEY2), now);
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void testFutureOnlyGlobalEvent() throws Exception {
         DateTime now = DateTime.now(DateTimeZone.UTC);

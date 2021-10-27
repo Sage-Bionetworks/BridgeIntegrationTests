@@ -76,6 +76,7 @@ public class ReauthenticationTest {
         superadminApi.updateApp(TEST_APP_ID, app).execute();
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void simulateServerSessionTimeout() throws Exception {
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
@@ -100,6 +101,7 @@ public class ReauthenticationTest {
         usersApi.getActivityEvents().execute().body();
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void reauthenticationTwiceReturnsSameSession() throws Exception {
         UserSessionInfo session = user.getSession();

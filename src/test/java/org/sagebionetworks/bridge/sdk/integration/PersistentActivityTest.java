@@ -44,6 +44,7 @@ public class PersistentActivityTest {
                 .withRoles(Role.DEVELOPER).createAndSignInUser();
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         if (user != null) {
@@ -60,6 +61,7 @@ public class PersistentActivityTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void persistentActivityCanBeFinishedMultipleTimesInDay() throws Exception {
         String activityLabel1 = Tests.randomIdentifier(this.getClass());
