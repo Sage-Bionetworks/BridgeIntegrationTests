@@ -33,9 +33,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
-import org.sagebionetworks.bridge.rest.api.SharedModulesApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConcurrentModificationException;
@@ -63,7 +63,7 @@ public class UploadSchemaTest {
     private static ForSuperadminsApi superadminApi;
     private static UploadSchemasApi devUploadSchemasApi;
     private static ForWorkersApi workerUploadSchemasApi;
-    private static SharedModulesApi sharedDeveloperModulesApi;
+    private static ForDevelopersApi sharedDeveloperModulesApi;
     private static UploadSchemasApi sharedUploadSchemasApi;
 
     private String schemaId;
@@ -75,7 +75,7 @@ public class UploadSchemaTest {
         user = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, true);
         worker = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, false, WORKER);
         sharedDeveloper = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, SHARED_APP_ID, DEVELOPER);
-        sharedDeveloperModulesApi = sharedDeveloper.getClient(SharedModulesApi.class);
+        sharedDeveloperModulesApi = sharedDeveloper.getClient(ForDevelopersApi.class);
 
         adminApi = admin.getClient(ForAdminsApi.class);
         superadminApi = admin.getClient(ForSuperadminsApi.class);

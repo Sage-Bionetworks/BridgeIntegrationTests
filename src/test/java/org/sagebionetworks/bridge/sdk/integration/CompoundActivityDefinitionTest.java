@@ -15,7 +15,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import org.sagebionetworks.bridge.rest.api.CompoundActivityDefinitionsApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.CompoundActivityDefinition;
 import org.sagebionetworks.bridge.rest.model.Role;
@@ -34,7 +34,7 @@ public class CompoundActivityDefinitionTest {
 
     private static final String TASK_ID_PREFIX = "test-task-";
 
-    private static CompoundActivityDefinitionsApi compoundActivityDefinitionsApi;
+    private static ForDevelopersApi forDevelopersApi;
     private static TestUserHelper.TestUser developer;
 
     private String taskId;
@@ -42,7 +42,7 @@ public class CompoundActivityDefinitionTest {
     @BeforeClass
     public static void beforeClass() throws Exception {
         developer = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, false, Role.DEVELOPER);
-        compoundActivityDefinitionsApi = developer.getClient(CompoundActivityDefinitionsApi.class);
+        forDevelopersApi = developer.getClient(ForDevelopersApi.class);
     }
 
     @Before
@@ -63,14 +63,14 @@ public class CompoundActivityDefinitionTest {
         CompoundActivityDefinition defToCreate = new CompoundActivityDefinition().taskId(taskId)
                 .schemaList(SCHEMA_LIST).surveyList(SURVEY_LIST);
 
-        CompoundActivityDefinition createdDef = compoundActivityDefinitionsApi.createCompoundActivityDefinition(
+        CompoundActivityDefinition createdDef = forDevelopersApi.createCompoundActivityDefinition(
                 defToCreate).execute().body();
         assertSchemaList(createdDef.getSchemaList());
         assertSurveyList(createdDef.getSurveyList());
         assertEquals(taskId, createdDef.getTaskId());
 
         // get the created def and validate
-        CompoundActivityDefinition gettedCreatedDef = compoundActivityDefinitionsApi.getCompoundActivityDefinition(
+        CompoundActivityDefinition gettedCreatedDef = forDevelopersApi.getCompoundActivityDefinition(
                 taskId).execute().body();
         assertSchemaList(gettedCreatedDef.getSchemaList());
         assertSurveyList(gettedCreatedDef.getSurveyList());
@@ -79,25 +79,25 @@ public class CompoundActivityDefinitionTest {
         // Update the def to have no surveys.
         CompoundActivityDefinition defToUpdate = gettedCreatedDef.surveyList(ImmutableList.of());
 
-        CompoundActivityDefinition updatedDef = compoundActivityDefinitionsApi.updateCompoundActivityDefinition(taskId,
+        CompoundActivityDefinition updatedDef = forDevelopersApi.updateCompoundActivityDefinition(taskId,
                 defToUpdate).execute().body();
         assertSchemaList(updatedDef.getSchemaList());
         assertTrue(updatedDef.getSurveyList().isEmpty());
         assertEquals(taskId, updatedDef.getTaskId());
 
         // get the updated def and validate
-        CompoundActivityDefinition gettedUpdatedDef = compoundActivityDefinitionsApi.getCompoundActivityDefinition(
+        CompoundActivityDefinition gettedUpdatedDef = forDevelopersApi.getCompoundActivityDefinition(
                 taskId).execute().body();
         assertSchemaList(gettedUpdatedDef.getSchemaList());
         assertTrue(gettedUpdatedDef.getSurveyList().isEmpty());
         assertEquals(taskId, gettedUpdatedDef.getTaskId());
 
         // delete
-        compoundActivityDefinitionsApi.deleteCompoundActivityDefinition(taskId).execute();
+        forDevelopersApi.deleteCompoundActivityDefinition(taskId).execute();
 
         // If you get the task, it throws.
         try {
-            compoundActivityDefinitionsApi.getCompoundActivityDefinition(taskId).execute();
+            forDevelopersApi.getCompoundActivityDefinition(taskId).execute();
             fail("expected exception");
         } catch (EntityNotFoundException ex) {
             // expected exception
@@ -114,16 +114,16 @@ public class CompoundActivityDefinitionTest {
             taskId1 = taskId + "1";
             CompoundActivityDefinition def1 = new CompoundActivityDefinition().taskId(taskId1).schemaList(SCHEMA_LIST)
                     .surveyList(SURVEY_LIST);
-            compoundActivityDefinitionsApi.createCompoundActivityDefinition(def1).execute();
+            forDevelopersApi.createCompoundActivityDefinition(def1).execute();
 
             taskId2 = taskId + "2";
             CompoundActivityDefinition def2 = new CompoundActivityDefinition().taskId(taskId2).schemaList(SCHEMA_LIST)
                     .surveyList(SURVEY_LIST);
-            compoundActivityDefinitionsApi.createCompoundActivityDefinition(def2).execute();
+            forDevelopersApi.createCompoundActivityDefinition(def2).execute();
 
             // Test list. Since there might be other defs from other tests, page through the defs to find the ones
             // corresponding to the test.
-            List<CompoundActivityDefinition> defList = compoundActivityDefinitionsApi
+            List<CompoundActivityDefinition> defList = forDevelopersApi
                     .getAllCompoundActivityDefinitions().execute().body().getItems();
             Map<String, CompoundActivityDefinition> defsByTaskId = Maps.uniqueIndex(defList,
                     CompoundActivityDefinition::getTaskId);
@@ -140,13 +140,13 @@ public class CompoundActivityDefinitionTest {
         } finally {
             // clean up defs
             try {
-                compoundActivityDefinitionsApi.deleteCompoundActivityDefinition(taskId1).execute();
+                forDevelopersApi.deleteCompoundActivityDefinition(taskId1).execute();
             } catch (RuntimeException ex) {
                 // squelch error
             }
 
             try {
-                compoundActivityDefinitionsApi.deleteCompoundActivityDefinition(taskId2).execute();
+                forDevelopersApi.deleteCompoundActivityDefinition(taskId2).execute();
             } catch (RuntimeException ex) {
                 // squelch error
             }

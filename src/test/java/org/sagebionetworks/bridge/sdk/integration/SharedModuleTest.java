@@ -18,8 +18,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
-import org.sagebionetworks.bridge.rest.api.SharedModulesApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -143,7 +143,7 @@ public class SharedModuleTest {
         module = createModuleForSchema(sharedSchema);
 
         // Copy to local app.
-        SharedModuleImportStatus importStatus = apiDeveloper.getClient(SharedModulesApi.class)
+        SharedModuleImportStatus importStatus = apiDeveloper.getClient(ForDevelopersApi.class)
                 .importModuleByIdAndVersion(module.getId(), module.getVersion()).execute().body();
 
         // Get local schema and verify some fields.
@@ -163,7 +163,7 @@ public class SharedModuleTest {
         module = createModuleForSurvey(sharedSurvey);
 
         // Copy to local app.
-        SharedModuleImportStatus importStatus = apiDeveloper.getClient(SharedModulesApi.class)
+        SharedModuleImportStatus importStatus = apiDeveloper.getClient(ForDevelopersApi.class)
                 .importModuleByIdAndVersion(module.getId(), module.getVersion()).execute().body();
 
         // Get local survey and verify some fields.
@@ -182,7 +182,7 @@ public class SharedModuleTest {
         module = createModuleForSchema(sharedSchema);
 
         // Copy to local app.
-        SharedModuleImportStatus importStatus = apiDeveloper.getClient(SharedModulesApi.class)
+        SharedModuleImportStatus importStatus = apiDeveloper.getClient(ForDevelopersApi.class)
                 .importModuleByIdLatestPublishedVersion(module.getId()).execute().body();
 
         // Get local schema and verify some fields.
@@ -209,7 +209,7 @@ public class SharedModuleTest {
         String moduleId = "test-module-" + RandomStringUtils.randomAlphabetic(4);
         SharedModuleMetadata moduleToCreate = new SharedModuleMetadata().id(moduleId).name("Test Module With Schema")
                 .published(true).schemaId(schema.getSchemaId()).schemaRevision(schema.getRevision().intValue());
-        return sharedDeveloper.getClient(SharedModulesApi.class).createMetadata(moduleToCreate).execute().body();
+        return sharedDeveloper.getClient(ForDevelopersApi.class).createMetadata(moduleToCreate).execute().body();
     }
 
     // Helper method to verify shared schema and local schema match. Because the schemas are in different studies, they
@@ -250,7 +250,7 @@ public class SharedModuleTest {
         String moduleId = "test-module-" + RandomStringUtils.randomAlphabetic(4);
         SharedModuleMetadata moduleToCreate = new SharedModuleMetadata().id(moduleId).name("Test Module With Survey")
                 .published(true).surveyGuid(survey.getGuid()).surveyCreatedOn(survey.getCreatedOn().toString());
-        return sharedDeveloper.getClient(SharedModulesApi.class).createMetadata(moduleToCreate).execute().body();
+        return sharedDeveloper.getClient(ForDevelopersApi.class).createMetadata(moduleToCreate).execute().body();
     }
 
     // Helper method to verify shared survey and local survey match. Similar to assertLocalSchema().

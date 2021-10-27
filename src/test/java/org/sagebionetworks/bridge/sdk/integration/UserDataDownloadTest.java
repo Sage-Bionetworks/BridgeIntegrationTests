@@ -8,7 +8,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import retrofit2.Response;
 
-import org.sagebionetworks.bridge.rest.api.UsersApi;
+import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.model.DateRange;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.user.TestUserHelper;
@@ -34,7 +34,7 @@ public class UserDataDownloadTest {
     public void withBody() throws Exception {
         LocalDate todaysDate = LocalDate.now();
         DateRange dateRange = new DateRange().startDate(todaysDate).endDate(todaysDate);
-        Response<Message> response = user.getClient(UsersApi.class).sendDataToUser(dateRange).execute();
+        Response<Message> response = user.getClient(ForConsentedUsersApi.class).sendDataToUser(dateRange).execute();
         assertEquals(202, response.code());
     }
 }

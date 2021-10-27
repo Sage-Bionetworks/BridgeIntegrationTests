@@ -79,8 +79,7 @@ public class IntentToParticipateTest {
             SignUp signUp = new SignUp()
                     .appId(TEST_APP_ID)
                     .phone(IntegTestUtils.PHONE)
-                    .password(Tests.PASSWORD)
-                    .checkForConsent(true);
+                    .password(Tests.PASSWORD);
             user = new TestUserHelper.Builder(IntentToParticipate.class)
                 .withSignUp(signUp)
                 .withConsentUser(false) // important, the ITP must do this.
@@ -145,8 +144,7 @@ public class IntentToParticipateTest {
             SignUp signUp = new SignUp()
                     .appId(TEST_APP_ID)
                     .email(email)
-                    .password(Tests.PASSWORD)
-                    .checkForConsent(true);
+                    .password(Tests.PASSWORD);
             user = new TestUserHelper.Builder(IntentToParticipate.class)
                 .withSignUp(signUp)
                 .withConsentUser(false) // important, the ITP must do this.

@@ -29,8 +29,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
-import org.sagebionetworks.bridge.rest.api.SharedModulesApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -60,9 +60,9 @@ public class SharedModuleMetadataTest {
     // Note that this is canonically a set. However, Swagger only supports a list, so some wonkiness happens.
     private static final Set<String> TAGS = ImmutableSet.of("foo", "bar", "baz");
 
-    private static SharedModulesApi apiDeveloperModulesApi;
-    private static SharedModulesApi sharedDeveloperModulesApi;
-    private static SharedModulesApi nonAuthSharedModulesApi;
+    private static ForDevelopersApi apiDeveloperModulesApi;
+    private static ForDevelopersApi sharedDeveloperModulesApi;
+    private static ForDevelopersApi nonAuthSharedModulesApi;
     private static UploadSchemasApi devUploadSchemasApi;
     private static SurveysApi devSurveysApi;
     private static ForSuperadminsApi superadminsApi;
@@ -81,11 +81,11 @@ public class SharedModuleMetadataTest {
     public static void beforeClass() throws Exception {
         TestUserHelper.TestUser admin = TestUserHelper.getSignedInAdmin();
         apiDeveloper = TestUserHelper.createAndSignInUser(SharedModuleMetadataTest.class, false, DEVELOPER);
-        apiDeveloperModulesApi = apiDeveloper.getClient(SharedModulesApi.class);
+        apiDeveloperModulesApi = apiDeveloper.getClient(ForDevelopersApi.class);
         sharedDeveloper = TestUserHelper.createAndSignInUser(SharedModuleMetadataTest.class, SHARED_APP_ID, DEVELOPER);
-        sharedDeveloperModulesApi = sharedDeveloper.getClient(SharedModulesApi.class);
+        sharedDeveloperModulesApi = sharedDeveloper.getClient(ForDevelopersApi.class);
         nonAuthSharedModulesApi = Tests.getUnauthenticatedClientProvider(admin.getClientManager(), TEST_APP_ID)
-                .getClient(SharedModulesApi.class);
+                .getClient(ForDevelopersApi.class);
         devUploadSchemasApi = sharedDeveloper.getClient(UploadSchemasApi.class);
         devSurveysApi = sharedDeveloper.getClient(SurveysApi.class);
         adminsApi = admin.getClient(ForAdminsApi.class);
