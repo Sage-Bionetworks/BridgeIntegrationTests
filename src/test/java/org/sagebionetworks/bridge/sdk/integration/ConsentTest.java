@@ -737,15 +737,16 @@ public class ConsentTest {
         // Anonymous sign up using nothing but an external ID should fail as a validation error.
         String externalId = Tests.randomIdentifier(ConsentTest.class);
         SignUp signUp = new SignUp().appId(TEST_APP_ID)
-                .email(IntegTestUtils.makeEmail(ConsentTest.class))
+                .password(PASSWORD)
                 .dataGroups(ImmutableList.of("test_user"))
-                .externalIds(ImmutableMap.of(STUDY_ID_1, externalId)).password(PASSWORD);
+                .externalIds(ImmutableMap.of(STUDY_ID_1, externalId));
 
         TestUser admin = TestUserHelper.getSignedInAdmin();
         ApiClientProvider provider = Tests.getUnauthenticatedClientProvider(admin.getClientManager(), TEST_APP_ID);
         AuthenticationApi authApi = provider.getClient(AuthenticationApi.class);
         try {
             authApi.signUp(signUp).execute();
+            fail("Should have thrown exception");
         } catch(InvalidEntityException e) {
             assertTrue(e.getMessage().contains("StudyParticipant email or phone number is required"));
         }

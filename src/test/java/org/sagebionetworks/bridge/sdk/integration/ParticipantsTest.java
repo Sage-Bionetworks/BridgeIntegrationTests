@@ -107,9 +107,6 @@ public class ParticipantsTest {
         developer = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, DEVELOPER);
         researcher = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, RESEARCHER);
         studyCoordinator = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, STUDY_COORDINATOR);
-        // Put the study coordinator in org1 so they only have access to study1
-        admin.getClient(OrganizationsApi.class).removeMember(SAGE_ID, studyCoordinator.getUserId()).execute();
-        admin.getClient(OrganizationsApi.class).addMember(ORG_ID_1, studyCoordinator.getUserId()).execute();
         
         // Put the study coordinator in org1 so they only have access to study1
         admin.getClient(OrganizationsApi.class).removeMember(SAGE_ID, studyCoordinator.getUserId()).execute();
