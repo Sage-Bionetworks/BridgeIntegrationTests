@@ -119,7 +119,7 @@ public class EnrollmentTest {
         // Now shows up in paged api
         EnrollmentDetailList list = studiesApi.getEnrollments(STUDY_ID_1, "enrolled", false, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
-                
+        
         list = studiesApi.getEnrollments(STUDY_ID_1, null, false, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
         
