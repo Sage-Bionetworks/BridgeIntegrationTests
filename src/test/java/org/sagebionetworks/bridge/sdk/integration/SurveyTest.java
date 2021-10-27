@@ -83,10 +83,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
-import org.sagebionetworks.bridge.rest.api.SharedModulesApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
@@ -149,7 +149,7 @@ public class SurveyTest {
     private static TestUser user;
     private static TestUser worker;
     private static TestUser sharedDeveloper;
-    private static SharedModulesApi sharedDeveloperModulesApi;
+    private static ForDevelopersApi sharedDeveloperModulesApi;
     private static SurveysApi sharedSurveysApi;
     private static ForAdminsApi adminsApi;
     private static ForSuperadminsApi superadminsApi;
@@ -170,7 +170,7 @@ public class SurveyTest {
         worker = TestUserHelper.createAndSignInUser(SurveyTest.class, false, Role.WORKER);
 
         sharedDeveloper = TestUserHelper.createAndSignInUser(SurveyTest.class, SHARED_APP_ID, DEVELOPER);        
-        sharedDeveloperModulesApi = sharedDeveloper.getClient(SharedModulesApi.class);
+        sharedDeveloperModulesApi = sharedDeveloper.getClient(ForDevelopersApi.class);
         sharedSurveysApi = sharedDeveloper.getClient(SurveysApi.class);
     }
 

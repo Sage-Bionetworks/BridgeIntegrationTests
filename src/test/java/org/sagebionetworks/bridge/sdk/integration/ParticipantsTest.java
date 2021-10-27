@@ -106,7 +106,8 @@ public class ParticipantsTest {
         admin = TestUserHelper.getSignedInAdmin();
         developer = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, DEVELOPER);
         researcher = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, RESEARCHER);
-        studyCoordinator = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, STUDY_COORDINATOR);
+        studyCoordinator = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, STUDY_COORDINATOR);
+        // Put the study coordinator in org1 so they only have access to study1
         admin.getClient(OrganizationsApi.class).removeMember(SAGE_ID, studyCoordinator.getUserId()).execute();
         admin.getClient(OrganizationsApi.class).addMember(ORG_ID_1, studyCoordinator.getUserId()).execute();
         
@@ -145,11 +146,11 @@ public class ParticipantsTest {
     
     @Test
     public void canGetParticipantRoster() throws Exception {
-        ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
+        ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
         
         ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
         
-        Message message = participantsApi.requestParticipantRoster(request).execute().body();
+        Message message = researchersApi.requestParticipantRoster(request).execute().body();
         assertEquals("Download initiated.", message.getMessage());
     }
 

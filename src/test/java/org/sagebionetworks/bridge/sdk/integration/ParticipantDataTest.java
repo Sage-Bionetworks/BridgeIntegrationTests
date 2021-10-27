@@ -9,7 +9,6 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
-import org.sagebionetworks.bridge.rest.api.UsersApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.model.ForwardCursorStringList;
 import org.sagebionetworks.bridge.rest.model.ParticipantData;
@@ -67,7 +66,7 @@ public class ParticipantDataTest {
 
     @Test
     public void userCanCrudSelfData() throws IOException {
-        UsersApi userApi = user.getClient(UsersApi.class);
+        ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
 
         ParticipantData participantData1 = createParticipantData("foo", "A");
         ParticipantData participantData2 = createParticipantData("bar", "B");

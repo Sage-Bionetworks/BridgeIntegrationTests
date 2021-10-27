@@ -16,9 +16,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.RestUtils;
-import org.sagebionetworks.bridge.rest.api.FilesApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
+import org.sagebionetworks.bridge.rest.api.HostedFilesApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.FileMetadata;
 import org.sagebionetworks.bridge.rest.model.FileMetadataList;
@@ -149,9 +149,9 @@ public class FileTest {
             metadata.setGuid(keys.getGuid());
             metadata.setVersion(keys.getVersion());
     
-            FilesApi filesApi = developer.getClient(FilesApi.class);
+            HostedFilesApi hostedFilesApi = developer.getClient(HostedFilesApi.class);
             File file = new File("src/test/resources/file-test/test.pdf");
-            String url = RestUtils.uploadHostedFileToS3(filesApi, metadata.getGuid(), file);
+            String url = RestUtils.uploadHostedFileToS3(hostedFilesApi, metadata.getGuid(), file);
             
             FileRevisionList list = devsApi.getFileRevisions(metadata.getGuid(), 0, 5).execute().body();
             FileRevision rev = list.getItems().get(0);

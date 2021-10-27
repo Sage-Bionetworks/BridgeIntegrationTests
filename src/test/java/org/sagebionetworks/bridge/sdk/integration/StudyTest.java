@@ -40,9 +40,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.RestUtils;
-import org.sagebionetworks.bridge.rest.api.FilesApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.HostedFilesApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -236,7 +236,7 @@ public class StudyTest {
         
         // Now use the admin to delete the logo it via the files API (cleanup)
         String logoGuid = url.substring(url.lastIndexOf("/")+1, url.lastIndexOf("."));
-        admin.getClient(FilesApi.class).deleteFile(logoGuid, true).execute();
+        admin.getClient(HostedFilesApi.class).deleteFile(logoGuid, true).execute();
         
         // logically delete it
         studiesApi.deleteStudy(id, false).execute();
