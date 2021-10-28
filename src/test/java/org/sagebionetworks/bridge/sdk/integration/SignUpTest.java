@@ -103,6 +103,7 @@ public class SignUpTest {
             authApi.signUp(signUp).execute();
             fail("Should have thrown exception");
         } catch(InvalidEntityException e) {
+            assertTrue(e.getMessage().contains("email or phone number is required"));
         }
 
         signUp = new SignUp().appId(TEST_APP_ID).dataGroups(ImmutableList.of("test_user"))
@@ -112,6 +113,7 @@ public class SignUpTest {
             authApi.signUp(signUp).execute();
             fail("Should have thrown exception");
         } catch(InvalidEntityException e) {
+            assertTrue(e.getMessage().contains("email or phone number is required"));
         }
     }
 }
