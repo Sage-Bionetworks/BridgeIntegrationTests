@@ -3,6 +3,7 @@ package org.sagebionetworks.bridge.sdk.integration;
 import static org.joda.time.DateTimeZone.UTC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.sdk.integration.InitListener.EVENT_KEY1;
 import static org.sagebionetworks.bridge.sdk.integration.InitListener.EVENT_KEY2;
@@ -22,6 +23,7 @@ import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ActivityEvent;
 import org.sagebionetworks.bridge.rest.model.ActivityEventList;
@@ -73,7 +75,7 @@ public class StudyActivityEventTest {
         DateTime studyScopedTimestamp = DateTime.now(UTC);  
         StudyActivityEventRequest studyScopedRequest = new StudyActivityEventRequest()
             .eventId(EVENT_KEY1).timestamp(studyScopedTimestamp);
-        researchersApi.createStudyParticipantStudyActivityEvent(STUDY_ID_1, user.getUserId(), studyScopedRequest).execute();
+        researchersApi.createStudyParticipantStudyActivityEvent(STUDY_ID_1, user.getUserId(), studyScopedRequest, true).execute();
         
         ActivityEventList globalList = researchersApi.getActivityEventsForParticipant(user.getUserId()).execute().body();
         ActivityEvent globalEvent = findEventByKey(globalList, "custom:"+EVENT_KEY1);
@@ -99,7 +101,7 @@ public class StudyActivityEventTest {
         
         studyScopedTimestamp = studyScopedTimestamp.minusWeeks(2);
         studyScopedRequest = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(studyScopedTimestamp);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, studyScopedRequest).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, studyScopedRequest, true).execute();
 
         // user can see these events
         scopedList = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
@@ -128,20 +130,20 @@ public class StudyActivityEventTest {
 
         // Create event #1 which is mutable
         StudyActivityEventRequest req = new StudyActivityEventRequest().eventId(EVENT_KEY1).timestamp(now);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
         
         StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(now, getTimestamp(list, EVENT_KEY1));
         
         // future time updates
         req = new StudyActivityEventRequest().eventId(EVENT_KEY1).timestamp(futureTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(futureTime, getTimestamp(list, EVENT_KEY1));
 
         // past time updates
         req = new StudyActivityEventRequest().eventId(EVENT_KEY1).timestamp(pastTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(pastTime, getTimestamp(list, EVENT_KEY1));
         
@@ -158,7 +160,7 @@ public class StudyActivityEventTest {
         assertEquals(Integer.valueOf(3), findEventByKey(list, "custom:"+EVENT_KEY1).getRecordCount());
 
         // can delete
-        usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY1).execute();
+        usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY1, true).execute();
         
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertNull(getTimestamp(list, EVENT_KEY1));
@@ -180,24 +182,48 @@ public class StudyActivityEventTest {
 
         // Create event #2 which is immutable.
         StudyActivityEventRequest req = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(now);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
         StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(now, getTimestamp(list, EVENT_KEY2));
 
         // past time won't update
         req = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(pastTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, false).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list, EVENT_KEY2), now);
-
+        
+        // it'll even thrown an exception if you want it to
+        try {
+            usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertTrue(e.getMessage().contains("custom:event2 cannot be published."));
+        }
+        
         // future time won't update
         req = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(futureTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, false).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list, EVENT_KEY2), now);
+        
+        // still can throw an exception
+        try {
+            usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();    
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertTrue(e.getMessage().contains("custom:event2 cannot be published."));
+        }
 
         // nor will it delete
-        usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY2).execute();
+        usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY2, false).execute();
+
+        // it will throw an exception to tell you it won't delete
+        try {
+            usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY2, true).execute();    
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertTrue(e.getMessage().contains("custom:event2 cannot be deleted."));
+        }
 
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list, EVENT_KEY2), now);
@@ -216,25 +242,41 @@ public class StudyActivityEventTest {
         DateTime futureTime = DateTime.now(DateTimeZone.UTC).plusHours(2);
 
         StudyActivityEventRequest req3 = new StudyActivityEventRequest().eventId(EVENT_KEY3).timestamp(now);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req3).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true).execute();
         
         StudyActivityEventList list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(now, getTimestamp(list3, EVENT_KEY3));
         
         // future will update
         req3 = new StudyActivityEventRequest().eventId(EVENT_KEY3).timestamp(futureTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req3).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true).execute();
         list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list3, EVENT_KEY3), futureTime);
         
         // past will not update
         req3 = new StudyActivityEventRequest().eventId(EVENT_KEY3).timestamp(pastTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req3).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, false).execute();
         list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list3, EVENT_KEY3), futureTime);
+        
+        // heck it'll throw an error if you want it to
+        try {
+            usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertTrue(e.getMessage().contains("custom:event3 cannot be published."));
+        }
 
         // This doesn't delete the timestamp
-        usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY3).execute();
+        usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY3, false).execute();
+        
+        // It can throw an error too
+        try {
+            usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY3, true).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertTrue(e.getMessage().contains("custom:event3 cannot be deleted."));
+        }
         
         list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list3, EVENT_KEY3), futureTime);

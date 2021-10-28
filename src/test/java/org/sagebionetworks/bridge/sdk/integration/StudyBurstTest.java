@@ -17,6 +17,7 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.Assessment;
@@ -162,14 +163,14 @@ public class StudyBurstTest {
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it does not work
-        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
+        failToCreateOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(2)); // NOT CHANGED
         // Try deleting one of these study burst events, it does not work
         assertEventTimestampDelete("study_burst:burst1:02", false);
         
         // Update the original mutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp2);
+        failToCreateOrUpdateEvent(MUTABLE_EVENT, timestamp2);
         // All the study burst events should be unchanged, because they are immutable
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp2, timestamp1);
     }
@@ -191,7 +192,7 @@ public class StudyBurstTest {
         
         // Update the original immutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp2);
+        failToCreateOrUpdateEvent(IMMUTABLE_EVENT, timestamp2);
         // All the study burst events should be unchanged, because they are immutable
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp2);
     }
@@ -206,14 +207,14 @@ public class StudyBurstTest {
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it doesn't work
-        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
+        failToCreateOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(2));
         // Try deleting one of these study burst events, it doesn't work
         assertEventTimestampDelete("study_burst:burst1:02", false);
         
         // Update the original mutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp2);
+        failToCreateOrUpdateEvent(IMMUTABLE_EVENT, timestamp2);
         // All the study burst events should be unchanged
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
     }
@@ -221,7 +222,18 @@ public class StudyBurstTest {
     private void createOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
         StudyActivityEventRequest request = new StudyActivityEventRequest()
                 .eventId(eventId).timestamp(timestamp);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, request).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, request, true).execute();
+    }
+    
+    private void failToCreateOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
+        StudyActivityEventRequest request = new StudyActivityEventRequest()
+                .eventId(eventId).timestamp(timestamp);
+        try {
+            usersApi.createStudyActivityEvent(STUDY_ID_1, request, true).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            // this was expected.
+        }
     }
     
     private void verifyTimestampsStartFrom(String eventId, DateTime eventTimestamp, DateTime timestamp) throws Exception {
@@ -247,7 +259,7 @@ public class StudyBurstTest {
     }
     
     private void assertEventTimestampDelete(String eventId, boolean shouldBeDeleted) throws Exception {
-        usersApi.deleteStudyActivityEvent(STUDY_ID_1, eventId).execute();
+        usersApi.deleteStudyActivityEvent(STUDY_ID_1, eventId, false).execute();
         StudyActivityEventList events = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         StudyActivityEvent event = findEventById(events, eventId);
         if (shouldBeDeleted) {
