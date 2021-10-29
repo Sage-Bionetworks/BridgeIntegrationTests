@@ -259,13 +259,17 @@ public class StudyBurstTest {
     }
     
     private void assertEventTimestampDelete(String eventId, boolean shouldBeDeleted) throws Exception {
-        usersApi.deleteStudyActivityEvent(STUDY_ID_1, eventId, false).execute();
-        StudyActivityEventList events = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
-        StudyActivityEvent event = findEventById(events, eventId);
         if (shouldBeDeleted) {
-            assertNull(event);
+            usersApi.deleteStudyActivityEvent(STUDY_ID_1, eventId, false).execute();
+            StudyActivityEventList events = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
+            StudyActivityEvent event = findEventById(events, eventId);
+            assertNull(event);   
         } else {
-            assertNotNull(event);    
+            try {
+                usersApi.deleteStudyActivityEvent(STUDY_ID_1, eventId, true).execute();
+                fail("Should have thrown exception");
+            } catch(BadRequestException e) {
+            }
         }
     }
 
