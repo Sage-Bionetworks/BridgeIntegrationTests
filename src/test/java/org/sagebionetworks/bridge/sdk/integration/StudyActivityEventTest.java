@@ -197,7 +197,7 @@ public class StudyActivityEventTest {
             usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
-            assertTrue(e.getMessage().contains("custom:event2 cannot be published."));
+            assertTrue(e.getMessage().contains("Study event(s) failed to publish: custom:event2."));
         }
         
         // future time won't update
@@ -211,7 +211,7 @@ public class StudyActivityEventTest {
             usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();    
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
-            assertTrue(e.getMessage().contains("custom:event2 cannot be published."));
+            assertTrue(e.getMessage().contains("Study event(s) failed to publish: custom:event2."));
         }
 
         // nor will it delete
@@ -222,7 +222,7 @@ public class StudyActivityEventTest {
             usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY2, true).execute();    
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
-            assertTrue(e.getMessage().contains("custom:event2 cannot be deleted."));
+            assertTrue(e.getMessage().contains("Study event failed to delete: custom:event2."));
         }
 
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
@@ -264,7 +264,7 @@ public class StudyActivityEventTest {
             usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true).execute();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
-            assertTrue(e.getMessage().contains("custom:event3 cannot be published."));
+            assertTrue(e.getMessage().contains("Study event(s) failed to publish: custom:event3."));
         }
 
         // This doesn't delete the timestamp
@@ -275,7 +275,7 @@ public class StudyActivityEventTest {
             usersApi.deleteStudyActivityEvent(STUDY_ID_1, EVENT_KEY3, true).execute();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
-            assertTrue(e.getMessage().contains("custom:event3 cannot be deleted."));
+            assertTrue(e.getMessage().contains("Study event failed to delete: custom:event3."));
         }
         
         list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
