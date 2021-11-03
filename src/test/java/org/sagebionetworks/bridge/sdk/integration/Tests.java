@@ -342,8 +342,7 @@ public class Tests {
         assertEquals(ImmutableSet.copyOf(list1), ImmutableSet.copyOf(list2));
     }
 
-    public static SynapseClient getSynapseClient() throws IOException {
-        // Load config.
+    public static Config loadTestConfig() throws IOException {
         Config config;
         Path localConfigPath = Paths.get(USER_CONFIG_FILE);
         if (Files.exists(localConfigPath)) {
@@ -351,6 +350,11 @@ public class Tests {
         } else {
             config = new PropertiesConfig(DEFAULT_CONFIG_FILE);
         }
+        return config;
+    }
+
+    public static SynapseClient getSynapseClient() throws IOException {
+        Config config = loadTestConfig();
 
         // Create Synapse Client.
         SynapseClient synapseClient = new SynapseClientImpl();
