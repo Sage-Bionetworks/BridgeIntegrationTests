@@ -11,7 +11,9 @@ import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTA
 import static org.sagebionetworks.bridge.rest.model.ContactRole.PRINCIPAL_INVESTIGATOR;
 import static org.sagebionetworks.bridge.rest.model.ContactRole.TECHNICAL_SUPPORT;
 import static org.sagebionetworks.bridge.rest.model.IrbDecisionType.EXEMPT;
+import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
+import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
 import static org.sagebionetworks.bridge.rest.model.SignInType.EMAIL_MESSAGE;
 import static org.sagebionetworks.bridge.rest.model.SignInType.PHONE_PASSWORD;
 import static org.sagebionetworks.bridge.rest.model.StudyPhase.DESIGN;
@@ -38,18 +40,18 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.RestUtils;
-import org.sagebionetworks.bridge.rest.api.FilesApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.HostedFilesApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Contact;
 import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.OrganizationList;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignInType;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -77,16 +79,21 @@ public class StudyTest {
     private List<String> studyIdsToDelete = new ArrayList<>();
     private List<String> userIdsToDelete = new ArrayList<>();
     private TestUser testResearcher;
+    private TestUser studyDesigner;
     private TestUser admin;
     
     @Before
     public void before() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
-        testResearcher = TestUserHelper.createAndSignInUser(StudyTest.class, false, Role.RESEARCHER);
+        studyDesigner = TestUserHelper.createAndSignInUser(StudyTest.class, false, STUDY_DESIGNER);
+        testResearcher = TestUserHelper.createAndSignInUser(StudyTest.class, false, RESEARCHER);
     }
     
     @After
     public void deleteResearcher() throws Exception {
+        if (studyDesigner != null) { 
+            studyDesigner.signOutAndDeleteUser();
+        }
         if (testResearcher != null) {
             testResearcher.signOutAndDeleteUser();
         }
@@ -229,7 +236,7 @@ public class StudyTest {
         
         // Now use the admin to delete the logo it via the files API (cleanup)
         String logoGuid = url.substring(url.lastIndexOf("/")+1, url.lastIndexOf("."));
-        admin.getClient(FilesApi.class).deleteFile(logoGuid, true).execute();
+        admin.getClient(HostedFilesApi.class).deleteFile(logoGuid, true).execute();
         
         // logically delete it
         studiesApi.deleteStudy(id, false).execute();
@@ -380,5 +387,44 @@ public class StudyTest {
         } catch(UnauthorizedException e) {
             
         }
+    }
+    
+    @Test
+    public void canphysicallyDeleteStudyInDesign() throws Exception {
+        StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
+        
+        String tempStudyId = Tests.randomIdentifier(StudyTest.class);
+        Study tempStudy = new Study().identifier(tempStudyId).name(tempStudyId);
+        desStudiesApi.createStudy(tempStudy).execute().body();
+        
+        desStudiesApi.deleteStudy(tempStudyId, true).execute();
+        
+        try {
+            desStudiesApi.getStudy(tempStudyId).execute();
+            fail("Should have thrown exception");
+        } catch(EntityNotFoundException e) {
+            
+        }
+    }
+    
+    @Test
+    public void cannotPhysicallyDeleteStudyInWrongPhase() throws Exception {
+        StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
+        
+        String tempStudyId = Tests.randomIdentifier(StudyTest.class);
+        Study tempStudy = new Study().identifier(tempStudyId).name(tempStudyId);
+        desStudiesApi.createStudy(tempStudy).execute().body();
+        
+        testResearcher.getClient(StudiesApi.class)
+            .transitionStudyToRecruitment(tempStudyId).execute();
+        
+        try {
+            desStudiesApi.deleteStudy(tempStudyId, true).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals("Study cannot be deleted during phase “recruitment”", e.getMessage());
+        }
+        
+        admin.getClient(StudiesApi.class).deleteStudy(tempStudyId, true).execute();
     }
 }

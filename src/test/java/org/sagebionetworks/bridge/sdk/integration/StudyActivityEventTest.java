@@ -16,6 +16,7 @@ import com.google.common.collect.ImmutableSet;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,14 +42,25 @@ public class StudyActivityEventTest {
     
     @Before
     public void beforeAll() throws Exception {
-        researcher = TestUserHelper.createAndSignInUser(ActivityEventTest.class, true, Role.RESEARCHER);
+        researcher = TestUserHelper.createAndSignInUser(StudyActivityEventTest.class, true, Role.RESEARCHER);
         researchersApi = researcher.getClient(ForResearchersApi.class);
         
         // Create user last, so the automatic custom events are created
-        user = TestUserHelper.createAndSignInUser(ActivityEventTest.class, true);
+        user = TestUserHelper.createAndSignInUser(StudyActivityEventTest.class, true);
         usersApi = user.getClient(ForConsentedUsersApi.class);
     }
     
+    @After
+    public void after() throws Exception {
+        if (user != null) {
+            user.signOutAndDeleteUser();
+        }
+        if (researcher != null) {
+            researcher.signOutAndDeleteUser();
+        }
+    }
+
+    @SuppressWarnings("deprecation")
     @Test
     public void createStudyActivityEvent() throws Exception {
         // Because this is set first, it is immutable and will not be changed by the study-scoped value.
@@ -236,6 +248,7 @@ public class StudyActivityEventTest {
                 .map(StudyActivityEvent::getTimestamp).collect(Collectors.toSet()));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void globalEventsDoNotCreateStudyVersions() throws Exception {
         DateTime globalTimestamp = DateTime.now(UTC).minusDays(2);

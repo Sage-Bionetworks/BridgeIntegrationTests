@@ -71,6 +71,7 @@ public class HealthDataTest {
 
     private DateTime createdOn;
 
+    @SuppressWarnings("deprecation")
     @BeforeClass
     public static void beforeClass() throws Exception {
         developer = TestUserHelper.createAndSignInUser(HealthDataTest.class, false, Role.DEVELOPER);
@@ -171,7 +172,7 @@ public class HealthDataTest {
         ParticipantsApi participantsApi = user.getClient(ParticipantsApi.class);
 
         StudyParticipant participant = participantsApi.getUsersParticipantRecord(false).execute().body();
-        participant.setDataGroups(ImmutableList.of("group1"));
+        participant.setDataGroups(ImmutableList.of("group1", "test_user"));
         participant.setSharingScope(SharingScope.SPONSORS_AND_PARTNERS);
         participantsApi.updateUsersParticipantRecord(participant).execute();
     }
@@ -232,7 +233,7 @@ public class HealthDataTest {
         assertNotNull(record.getUploadedOn());
         assertEquals(SharingScope.SPONSORS_AND_PARTNERS, record.getUserSharingScope());
         assertEquals(externalIdentifier, record.getUserExternalId());
-        assertEquals(ImmutableList.of("group1"), record.getUserDataGroups());
+        assertEquals(ImmutableList.of("group1", "test_user"), record.getUserDataGroups());
 
         // createdOn is flattened to UTC server side.
         assertEquals(createdOn.getMillis(), record.getCreatedOn().getMillis());

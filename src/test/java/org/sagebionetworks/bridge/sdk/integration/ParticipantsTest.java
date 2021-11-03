@@ -12,9 +12,12 @@ import static org.sagebionetworks.bridge.rest.model.AccountStatus.ENABLED;
 import static org.sagebionetworks.bridge.rest.model.AccountStatus.UNVERIFIED;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
+import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.ALL_QUALIFIED_RESEARCHERS;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.NO_SHARING;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualIgnoringOrder;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.PHONE;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
@@ -42,9 +45,12 @@ import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
+import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.AccountSummary;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.Activity;
@@ -56,8 +62,8 @@ import org.sagebionetworks.bridge.rest.model.GuidVersionHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Message;
+import org.sagebionetworks.bridge.rest.model.ParticipantRosterRequest;
 import org.sagebionetworks.bridge.rest.model.Phone;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SchedulePlan;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
@@ -92,6 +98,7 @@ public class ParticipantsTest {
     private TestUser researcher;
     private TestUser phoneUser;
     private TestUser emailUser;
+    private TestUser studyCoordinator;
     private String externalId;
     
     @Before
@@ -99,6 +106,10 @@ public class ParticipantsTest {
         admin = TestUserHelper.getSignedInAdmin();
         developer = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, DEVELOPER);
         researcher = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, RESEARCHER);
+        studyCoordinator = TestUserHelper.createAndSignInUser(ParticipantsTest.class, false, STUDY_COORDINATOR);
+        // Put the study coordinator in org1 so they only have access to study1
+        admin.getClient(OrganizationsApi.class).removeMember(SAGE_ID, studyCoordinator.getUserId()).execute();
+        admin.getClient(OrganizationsApi.class).addMember(ORG_ID_1, studyCoordinator.getUserId()).execute();
         
         externalId = Tests.randomIdentifier(ParticipantsTest.class);
         
@@ -128,8 +139,38 @@ public class ParticipantsTest {
         if (emailUser != null) {
             emailUser.signOutAndDeleteUser();
         }
+        if (studyCoordinator != null) {
+            studyCoordinator.signOutAndDeleteUser();
+        }
+    }
+    
+    @Test
+    public void canGetParticipantRoster() throws Exception {
+        ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
+        
+        ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
+        
+        Message message = researchersApi.requestParticipantRoster(request).execute().body();
+        assertEquals("Download initiated.", message.getMessage());
     }
 
+    @Test
+    public void canGetStudyParticipantRoster() throws Exception {
+        StudyParticipantsApi participantsApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        
+        ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
+        
+        Message message = participantsApi.requestStudyParticipantRoster(STUDY_ID_1, request).execute().body();
+        assertEquals("Preparing participant roster.", message.getMessage());
+        
+        try {
+            participantsApi.requestStudyParticipantRoster(STUDY_ID_2, request).execute().body();    
+            fail("Should have thrown exception");
+        } catch(UnauthorizedException e) {
+            
+        }
+    }
+    
     // Note: A very similar test exists in UserParticipantTest
     @SuppressWarnings("unchecked")
     @Test
@@ -140,6 +181,11 @@ public class ParticipantsTest {
 
             StudyParticipant self = userApi.getUsersParticipantRecord(false).execute().body();
             assertEquals(user.getEmail(), self.getEmail());
+            
+            UserSessionInfo session = user.getSession();
+            assertEquals(session.getEnrollments().get(STUDY_ID_1).getEnrolledOn(), 
+                    self.getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertEquals(session.getEnrollments().size(), self.getEnrollments().size());
 
             // Update and verify changes. Right now there's not a lot that can be changed
             List<String> languages = ImmutableList.of("nl", "fr", "en");
@@ -202,6 +248,12 @@ public class ParticipantsTest {
             assertEquals(user.getSession().getId(), participant.getId());
             assertFalse(participant.getConsentHistories().isEmpty());
             
+            assertNotNull(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertTrue(user.getSession().getEnrollments().size() > 0);
+            assertEquals(user.getSession().getEnrollments().get(STUDY_ID_1).getEnrolledOn(), 
+                    participant.getEnrollments().get(STUDY_ID_1).getEnrolledOn());
+            assertEquals(user.getSession().getEnrollments().size(), participant.getEnrollments().size());
+            
             StudyParticipant participant2 = researcherParticipantsApi.getParticipantByHealthCode(
                     participant.getHealthCode(), false).execute().body();
             assertEquals(user.getEmail(), participant2.getEmail());
@@ -223,7 +275,6 @@ public class ParticipantsTest {
         }
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void canRetrieveAndPageThroughParticipants() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
@@ -282,7 +333,6 @@ public class ParticipantsTest {
         return true;
     }
     
-    @SuppressWarnings("deprecation")
     @Test(expected = InvalidEntityException.class)
     public void cannotSetBadOffset() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
@@ -290,7 +340,6 @@ public class ParticipantsTest {
         participantsApi.getParticipants(-1, 10, null, null, null, null).execute();
     }
     
-    @SuppressWarnings("deprecation")
     @Test(expected = InvalidEntityException.class)
     public void cannotSetBadPageSize() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
@@ -298,7 +347,6 @@ public class ParticipantsTest {
         participantsApi.getParticipants(0, 4, null, null, null, null).execute();
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void crudParticipant() throws Exception {
         String email = IntegTestUtils.makeEmail(ParticipantsTest.class);
@@ -441,18 +489,26 @@ public class ParticipantsTest {
     public void canResendEmailVerification() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
         
-        // This is sending an email, which is difficult to verify, but this at least should not throw an error.
-        Response<Message> response = participantsApi.sendParticipantEmailVerification(researcher.getSession().getId()).execute();
-        assertEquals(200, response.code());
+        // This is sending an email, which is difficult to verify, but this at least should not throw an unexpected error.
+        try {
+            participantsApi.sendParticipantEmailVerification(researcher.getSession().getId()).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals(e.getMessage(), "Email address is already verified.");
+        }
     }
     
     @Test
     public void canResendPhoneVerification() throws Exception {
         ParticipantsApi participantsApi = researcher.getClient(ParticipantsApi.class);
         
-        // This is sending an email, which is difficult to verify, but this at least should not throw an error.
-        Response<Message> response = participantsApi.sendParticipantPhoneVerification(researcher.getSession().getId()).execute();
-        assertEquals(200, response.code());
+        // This is sending an SMS message, which is difficult to verify, but this at least should not throw an unexpected error.
+        try {
+            participantsApi.sendParticipantPhoneVerification(researcher.getSession().getId()).execute();
+            fail("Should have thrown exception");
+        } catch(BadRequestException e) {
+            assertEquals(e.getMessage(), "Phone number has not been set.");
+        }
     }
 
     @Test
@@ -467,6 +523,7 @@ public class ParticipantsTest {
         assertEquals(200, response.code());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canWithdrawUserFromApp() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
@@ -494,6 +551,7 @@ public class ParticipantsTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canWithdrawUserFromSubpopulation() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
@@ -536,13 +594,13 @@ public class ParticipantsTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getActivityHistory() throws Exception {
-        // Make the user a developer so with one account, we can generate some tasks
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
-        SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);
+        SchedulesV1Api schedulePlanApi = developer.getClient(SchedulesV1Api.class);
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
 
         // Set an identifiable label on the activity so we can find the generated activities later.
@@ -596,12 +654,14 @@ public class ParticipantsTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getActivityHistoryV4() throws Exception {
-        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true, Role.DEVELOPER);
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
+
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
-        SchedulesV1Api schedulePlanApi = user.getClient(SchedulesV1Api.class);
+        SchedulesV1Api schedulePlanApi = developer.getClient(SchedulesV1Api.class);
         SchedulePlan plan = Tests.getDailyRepeatingSchedulePlan();
 
         // Set an identifiable label on the activity so we can find the generated activities later.
@@ -611,7 +671,6 @@ public class ParticipantsTest {
         
         String taskReferentGuid = oneActivity.getTask().getIdentifier();
         oneActivity.setLabel(activityLabel);
-        
         
         GuidVersionHolder planKeys = schedulePlanApi.createSchedulePlan(plan).execute().body();
         try {
@@ -678,7 +737,6 @@ public class ParticipantsTest {
         }
     }
     
-    @SuppressWarnings("deprecation")
     @Test
     public void crudUsersWithPhone() throws Exception {
         SignUp signUp = new SignUp().phone(IntegTestUtils.PHONE).password("P@ssword`1");

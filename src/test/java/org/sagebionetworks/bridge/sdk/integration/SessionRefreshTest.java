@@ -35,6 +35,7 @@ public class SessionRefreshTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testReauthenticationThrowsConsentException() throws Exception {
         // User starts out signed in. Initial call succeeds.

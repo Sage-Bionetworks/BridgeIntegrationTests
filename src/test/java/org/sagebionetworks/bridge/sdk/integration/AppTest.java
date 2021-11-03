@@ -10,6 +10,7 @@ import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.FUTU
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualIgnoringOrder;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 import static org.sagebionetworks.repo.model.util.ModelConstants.ENTITY_ADMIN_ACCESS_PERMISSIONS;
 
@@ -250,7 +251,7 @@ public class AppTest {
         assertEquals("consentNotificationEmail should be equal", app.getConsentNotificationEmail(), newApp.getConsentNotificationEmail());
         assertEquals("userProfileAttributes should be equal", app.getUserProfileAttributes(), newApp.getUserProfileAttributes());
         assertEquals("taskIdentifiers should be equal", app.getTaskIdentifiers(), newApp.getTaskIdentifiers());
-        assertTrue("dataGroups should be equal", Tests.assertListsEqualIgnoringOrder(app.getDataGroups(), newApp.getDataGroups()));
+        assertListsEqualIgnoringOrder(app.getDataGroups(), newApp.getDataGroups());
         assertEquals("customEvents should be equal", app.getCustomEvents(), newApp.getCustomEvents());
         assertEquals("customEvents should be equal to 2", app.getCustomEvents().size(), 2);
         assertEquals(app.getCustomEvents().get("event1"), MUTABLE);

@@ -17,13 +17,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.joda.time.DateTime;
 import org.sagebionetworks.client.SynapseClient;
@@ -339,13 +338,8 @@ public class Tests {
         assertEquals(expected.getZone().getOffset(expected), actual.getZone().getOffset(actual));
     }
 
-    public static <T> boolean assertListsEqualIgnoringOrder(List<T> list1, List<T> list2) {
-        if (list1.size() != list2.size()) {
-            return false;
-        }
-        Set<T> setA = Sets.newHashSet(list1);
-        Set<T> setB = Sets.newHashSet(list2);
-        return Sets.difference(setA, setB).isEmpty();
+    public static <T> void assertListsEqualIgnoringOrder(List<T> list1, List<T> list2) {
+        assertEquals(ImmutableSet.copyOf(list1), ImmutableSet.copyOf(list2));
     }
 
     public static SynapseClient getSynapseClient() throws IOException {

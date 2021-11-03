@@ -80,6 +80,7 @@ public class UploadTest {
     private static TestUserHelper.TestUser user;
     private static TestUserHelper.TestUser admin;
 
+    @SuppressWarnings("deprecation")
     @BeforeClass
     public static void beforeClass() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();

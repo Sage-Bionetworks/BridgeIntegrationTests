@@ -10,6 +10,7 @@ import static org.sagebionetworks.bridge.rest.model.Role.ORG_ADMIN;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PHONE;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.SYNAPSE_USER_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
@@ -25,14 +26,19 @@ import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AccountsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
+import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Account;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
 import org.sagebionetworks.bridge.rest.model.App;
+import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Phone;
 import org.sagebionetworks.bridge.rest.model.RequestInfo;
@@ -49,6 +55,7 @@ public class AccountsTest {
     private static final ImmutableList<String> USER_DATA_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
     private TestUser admin;
     private TestUser developer;
+    private TestUser studyCoordinator;
     private TestUser orgAdmin;
     private String orgId;
     private String phoneUserId;
@@ -59,6 +66,7 @@ public class AccountsTest {
     public void before() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
         developer = TestUserHelper.createAndSignInUser(AccountsTest.class, false, DEVELOPER);
+        studyCoordinator = TestUserHelper.createAndSignInUser(AccountsTest.class, false, STUDY_COORDINATOR);
         orgAdmin = TestUserHelper.createAndSignInUser(AccountsTest.class, true, ORG_ADMIN);
         orgAdminApi = orgAdmin.getClient(ForOrgAdminsApi.class);
         orgId = orgAdmin.getSession().getOrgMembership();
@@ -79,6 +87,9 @@ public class AccountsTest {
     public void after() throws Exception {
         if (developer != null) {
             developer.signOutAndDeleteUser();
+        }
+        if (studyCoordinator != null) {
+            studyCoordinator.signOutAndDeleteUser();
         }
         if (orgAdmin != null) {
             orgAdmin.signOutAndDeleteUser();
@@ -230,18 +241,18 @@ public class AccountsTest {
     @Test
     public void nonAdminCannotViewNote() throws Exception {
         String email = IntegTestUtils.makeEmail(AccountsTest.class);
-        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD)
-                .consent(true)
-                .orgMembership(SAGE_ID);
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD).consent(true);
 
         emailUserId = admin.getClient(ForAdminsApi.class).createUser(signUp).execute().body().getId();
 
         SignIn signIn = new SignIn().appId(TEST_APP_ID).email(signUp.getEmail()).password(signUp.getPassword());
         TestUser emailUser = TestUserHelper.getSignedInUser(signIn);
-
-        Account adminAccessTestUserAccount = orgAdminApi.getAccount(emailUserId).execute().body();
-        adminAccessTestUserAccount.setNote("setting a test note");
-        orgAdminApi.updateAccount(emailUserId, adminAccessTestUserAccount).execute();
+        
+        ForStudyCoordinatorsApi coordApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
+        
+        StudyParticipant participant = coordApi.getStudyParticipantById(STUDY_ID_1, emailUserId, false).execute().body();
+        participant.setNote("setting a test note");
+        coordApi.updateStudyParticipant(STUDY_ID_1, emailUserId, participant).execute();
 
         // Verifying that the non-Admin user cannot see the note field
         ForConsentedUsersApi testUserConsentedUsersApi = emailUser.getClient(ForConsentedUsersApi.class);
@@ -252,18 +263,18 @@ public class AccountsTest {
     @Test
     public void nonAdminCannotUpdateNote() throws Exception {
         String email = IntegTestUtils.makeEmail(AccountsTest.class);
-        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD)
-                .consent(true)
-                .orgMembership(SAGE_ID);
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).email(email).password(PASSWORD).consent(true);
 
         emailUserId = admin.getClient(ForAdminsApi.class).createUser(signUp).execute().body().getId();
 
         SignIn signIn = new SignIn().appId(TEST_APP_ID).email(signUp.getEmail()).password(signUp.getPassword());
         TestUser emailUser = TestUserHelper.getSignedInUser(signIn);
+        
+        ForStudyCoordinatorsApi coordApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
 
-        Account adminAccessTestUserAccount = orgAdminApi.getAccount(emailUserId).execute().body();
-        adminAccessTestUserAccount.setNote("original test note");
-        orgAdminApi.updateAccount(emailUserId, adminAccessTestUserAccount).execute();
+        StudyParticipant participant = coordApi.getStudyParticipantById(STUDY_ID_1, emailUserId, false).execute().body(); 
+        participant.setNote("original test note");
+        coordApi.updateStudyParticipant(STUDY_ID_1, participant.getId(), participant).execute();
 
         // Attempting to update note through non-Admin account
         ForConsentedUsersApi testUserConsentedUsersApi = emailUser.getClient(ForConsentedUsersApi.class);
@@ -272,7 +283,51 @@ public class AccountsTest {
         testUserConsentedUsersApi.updateUsersParticipantRecord(nonAdminAccessTestUserAccount).execute();
 
         // Verifying that original note was retained
-        Account adminAccessUpdatedTestUserAccount = orgAdminApi.getAccount(emailUserId).execute().body();
-        assertEquals("original test note", adminAccessUpdatedTestUserAccount.getNote());
+        StudyParticipant updatedParticipant = coordApi.getStudyParticipantById(STUDY_ID_1, emailUserId, false).execute().body();
+        assertEquals("original test note", updatedParticipant.getNote());
+    }
+
+    @Test
+    public void deleteUnusedAccount() throws Exception {
+        String email = IntegTestUtils.makeEmail(AccountsTest.class);
+        SignUp signUp = new SignUp().email(email).password(PASSWORD);
+        
+        StudyParticipantsApi coordParticipantApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        IdentifierHolder idHolder = coordParticipantApi.createStudyParticipant(STUDY_ID_1, signUp).execute().body();
+        
+        coordParticipantApi.deleteStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
+        
+        try {
+            coordParticipantApi.getStudyParticipantById(STUDY_ID_1, idHolder.getIdentifier(), false).execute();    
+            fail("Should have thrown exception");
+        } catch(EntityNotFoundException e) {
+            
+        }
+    }
+
+    @Test
+    public void cannotDeleteUsedAccount() throws Exception {
+        String externalId = IntegTestUtils.makeEmail(AccountsTest.class).split("@")[0];
+        SignUp signUp = new SignUp()
+                .externalIds(ImmutableMap.of(STUDY_ID_1, externalId))
+                .password(PASSWORD);
+        
+        StudyParticipantsApi coordParticipantApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        IdentifierHolder idHolder = coordParticipantApi.createStudyParticipant(STUDY_ID_1, signUp).execute().body();
+        
+        try {
+            SignIn signIn = new SignIn().appId(TEST_APP_ID).externalId(externalId).password(PASSWORD);
+            TestUserHelper.getSignedInUser(signIn); // this is enough to prevent a physical delete
+        } catch(ConsentRequiredException e) {
+            
+        }
+        try {
+            coordParticipantApi.deleteStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
+            fail("Should have thrown exception");
+        } catch(UnauthorizedException e) {
+            assertEquals("Account is not a test account or it is already in use.", e.getMessage());
+        }
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        admin.getClient(AccountsApi.class).deleteAccount(idHolder.getIdentifier()).execute();
     }
 }

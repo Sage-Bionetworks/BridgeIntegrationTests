@@ -83,10 +83,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
-import org.sagebionetworks.bridge.rest.api.SharedModulesApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
@@ -149,7 +149,7 @@ public class SurveyTest {
     private static TestUser user;
     private static TestUser worker;
     private static TestUser sharedDeveloper;
-    private static SharedModulesApi sharedDeveloperModulesApi;
+    private static ForDevelopersApi sharedDeveloperModulesApi;
     private static SurveysApi sharedSurveysApi;
     private static ForAdminsApi adminsApi;
     private static ForSuperadminsApi superadminsApi;
@@ -170,7 +170,7 @@ public class SurveyTest {
         worker = TestUserHelper.createAndSignInUser(SurveyTest.class, false, Role.WORKER);
 
         sharedDeveloper = TestUserHelper.createAndSignInUser(SurveyTest.class, SHARED_APP_ID, DEVELOPER);        
-        sharedDeveloperModulesApi = sharedDeveloper.getClient(SharedModulesApi.class);
+        sharedDeveloperModulesApi = sharedDeveloper.getClient(ForDevelopersApi.class);
         sharedSurveysApi = sharedDeveloper.getClient(SurveysApi.class);
     }
 
@@ -180,6 +180,7 @@ public class SurveyTest {
         surveysToDelete = new HashSet<>();
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         // cleanup surveys
@@ -237,6 +238,7 @@ public class SurveyTest {
     
     // One test to verify that all the fields of the test survey can be persisted and retrieved.
     // Info screen is still tested separately. 
+    @SuppressWarnings("deprecation")
     @Test
     public void canRountripSurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -400,6 +402,7 @@ public class SurveyTest {
         return null; 
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testPermanentDeleteWithSharedModule() throws Exception {
         // create test survey and test shared module
@@ -430,6 +433,7 @@ public class SurveyTest {
         assertNotNull(thrownEx);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testPermanentDeleteWithSharedModuleWithIdentifier() throws Exception {
         // create test survey and test shared module
@@ -465,6 +469,7 @@ public class SurveyTest {
         assertNotNull(thrownEx);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testVirtualDeleteWithSharedModule() throws Exception {
         // create test survey and test shared module
@@ -495,6 +500,7 @@ public class SurveyTest {
         assertNotNull(thrownEx);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testVirtualDeleteWithSharedModuleWithIdentifer() throws Exception {
         // create test survey and test shared module
@@ -548,11 +554,13 @@ public class SurveyTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected=UnauthorizedException.class)
     public void cannotSubmitAsNormalUser() throws Exception {
         user.getClient(SurveysApi.class).getMostRecentSurveys(false).execute().body();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void cannotUpdateSurveyId() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -571,6 +579,7 @@ public class SurveyTest {
         assertEquals(surveyId, survey.getIdentifier());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void cannotUpdateSurveyIdWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -591,6 +600,7 @@ public class SurveyTest {
         assertEquals(surveyId, survey.getIdentifier());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void saveAndRetrieveSurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -615,6 +625,7 @@ public class SurveyTest {
         assertEquals(TestSurvey.MODULE_VERSION, survey.getModuleVersion().intValue());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void saveAndRetrieveSurveyWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -642,6 +653,7 @@ public class SurveyTest {
         assertEquals(TestSurvey.MODULE_VERSION, survey.getModuleVersion().intValue());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void createVersionPublish() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -666,6 +678,7 @@ public class SurveyTest {
         assertTrue("survey is now published.", survey.isPublished());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void createVersionPublishWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -694,6 +707,7 @@ public class SurveyTest {
         assertTrue("survey is now published.", survey.isPublished());
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected = InvalidEntityException.class)
     public void createInvalidSurveyReturns400() throws Exception {
         // This should seem obvious. However, there was a previous bug in BridgePF where the 400 invalid survey
@@ -709,6 +723,7 @@ public class SurveyTest {
         surveysApi.createSurvey(survey).execute();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void getAllVersionsOfASurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -728,6 +743,7 @@ public class SurveyTest {
         noneDeleted(surveysApi.getAllVersionsOfSurvey(key.getGuid(), false));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void getAllVersionsOfASurveyWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -751,6 +767,7 @@ public class SurveyTest {
         noneDeleted(surveysApi.getAllVersionsOfSurvey(prefix, false));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canGetMostRecentOrRecentlyPublishedSurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -781,6 +798,7 @@ public class SurveyTest {
         noneDeleted(surveysApi.getMostRecentSurveys(false));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canGetMostRecentOrRecentlyPublishedSurveyWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -813,6 +831,7 @@ public class SurveyTest {
         noneDeleted(surveysApi.getMostRecentSurveys(false));
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canUpdateASurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -830,6 +849,7 @@ public class SurveyTest {
         assertEquals("Name should have changed.", survey.getName(), "New name");
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canUpdateASurveyWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -852,6 +872,7 @@ public class SurveyTest {
         assertEquals(key.getGuid(), IDENTIFIER_PREFIX + survey.getIdentifier());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void researcherCannotUpdatePublishedSurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -870,6 +891,7 @@ public class SurveyTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canGetMostRecentlyPublishedSurveyWithoutTimestamp() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -888,6 +910,7 @@ public class SurveyTest {
         assertNotEquals("And these are really different versions", key.getCreatedOn(), found.getCreatedOn());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canGetMostRecentlyPublishedSurveyWithoutTimestampWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -910,6 +933,7 @@ public class SurveyTest {
         assertNotEquals("And these are really different versions", key.getCreatedOn(), found.getCreatedOn());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void canCallMultiOperationMethodToMakeSurveyUpdate() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -939,6 +963,7 @@ public class SurveyTest {
         assertEquals("The latest has a new title", "This is an update test", allRevisions.getItems().get(0).getName());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canSaveAndRetrieveInfoScreen() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -997,6 +1022,7 @@ public class SurveyTest {
         assertEquals(UIHint.TEXTFIELD, newQuestion.getUiHint());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canSaveAndRetrieveInfoScreenWithIdentifier() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -1056,6 +1082,7 @@ public class SurveyTest {
         assertEquals(UIHint.TEXTFIELD, newQuestion.getUiHint());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void workerCanGetSurveys() throws Exception {
         // One of the key functionalities of worker accounts is that they can get surveys across studies.
@@ -1107,6 +1134,7 @@ public class SurveyTest {
         anyDeleted(workerApi.getAllPublishedSurveys(TEST_APP_ID, true));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void verifyEndSurveyRule() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -1143,6 +1171,7 @@ public class SurveyTest {
         assertNull(retrievedRule.getSkipTo());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canLogicallyDeletePublishedSurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -1162,6 +1191,7 @@ public class SurveyTest {
                 list -> list.stream().anyMatch(survey -> survey.getGuid().equals(keys.getGuid())));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void cannotLogicallyDeleteSurveyTwice() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -1181,6 +1211,7 @@ public class SurveyTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void cannotPhysicallyDeleteSurveyInSchedule() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -1204,6 +1235,7 @@ public class SurveyTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canPhysicallyDeleteLogicallyDeletedSurvey() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -1226,6 +1258,7 @@ public class SurveyTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canCreateAndSaveVariousKindsOfBeforeRules() throws Exception {
         App app = adminsApi.getUsersApp().execute().body();
@@ -1274,6 +1307,7 @@ public class SurveyTest {
         assertTrue(updated.getElements().get(0).getBeforeRules().isEmpty());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canCreateAndSaveVariousKindsOfAfterRules() throws Exception {
         App app = adminsApi.getUsersApp().execute().body();
@@ -1316,6 +1350,7 @@ public class SurveyTest {
         assertTrue(updated.getElements().get(0).getAfterRules().isEmpty());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void displayActionsInAfterRulesValidated() throws Exception {
         App app = adminsApi.getUsersApp().execute().body();
@@ -1348,6 +1383,7 @@ public class SurveyTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void canRetrieveDeletedSurveys() throws Exception {
         SurveysApi surveysApi = developer.getClient(SurveysApi.class);
@@ -1393,6 +1429,7 @@ public class SurveyTest {
         noneDeleted(surveysApi.getAllVersionsOfSurvey(keys1.getGuid(), true));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getPublishedSurveyVersionAndDelete() throws Exception {
         // Test the interaction of publication and the two kinds of deletion
@@ -1417,6 +1454,7 @@ public class SurveyTest {
         noneDeleted(surveysApi.getPublishedSurveys(false));
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getMostRecentSurveyVersionAndDelete() throws Exception {
         // Test the interaction of publication and the two kinds of deletion
@@ -1449,6 +1487,7 @@ public class SurveyTest {
                 Predicates.isNull());
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void getMostRecentSurveyVersionAndDeleteWithIdentifier() throws Exception {
         // Test the interaction of publication and the two kinds of deletion
@@ -1601,6 +1640,7 @@ public class SurveyTest {
     
     // Helper methods to ensure we always record these calls for cleanup
 
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder createSurvey(SurveysApi surveysApi, Survey survey) throws Exception {
         GuidCreatedOnVersionHolder keys = surveysApi.createSurvey(survey).execute().body();
         surveysToDelete.add(keys);
@@ -1613,6 +1653,7 @@ public class SurveyTest {
         return keys;
     }
 
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder createSurveyWithIdentifier(SurveysApi surveysApi, Survey survey) throws Exception {
         GuidCreatedOnVersionHolder keys = surveysApi.createSurvey(survey).execute().body();
         surveysToDelete.add(keys);
@@ -1628,6 +1669,7 @@ public class SurveyTest {
         return new MutableHolder(survey);
     }
     
+    @SuppressWarnings("deprecation")
     private GuidCreatedOnVersionHolder versionSurvey(SurveysApi surveysApi, GuidCreatedOnVersionHolder survey) throws Exception {
         GuidCreatedOnVersionHolder versionHolder = surveysApi
                 .versionSurvey(survey.getGuid(), survey.getCreatedOn()).execute().body();

@@ -33,9 +33,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
-import org.sagebionetworks.bridge.rest.api.SharedModulesApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConcurrentModificationException;
@@ -63,7 +63,7 @@ public class UploadSchemaTest {
     private static ForSuperadminsApi superadminApi;
     private static UploadSchemasApi devUploadSchemasApi;
     private static ForWorkersApi workerUploadSchemasApi;
-    private static SharedModulesApi sharedDeveloperModulesApi;
+    private static ForDevelopersApi sharedDeveloperModulesApi;
     private static UploadSchemasApi sharedUploadSchemasApi;
 
     private String schemaId;
@@ -75,7 +75,7 @@ public class UploadSchemaTest {
         user = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, true);
         worker = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, false, WORKER);
         sharedDeveloper = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, SHARED_APP_ID, DEVELOPER);
-        sharedDeveloperModulesApi = sharedDeveloper.getClient(SharedModulesApi.class);
+        sharedDeveloperModulesApi = sharedDeveloper.getClient(ForDevelopersApi.class);
 
         adminApi = admin.getClient(ForAdminsApi.class);
         superadminApi = admin.getClient(ForSuperadminsApi.class);
@@ -89,6 +89,7 @@ public class UploadSchemaTest {
         schemaId = TEST_SCHEMA_ID_PREFIX + RandomStringUtils.randomAlphabetic(4);
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void deleteSchemas() throws Exception {
         try {
@@ -127,6 +128,7 @@ public class UploadSchemaTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testDeleteWithSharedModule() throws Exception {
         // create test upload schema and test shared module
@@ -160,6 +162,7 @@ public class UploadSchemaTest {
         assertNotNull(thrownEx);
     }
     
+    @SuppressWarnings("deprecation")
     @Test
     public void test() throws Exception {
         // set up some field defs
@@ -429,6 +432,7 @@ public class UploadSchemaTest {
         return schema;
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testV4() throws Exception {
         UploadFieldDefinition def1 = new UploadFieldDefinition();
@@ -525,6 +529,7 @@ public class UploadSchemaTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test(expected=UnauthorizedException.class)
     public void unauthorizedTest() throws Exception {
         user.getClient(UploadSchemasApi.class).getMostRecentUploadSchemas(false).execute();
@@ -561,6 +566,7 @@ public class UploadSchemaTest {
                 fieldDefList);
     }
 
+    @SuppressWarnings("deprecation")
     private void cannotCreateSchemasThatAreTooLarge(String expectedErrorMessage,
             List<UploadFieldDefinition> fieldDefList) throws Exception {
         // Create schema with fields (expected exception).

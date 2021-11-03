@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
 import static org.sagebionetworks.bridge.rest.model.NotificationType.AFTER_WINDOW_START;
 import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
@@ -20,6 +21,7 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.After;
@@ -50,10 +52,13 @@ import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionInfo;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
+
+import com.google.common.collect.ImmutableList;
 
 import retrofit2.Response;
 
@@ -151,11 +156,21 @@ public class Schedule2Test {
         assertNotEquals("ABC", schedule.getGuid());
         assertNotEquals(Long.valueOf(10), schedule.getVersion());
         
+        StudyBurst burst = new StudyBurst()
+                .identifier("burst1")
+                .originEventId("timeline_retrieved")
+                .interval("P1W")
+                .occurrences(3)
+                .updateType(MUTABLE);
+        schedule.setStudyBursts(ImmutableList.of(burst));
+        
         // add a session
         Session session = new Session();
         session.setName("Simple repeating assessment");
+        session.setSymbol("✯");
         session.addLabelsItem(new Label().lang("en").value("Take the assessment"));
-        session.setStartEventId("enrollment");
+        session.addStartEventIdsItem("enrollment");
+        session.addStudyBurstIdsItem("burst1");
         session.setDelay("P1W");
         session.setInterval("P4W");
         session.setPerformanceOrder(SEQUENTIAL);
@@ -219,8 +234,8 @@ public class Schedule2Test {
         assertFalse(timeline.getAssessments().isEmpty());
         assertFalse(timeline.getSessions().isEmpty());
         assertFalse(timeline.getSchedule().isEmpty());
-        assertEquals(timeline.getTotalMinutes(), Integer.valueOf(30));
-        assertEquals(timeline.getTotalNotifications(), Integer.valueOf(3));
+        assertEquals(Integer.valueOf(120), timeline.getTotalMinutes()); // 30 + (30 * 3 study burst scheduled sessions)
+        assertEquals(Integer.valueOf(12), timeline.getTotalNotifications()); // 3 + (3 * 3 study burst notifications)
         
         AssessmentInfo assessmentInfo = timeline.getAssessments().get(0);
         assertEquals(schedule.getSessions().get(0).getAssessments().get(0).getGuid(), assessmentInfo.getGuid());
@@ -239,7 +254,7 @@ public class Schedule2Test {
         SessionInfo sessionInfo = timeline.getSessions().get(0);
         assertEquals(schedule.getSessions().get(0).getGuid(), sessionInfo.getGuid());
         assertEquals("Take the assessment", sessionInfo.getLabel());
-        assertEquals("enrollment", sessionInfo.getStartEventId());
+        assertEquals("✯", sessionInfo.getSymbol());
         assertEquals(PerformanceOrder.SEQUENTIAL, sessionInfo.getPerformanceOrder());
         assertEquals(1, sessionInfo.getTimeWindowGuids().size());
         assertEquals(timeWindowGuid, sessionInfo.getTimeWindowGuids().get(0));
@@ -260,9 +275,12 @@ public class Schedule2Test {
         Set<String> asmtInstanceGuids = new HashSet<>();
         int scheduledAssessmentCount = 0;
         
+        List<String> eventIds = ImmutableList.of("enrollment", "study_burst:burst1:01",
+                "study_burst:burst1:02", "study_burst:burst1:03");
+        
         for (ScheduledSession scheduledSession : timeline.getSchedule()) {
-            
             assertEquals(timeWindowGuid, scheduledSession.getTimeWindowGuid());
+            assertTrue(eventIds.contains(scheduledSession.getStartEventId()));
             
             scheduledSessionCount++;
             sessionInstanceGuids.add(scheduledSession.getInstanceGuid());
@@ -365,7 +383,7 @@ public class Schedule2Test {
         session.setName("Simple repeating assessment");
         session.setInterval("P1D");
         session.setAssessments(null);
-        session.setStartEventId("enrollment");
+        session.addStartEventIdsItem("enrollment");
         session.setPerformanceOrder(SEQUENTIAL);
         session.addAssessmentsItem(ref);
         session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT1H"));
@@ -425,12 +443,21 @@ public class Schedule2Test {
         assertNotEquals("ABC", schedule.getGuid());
         assertNotEquals(Long.valueOf(10), schedule.getVersion());
         
+        StudyBurst burst = schedule.getStudyBursts().get(0);
+        assertEquals("burst1", burst.getIdentifier());
+        assertEquals("timeline_retrieved", burst.getOriginEventId());
+        assertEquals("P1W", burst.getInterval());
+        assertEquals(Integer.valueOf(3), burst.getOccurrences());
+        assertEquals(MUTABLE, burst.getUpdateType());
+                
         Session session = schedule.getSessions().get(0);
         assertEquals("Simple repeating assessment", session.getName());
+        assertEquals("✯", session.getSymbol());
         assertEquals(1, session.getLabels().size());
         assertEquals("en", session.getLabels().get(0).getLang());
         assertEquals("Take the assessment", session.getLabels().get(0).getValue());
-        assertEquals("enrollment", session.getStartEventId());
+        assertEquals("enrollment", session.getStartEventIds().get(0));
+        assertEquals("burst1", session.getStudyBurstIds().get(0));
         assertEquals(SEQUENTIAL, session.getPerformanceOrder());
         assertEquals("P1W", session.getDelay());
         assertEquals("P4W", session.getInterval());

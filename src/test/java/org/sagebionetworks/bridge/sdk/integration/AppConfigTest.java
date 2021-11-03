@@ -25,9 +25,10 @@ import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AppConfigsApi;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
-import org.sagebionetworks.bridge.rest.api.FilesApi;
+import org.sagebionetworks.bridge.rest.api.SharedAssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.HostedFilesApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.PublicApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
@@ -78,15 +79,20 @@ public class AppConfigTest {
     private AppConfigsApi appConfigsApi;
     private UploadSchemasApi schemasApi;
     private SurveysApi surveysApi;
-    private FilesApi filesApi;
+    private HostedFilesApi hostedFilesApi;
     private AssessmentsApi assessmentsApi;
+    private SharedAssessmentsApi sharedAssessmentsApi;
     private List<String> configsToDelete = new ArrayList<>();
     
     private GuidCreatedOnVersionHolder surveyKeys;
     private UploadSchema schemaKeys;
     private GuidVersionHolder fileKeys;
     private String assessmentGuid;
+    private String localAssessmentGuid;
+    private String sharedAssessmentGuid;
     private AppConfigElement element;
+    private String appId;
+    private String sharedAppId;
     
     @Before
     public void before() throws IOException {
@@ -98,11 +104,15 @@ public class AppConfigTest {
         admin.getClient(OrganizationsApi.class).addMember(ORG_ID_1, developer.getUserId()).execute();
 
         adminApi = admin.getClient(ForAdminsApi.class);
+        sharedAssessmentsApi = admin.getClient(SharedAssessmentsApi.class);
         appConfigsApi = developer.getClient(AppConfigsApi.class);
         schemasApi = developer.getClient(UploadSchemasApi.class);
         surveysApi = developer.getClient(SurveysApi.class);
-        filesApi = developer.getClient(FilesApi.class);
+        hostedFilesApi = developer.getClient(HostedFilesApi.class);
         assessmentsApi = developer.getClient(AssessmentsApi.class);
+
+        appId = admin.getAppId();
+        sharedAppId = "shared";
 
         // App configs with no criteria will conflict with the run of this test. Set the range on these
         // for Android to 1-1.
@@ -126,6 +136,7 @@ public class AppConfigTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void deleteSurveys() throws IOException {
         if (surveyKeys != null) {
@@ -134,6 +145,7 @@ public class AppConfigTest {
         }
     }
     
+    @SuppressWarnings("deprecation")
     @After
     public void deleteUploadSchema() throws IOException {
         if (schemaKeys != null) {
@@ -154,7 +166,21 @@ public class AppConfigTest {
             adminApi.deleteAssessment(assessmentGuid, true).execute();
         }
     }
-    
+
+    @After
+    public void deleteLocalAssessment() throws Exception {
+        if (localAssessmentGuid != null) {
+            adminApi.deleteAssessment(localAssessmentGuid, true).execute();
+        }
+    }
+
+    @After
+    public void deleteSharedAssessment() throws Exception {
+        if (sharedAssessmentGuid != null) {
+            sharedAssessmentsApi.deleteSharedAssessment(sharedAssessmentGuid, true).execute();
+        }
+    }
+
     @After
     public void deleteAppConfigElement() throws IOException {
         if (element != null) {
@@ -188,19 +214,36 @@ public class AppConfigTest {
                 .normingStatus("Not normed")
                 .osName("Both")
                 .ownerId(ORG_ID_1);
-        
+
         Assessment assessment = assessmentsApi.createAssessment(unsavedAssessment).execute().body();
         assessmentGuid = assessment.getGuid();
-        
+
+        String localAssessmentId = randomIdentifier(AssessmentTest.class);
+        Assessment unsavedLocalAssessment = new Assessment()
+                .identifier(localAssessmentId)
+                .title("localTitle")
+                .osName("Both")
+                .ownerId(ORG_ID_1);
+
+        Assessment localAssessment = assessmentsApi.createAssessment(unsavedLocalAssessment).execute().body();
+        localAssessmentGuid = localAssessment.getGuid();
+
+        String sharedAssessmentId = randomIdentifier(AssessmentTest.class);
+        assessmentsApi.publishAssessment(localAssessmentGuid, sharedAssessmentId).execute();
+
+        Assessment sharedAssessment = sharedAssessmentsApi.getSharedAssessmentById(sharedAssessmentId, 1L)
+                .execute().body();
+        sharedAssessmentGuid = sharedAssessment.getGuid();
+
         FileMetadata meta = new FileMetadata();
         meta.setName("test file");
         meta.setDisposition(INLINE);
-        fileKeys = filesApi.createFile(meta).execute().body();
+        fileKeys = hostedFilesApi.createFile(meta).execute().body();
         
         File file = new File("src/test/resources/file-test/test.pdf");
-        RestUtils.uploadHostedFileToS3(filesApi, fileKeys.getGuid(), file);
+        RestUtils.uploadHostedFileToS3(hostedFilesApi, fileKeys.getGuid(), file);
         
-        FileRevisionList list = filesApi.getFileRevisions(fileKeys.getGuid(), 0, 5).execute().body();
+        FileRevisionList list = hostedFilesApi.getFileRevisions(fileKeys.getGuid(), 0, 5).execute().body();
         FileRevision revision = list.getItems().get(0);
         FileReference fileRef = new FileReference().guid(revision.getFileGuid()).createdOn(revision.getCreatedOn());
         
@@ -237,7 +280,9 @@ public class AppConfigTest {
         appConfig.criteria(criteria);
         appConfig.surveyReferences(ImmutableList.of(surveyRef1));
         appConfig.fileReferences(ImmutableList.of(fileRef));
-        appConfig.assessmentReferences(ImmutableList.of(new AssessmentReference().guid(assessmentGuid)));
+        appConfig.assessmentReferences(ImmutableList.of(
+                new AssessmentReference().guid(assessmentGuid).appId(appId),
+                new AssessmentReference().guid(sharedAssessmentGuid).appId(sharedAppId)));
         
         // Create
         GuidVersionHolder holder = appConfigsApi.createAppConfig(appConfig).execute().body();
@@ -250,9 +295,18 @@ public class AppConfigTest {
                 .getConfigForApp(user.getAppId()).execute().body();
         AssessmentReference retAssessmentRef = resolvedAppConfig.getAssessmentReferences().get(0);
         assertEquals(assessmentGuid, retAssessmentRef.getGuid());
+        assertEquals(appId, retAssessmentRef.getAppId());
         assertEquals(id, retAssessmentRef.getId());
-        assertNull(retAssessmentRef.getSharedId());
+        assertNull(retAssessmentRef.getOriginSharedId());
         assertTrue(retAssessmentRef.getConfigHref().contains("/v1/assessments/" + assessmentGuid + "/config"));
+
+        AssessmentReference retSharedAssessmentRef = resolvedAppConfig.getAssessmentReferences().get(1);
+        assertEquals(sharedAssessmentGuid, retSharedAssessmentRef.getGuid());
+        assertEquals(sharedAppId, retSharedAssessmentRef.getAppId());
+        assertEquals(sharedAssessmentId, retSharedAssessmentRef.getId());
+        assertNull(retSharedAssessmentRef.getOriginSharedId());
+        assertTrue(retSharedAssessmentRef.getConfigHref()
+                .contains("/v1/sharedassessments/" + sharedAssessmentGuid + "/config"));
 
         Tests.setVariableValueInObject(firstOneRetrieved.getSurveyReferences().get(0), "href", null);
         assertEquals(appConfig.getLabel(), firstOneRetrieved.getLabel());
@@ -278,7 +332,10 @@ public class AppConfigTest {
         appConfig.setFileReferences(ImmutableList.of());
         appConfig.setGuid(holder.getGuid());
         appConfig.setVersion(holder.getVersion());
-        
+
+        appConfig.setAssessmentReferences(ImmutableList.of(
+                new AssessmentReference().guid(localAssessmentGuid).appId(appId)));
+
         // Update it.
         holder = appConfigsApi.updateAppConfig(appConfig.getGuid(), appConfig).execute().body();
         appConfig.setGuid(holder.getGuid());
@@ -294,7 +351,17 @@ public class AppConfigTest {
         assertEquals(secondOneRetrieved.getCreatedOn().toString(), firstOneRetrieved.getCreatedOn().toString());
         assertNotEquals(secondOneRetrieved.getModifiedOn().toString(), firstOneRetrieved.getModifiedOn().toString());
         assertTrue(secondOneRetrieved.getFileReferences().isEmpty());
-        
+        assertEquals(1, secondOneRetrieved.getAssessmentReferences().size());
+
+        // Verify that the local assessment reference includes its origin shared assessment id
+        AssessmentReference retLocalAssessmentRef = secondOneRetrieved.getAssessmentReferences().get(0);
+        assertEquals(localAssessmentGuid, retLocalAssessmentRef.getGuid());
+        assertEquals(appId, retLocalAssessmentRef.getAppId());
+        assertEquals(localAssessmentId, retLocalAssessmentRef.getId());
+        assertEquals(sharedAssessmentId, retLocalAssessmentRef.getOriginSharedId());
+        assertTrue(retLocalAssessmentRef.getConfigHref()
+                .contains("/v1/assessments/" + localAssessmentGuid + "/config"));
+
         // You can get it as the user
         AppConfig userAppConfig = studiesApi.getConfigForApp(developer.getAppId()).execute().body();
         assertNotNull(userAppConfig);
