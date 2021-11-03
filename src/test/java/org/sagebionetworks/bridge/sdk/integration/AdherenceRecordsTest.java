@@ -445,7 +445,7 @@ public class AdherenceRecordsTest {
         
         // Create the fake enrollment timestamp
         usersApi.createStudyActivityEvent(STUDY_ID_1, new StudyActivityEventRequest()
-                .eventId(CLINIC_VISIT).timestamp(T1)).execute();
+                .eventId(CLINIC_VISIT).timestamp(T1), true).execute();
         
         timeline = usersApi.getTimelineForSelf(STUDY_ID_1, null).execute().body();
         SessionInfo session2 = timeline.getSessions().get(1); // session #2
@@ -551,7 +551,7 @@ public class AdherenceRecordsTest {
         
         // Create the fake enrollment timestamp
         usersApi.createStudyActivityEvent(STUDY_ID_1, new StudyActivityEventRequest()
-                .eventId(FAKE_ENROLLMENT).timestamp(ENROLLMENT)).execute();
+                .eventId(FAKE_ENROLLMENT).timestamp(ENROLLMENT), true).execute();
         
         timeline = usersApi.getTimelineForSelf(STUDY_ID_1, null).execute().body(); 
 
@@ -577,7 +577,7 @@ public class AdherenceRecordsTest {
         
         // FIRST SERIES
         usersApi.createStudyActivityEvent(STUDY_ID_1, new StudyActivityEventRequest()
-                .eventId(CLINIC_VISIT).timestamp(T1)).execute();
+                .eventId(CLINIC_VISIT).timestamp(T1), true).execute();
         session2Data(usersApi, sessions.get(0), T1, "T1", "D00", "05-18");
         session2Data(usersApi, sessions.get(1), T1, "T1", "D07", "05-25");
         session2Data(usersApi, sessions.get(2), T1, "T1", "D14", "06-01");
@@ -585,7 +585,7 @@ public class AdherenceRecordsTest {
 
         // SECOND SERIES
         usersApi.createStudyActivityEvent(STUDY_ID_1, new StudyActivityEventRequest()
-                .eventId(CLINIC_VISIT).timestamp(T2)).execute();
+                .eventId(CLINIC_VISIT).timestamp(T2), true).execute();
         session2Data(usersApi, sessions.get(0), T2, "T2", "D00", "09-03");
         session2Data(usersApi, sessions.get(1), T2, "T2", "D07", "09-10");
         session2Data(usersApi, sessions.get(2), T2, "T2", "D14", "09-17");
