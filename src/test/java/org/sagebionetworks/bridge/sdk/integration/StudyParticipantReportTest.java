@@ -199,6 +199,16 @@ public class StudyParticipantReportTest {
         designerApi = studyDesigner.getClient(ForStudyDesignersApi.class);       
         
         try {
+            designerApi.getStudyParticipantReportIndices(STUDY_ID_1).execute();
+            fail("Should have thrown exception");
+        } catch(UnauthorizedException e) {
+        }
+        try {
+            designerApi.getStudyParticipantReportIndex(STUDY_ID_1, reportId).execute();
+            fail("Should have thrown exception");
+        } catch(EntityNotFoundException e) {
+        }
+        try {
             designerApi.getStudyParticipantReport(
                     STUDY_ID_1, user.getUserId(), reportId, START_TIMESTAMP, END_TIMESTAMP, null, null).execute().body();
             fail("Should have thrown exception");
