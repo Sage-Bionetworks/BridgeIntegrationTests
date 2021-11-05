@@ -36,7 +36,6 @@ import org.sagebionetworks.bridge.rest.api.StudyReportsApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
-import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.ForwardCursorReportDataList;
 import org.sagebionetworks.bridge.rest.model.ReportData;
@@ -464,16 +463,15 @@ public class ReportTest {
                 .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(ReportTest.class)))
                 .createAndSignInUser();
         StudyReportsApi reportsApi = study2User.getClient(StudyReportsApi.class);
-        ReportIndex index = reportsApi.getStudyReportIndex(reportId).execute().body();
-        assertTrue(index.getStudyIds().contains(STUDY_ID_1));
         try {
             reportsApi.getStudyReportRecords(reportId, SEARCH_START_DATE, SEARCH_END_DATE).execute().body();
             fail("Should have thrown an exception");
-        } catch(UnauthorizedException e) {
+        } catch(EntityNotFoundException e) {
             // expected, and from the correct call.
         }
         
         // Make it public, and the user *can* see it
+        ReportIndex index = devReportClient.getStudyReportIndex(reportId).execute().body();
         index.setPublic(true);
         devReportClient.updateStudyReportIndex(index.getIdentifier(), index).execute();
         
@@ -524,12 +522,8 @@ public class ReportTest {
         workerApi.addParticipantReportRecord(reportId, data1).execute();
         workerApi.addParticipantReportRecord(reportId, data2).execute();
         
-        // The index now exists and can be retrieved.
+        // The index now exists and the report can be retrieved
         ParticipantReportsApi study2ReportsApi = study2User.getClient(ParticipantReportsApi.class);
-        ReportIndex index = study2ReportsApi.getParticipantReportIndex(reportId).execute().body();
-        assertTrue(index.getStudyIds().contains(STUDY_ID_1));
-        
-        // And the report can still be retrieved
         ReportDataList records = study2ReportsApi.getParticipantReportRecords(reportId, SEARCH_START_DATE, SEARCH_END_DATE).execute().body();
         assertTrue(!records.getItems().isEmpty());
         assertEquals("{asdf=A}", records.getItems().get(0).getData().toString());
