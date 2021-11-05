@@ -132,6 +132,73 @@ public class StudyBurstTest {
     }
     
     @Test
+    public void studyBurstGeneratesEvents() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE);
+        
+        // This should trigger the study burst. We should see those events in the map.
+        DateTime timestamp1 = DateTime.now(UTC);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
+
+        StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
+
+        StudyActivityEvent originEvent = findEventById(list, "custom:event1");
+        assertNull(originEvent.getAnswerValue());
+        assertNull(originEvent.getOriginEventId());
+        assertNull(originEvent.getStudyBurstId());
+        assertNull(originEvent.getPeriodFromOrigin());
+        assertEquals(Integer.valueOf(1), originEvent.getRecordCount());
+        assertEquals(timestamp1, originEvent.getTimestamp());
+        
+        StudyActivityEvent burst1 = findEventById(list, "study_burst:burst1:01");
+        assertEquals("01", burst1.getAnswerValue());
+        assertEquals("custom:event1", burst1.getOriginEventId());
+        assertEquals("burst1", burst1.getStudyBurstId());
+        assertEquals("P1D", burst1.getPeriodFromOrigin());
+        assertEquals(Integer.valueOf(1), burst1.getRecordCount());
+        assertEquals(timestamp1.plusDays(1), burst1.getTimestamp());
+        
+        StudyActivityEvent burst2 = findEventById(list, "study_burst:burst1:02");
+        assertEquals("02", burst2.getAnswerValue());
+        assertEquals("custom:event1", burst2.getOriginEventId());
+        assertEquals("burst1", burst2.getStudyBurstId());
+        assertEquals("P2D", burst2.getPeriodFromOrigin());
+        assertEquals(Integer.valueOf(1), burst2.getRecordCount());
+        assertEquals(timestamp1.plusDays(2), burst2.getTimestamp());
+        
+        StudyActivityEvent burst3 = findEventById(list, "study_burst:burst1:03");
+        assertEquals("03", burst3.getAnswerValue());
+        assertEquals("custom:event1", burst3.getOriginEventId());
+        assertEquals("burst1", burst3.getStudyBurstId());
+        assertEquals("P3D", burst3.getPeriodFromOrigin());
+        assertEquals(Integer.valueOf(1), burst3.getRecordCount());
+        assertEquals(timestamp1.plusDays(3), burst3.getTimestamp());
+        
+        StudyActivityEvent burst4 = findEventById(list, "study_burst:burst1:04");
+        assertEquals("04", burst4.getAnswerValue());
+        assertEquals("custom:event1", burst4.getOriginEventId());
+        assertEquals("burst1", burst4.getStudyBurstId());
+        assertEquals("P4D", burst4.getPeriodFromOrigin());
+        assertEquals(Integer.valueOf(1), burst4.getRecordCount());
+        assertEquals(timestamp1.plusDays(4), burst4.getTimestamp());
+        
+        // Verify the “always added” events for this user, who was enrolled.
+        StudyActivityEvent en = findEventById(list, "enrollment");
+        assertNotNull(en.getTimestamp());
+        assertNotNull(en.getCreatedOn());
+        assertEquals(Integer.valueOf(1), en.getRecordCount());
+        
+        StudyActivityEvent tr = findEventById(list, "timeline_retrieved");
+        assertNotNull(tr.getTimestamp());
+        assertNotNull(tr.getCreatedOn());
+        assertEquals(Integer.valueOf(1), tr.getRecordCount());
+        
+        StudyActivityEvent co = findEventById(list, "created_on");
+        assertEquals(co.getTimestamp(), user.getSession().getCreatedOn());
+        assertNotNull(co.getCreatedOn());
+        assertEquals(Integer.valueOf(1), co.getRecordCount());
+    }
+    
+    @Test
     public void mutableOriginEventMutableStudyBurst() throws Exception {
         setupSchedule(MUTABLE_EVENT, MUTABLE);
         
@@ -221,7 +288,7 @@ public class StudyBurstTest {
     
     private void createOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
         StudyActivityEventRequest request = new StudyActivityEventRequest()
-                .eventId(eventId).timestamp(timestamp);
+                .clientTimeZone("America/Los_Angeles").eventId(eventId).timestamp(timestamp);
         usersApi.createStudyActivityEvent(STUDY_ID_1, request, true).execute();
     }
     

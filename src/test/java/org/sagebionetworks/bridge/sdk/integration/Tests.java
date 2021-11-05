@@ -13,9 +13,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
+import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -135,6 +137,26 @@ public class Tests {
             }
         }
         return filtered;
+    }
+    
+    /**
+     * Select one element from a collection or other iterable, using a method reference, e.g.
+     * getElement(account.getEnrollments(), Enrollment::getStudyId, "studyA"). We do this all
+     * over the place in our code.
+     */
+    public static <T, S> Optional<T> getElement(Iterable<T> iterable, Function<T, S> func, S value) {
+        if (iterable == null) {
+            return Optional.empty();
+        }
+        for (T item : iterable) {
+            S retValue = func.apply(item);
+            if (value == null && retValue == null) {
+                return Optional.of(item);   
+            } else if (retValue != null && retValue.equals(value)) {
+                return Optional.of(item);
+            }
+        }
+        return Optional.empty();
     }
     
     private static void setTaskActivity(Schedule schedule, String taskIdentifier) {
