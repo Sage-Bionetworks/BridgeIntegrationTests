@@ -80,6 +80,8 @@ public class Tests {
     private static final String DEFAULT_CONFIG_FILE = CONFIG_FILE;
     private static final String USER_CONFIG_FILE = System.getProperty("user.home") + "/" + CONFIG_FILE;
 
+    private static Config config;
+
     public static ClientInfo getClientInfoWithVersion(String osName, int version) {
         return new ClientInfo().appName(APP_NAME).appVersion(version).deviceName(APP_NAME).osName(osName)
                 .osVersion("2.0.0").sdkName("BridgeJavaSDK").sdkVersion(Integer.parseInt(IntegTestUtils.CONFIG.getSdkVersion()));
@@ -343,7 +345,10 @@ public class Tests {
     }
 
     public static Config loadTestConfig() throws IOException {
-        Config config;
+        if (config != null) {
+            return config;
+        }
+
         Path localConfigPath = Paths.get(USER_CONFIG_FILE);
         if (Files.exists(localConfigPath)) {
             config = new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
