@@ -8,7 +8,11 @@ import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTA
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,9 +25,13 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.joda.time.DateTime;
+import org.sagebionetworks.client.SynapseClient;
+import org.sagebionetworks.client.SynapseClientImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.sagebionetworks.bridge.config.Config;
+import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.rest.ApiClientProvider;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.RestUtils;
@@ -67,6 +75,12 @@ public class Tests {
 
     private static final int RETRY_MAX_TRIES = 5;
     private static final long RETRY_SLEEP_MILLIS = 1000;
+
+    private static final String CONFIG_FILE = "bridge-sdk-test.properties";
+    private static final String DEFAULT_CONFIG_FILE = CONFIG_FILE;
+    private static final String USER_CONFIG_FILE = System.getProperty("user.home") + "/" + CONFIG_FILE;
+
+    private static Config config;
 
     public static ClientInfo getClientInfoWithVersion(String osName, int version) {
         return new ClientInfo().appName(APP_NAME).appVersion(version).deviceName(APP_NAME).osName(osName)
@@ -329,7 +343,38 @@ public class Tests {
     public static <T> void assertListsEqualIgnoringOrder(List<T> list1, List<T> list2) {
         assertEquals(ImmutableSet.copyOf(list1), ImmutableSet.copyOf(list2));
     }
-    
+
+    public static Config loadTestConfig() throws IOException {
+        if (config != null) {
+            return config;
+        }
+
+        Path localConfigPath = Paths.get(USER_CONFIG_FILE);
+        if (Files.exists(localConfigPath)) {
+            config = new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
+        } else {
+            config = new PropertiesConfig(DEFAULT_CONFIG_FILE);
+        }
+        return config;
+    }
+
+    public static SynapseClient getSynapseClient() throws IOException {
+        Config config = loadTestConfig();
+
+        // Create Synapse Client.
+        SynapseClient synapseClient = new SynapseClientImpl();
+        synapseClient.setUsername(config.get("synapse.user"));
+        synapseClient.setApiKey(config.get("synapse.api.key"));
+
+        // Based on config, we either talk to Synapse Dev (local/dev/staging) or Synapse Prod.
+        String synapseEndpoint = config.get("synapse.endpoint");
+        synapseClient.setAuthEndpoint(synapseEndpoint + "auth/v1");
+        synapseClient.setFileEndpoint(synapseEndpoint + "file/v1");
+        synapseClient.setRepositoryEndpoint(synapseEndpoint + "repo/v1");
+
+        return synapseClient;
+    }
+
     // Adapted from http://plexus.codehaus.org/plexus-utils which seems to be defunct.
     
     public static void setVariableValueInObject(Object object, String variable, Object value) throws IllegalAccessException {

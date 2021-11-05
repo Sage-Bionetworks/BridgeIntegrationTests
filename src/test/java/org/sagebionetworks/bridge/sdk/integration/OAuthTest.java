@@ -26,9 +26,10 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
-import org.sagebionetworks.bridge.rest.Config;
+import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
@@ -49,14 +50,21 @@ import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class OAuthTest {
-    private static final String SYNAPSE_LOGIN_URL = "https://repo-prod.prod.sagebase.org/auth/v1/login";
-    private static final String SYNAPSE_OAUTH_CONSENT = "https://repo-prod.prod.sagebase.org/auth/v1/oauth2/consent";
+    private static final String SYNAPSE_LOGIN_URL = "auth/v1/login";
+    private static final String SYNAPSE_OAUTH_CONSENT = "auth/v1/oauth2/consent";
+
+    private static Config config;
 
     private TestUser admin;
     private TestUser user;
     private TestUser user2;
     private TestUser worker;
-    
+
+    @BeforeClass
+    public static void beforeClass() throws Exception {
+        config = Tests.loadTestConfig();
+    }
+
     @Before
     public void before() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
@@ -89,7 +97,7 @@ public class OAuthTest {
     
     @Test
     public void test() throws Exception {
-        String synapseUserId = admin.getConfig().get("synapse.test.user.id");
+        String synapseUserId = config.get("synapse.test.user.id");
         worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true, 
                 new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
         
@@ -133,18 +141,19 @@ public class OAuthTest {
     
     @Test
     public void signInWithSynapseAccount() throws Exception {
-        String synapseUserId = admin.getConfig().get("synapse.test.user.id");
-        worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true, 
-                new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
-        
-        Config config = worker.getConfig();
+        String oauthClientId = config.get("synapse.oauth.client.id");
         String userEmail = config.get("synapse.test.user");
         String userPassword = config.get("synapse.test.user.password");
+        String synapseEndpoint = config.get("synapse.endpoint");
+        String synapseUserId = config.get("synapse.test.user.id");
+
+        worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true,
+                new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
         worker.signOut();
 
         // Sign in to Synapse
         String payload = escapeJSON(format("{'username':'%s','password':'%s'}", userEmail, userPassword));
-        HttpResponse response = Request.Post(SYNAPSE_LOGIN_URL)
+        HttpResponse response = Request.Post(synapseEndpoint + SYNAPSE_LOGIN_URL)
                 .setHeader("content-type", "application/json")
                 .body(new StringEntity(payload))
                 .execute().returnResponse();
@@ -152,9 +161,9 @@ public class OAuthTest {
         String sessionToken = getValue(response, "sessionToken");
 
         // Consent to return OAuth authorization token
-        payload = escapeJSON("{'clientId':'100018','scope':'openid','claims':{'id_token':{'userid':null}},"+
+        payload = escapeJSON("{'clientId':'" + oauthClientId + "','scope':'openid','claims':{'id_token':{'userid':null}},"+
                 "'responseType':'code','redirectUri':'https://research.sagebridge.org'}");
-        response = Request.Post(SYNAPSE_OAUTH_CONSENT)
+        response = Request.Post(synapseEndpoint + SYNAPSE_OAUTH_CONSENT)
                 .setHeader("content-type", "application/json")
                 .setHeader("sessiontoken", sessionToken)
                 .body(new StringEntity(payload))
@@ -177,11 +186,10 @@ public class OAuthTest {
     
     @Test
     public void signInWithSynapseAccountUsingRestUtils() throws Exception {
-        String synapseUserId = admin.getConfig().get("synapse.test.user.id");
-        worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true, 
+        String synapseUserId = config.get("synapse.test.user.id");
+        worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true,
                 new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
         
-        Config config = worker.getConfig();
         String userEmail = config.get("synapse.test.user");
         String userPassword = config.get("synapse.test.user.password");
         worker.signOut();
@@ -189,7 +197,7 @@ public class OAuthTest {
         SignIn signIn = new SignIn().appId(TEST_APP_ID).email(userEmail).password(userPassword);
         AuthenticationApi authApi = worker.getClient(AuthenticationApi.class);
         
-        UserSessionInfo session = RestUtils.signInWithSynapse(authApi, signIn);
+        UserSessionInfo session = RestUtils.signInWithSynapseDev(authApi, signIn);
         
         assertEquals(session.getId(), worker.getSession().getId());
         assertEquals(session.getSynapseUserId(), worker.getSession().getSynapseUserId());
@@ -198,7 +206,7 @@ public class OAuthTest {
     @Test
     public void synapseUserCanSwitchBetweenStudies() throws Exception {
         // Going to use the shared app as well as the API app for this test.
-        String synapseUserId = admin.getConfig().get("synapse.test.user.id");
+        String synapseUserId = config.get("synapse.test.user.id");
         
         user = new TestUserHelper.Builder(OAuthTest.class).withAppId(TEST_APP_ID)
                 .withSignUp(new SignUp().appId(TEST_APP_ID)
