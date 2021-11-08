@@ -10,6 +10,7 @@ import static org.sagebionetworks.bridge.sdk.integration.InitListener.EVENT_KEY2
 import static org.sagebionetworks.bridge.sdk.integration.InitListener.EVENT_KEY3;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.getElement;
 
 import java.util.stream.Collectors;
 
@@ -312,29 +313,15 @@ public class StudyActivityEventTest {
     }
     
     private DateTime getTimestamp(StudyActivityEventList list, String eventId) {
-        for (StudyActivityEvent event : list.getItems()) {
-            if (event.getEventId().equals("custom:"+eventId)) {
-                return event.getTimestamp();
-            }
-        }
-        return null;
+        StudyActivityEvent event = getElement(list.getItems(), StudyActivityEvent::getEventId, "custom:"+eventId).orElse(null); 
+        return (event == null) ? null : event.getTimestamp();
     }
     
     private ActivityEvent findEventByKey(ActivityEventList list, String key) {
-        for (ActivityEvent event : list.getItems()) {
-            if (event.getEventId().equals(key)) {
-                return event;
-            }
-        }
-        return null;
+        return getElement(list.getItems(), ActivityEvent::getEventId, key).orElse(null);
     }
     
     private StudyActivityEvent findEventByKey(StudyActivityEventList list, String key) {
-        for (StudyActivityEvent event : list.getItems()) {
-            if (event.getEventId().equals(key)) {
-                return event;
-            }
-        }
-        return null;
+        return getElement(list.getItems(), StudyActivityEvent::getEventId, key).orElse(null);
     }
 }
