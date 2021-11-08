@@ -146,6 +146,7 @@ public class StudyBurstTest {
         assertNull(originEvent.getOriginEventId());
         assertNull(originEvent.getStudyBurstId());
         assertNull(originEvent.getPeriodFromOrigin());
+        assertEquals(originEvent.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), originEvent.getRecordCount());
         assertEquals(timestamp1, originEvent.getTimestamp());
         
@@ -154,6 +155,7 @@ public class StudyBurstTest {
         assertEquals("custom:event1", burst1.getOriginEventId());
         assertEquals("burst1", burst1.getStudyBurstId());
         assertEquals("P1D", burst1.getPeriodFromOrigin());
+        assertEquals(burst1.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst1.getRecordCount());
         assertEquals(timestamp1.plusDays(1), burst1.getTimestamp());
         
@@ -162,6 +164,7 @@ public class StudyBurstTest {
         assertEquals("custom:event1", burst2.getOriginEventId());
         assertEquals("burst1", burst2.getStudyBurstId());
         assertEquals("P2D", burst2.getPeriodFromOrigin());
+        assertEquals(burst2.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst2.getRecordCount());
         assertEquals(timestamp1.plusDays(2), burst2.getTimestamp());
         
@@ -170,6 +173,7 @@ public class StudyBurstTest {
         assertEquals("custom:event1", burst3.getOriginEventId());
         assertEquals("burst1", burst3.getStudyBurstId());
         assertEquals("P3D", burst3.getPeriodFromOrigin());
+        assertEquals(burst3.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst3.getRecordCount());
         assertEquals(timestamp1.plusDays(3), burst3.getTimestamp());
         
@@ -178,6 +182,7 @@ public class StudyBurstTest {
         assertEquals("custom:event1", burst4.getOriginEventId());
         assertEquals("burst1", burst4.getStudyBurstId());
         assertEquals("P4D", burst4.getPeriodFromOrigin());
+        assertEquals(burst4.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst4.getRecordCount());
         assertEquals(timestamp1.plusDays(4), burst4.getTimestamp());
         

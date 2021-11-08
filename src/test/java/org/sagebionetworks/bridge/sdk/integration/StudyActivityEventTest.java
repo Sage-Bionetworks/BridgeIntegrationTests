@@ -313,7 +313,8 @@ public class StudyActivityEventTest {
     }
     
     private DateTime getTimestamp(StudyActivityEventList list, String eventId) {
-        return getElement(list.getItems(), StudyActivityEvent::getEventId, "custom:"+eventId).get().getTimestamp();
+        StudyActivityEvent event = getElement(list.getItems(), StudyActivityEvent::getEventId, "custom:"+eventId).orElse(null); 
+        return (event == null) ? null : event.getTimestamp();
     }
     
     private ActivityEvent findEventByKey(ActivityEventList list, String key) {
