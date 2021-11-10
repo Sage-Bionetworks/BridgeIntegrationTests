@@ -28,6 +28,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.rest.RestUtils;
@@ -49,6 +50,7 @@ import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
+@Category(IntegrationSmokeTest.class)
 public class OAuthTest {
     private static final String SYNAPSE_LOGIN_URL = "auth/v1/login";
     private static final String SYNAPSE_OAUTH_CONSENT = "auth/v1/oauth2/consent";
