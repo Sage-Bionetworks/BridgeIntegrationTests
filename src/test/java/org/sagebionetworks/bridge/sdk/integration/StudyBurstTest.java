@@ -1,5 +1,6 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static java.util.stream.Collectors.toSet;
 import static org.joda.time.DateTimeZone.UTC;
 import static org.junit.Assert.*;
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
@@ -9,6 +10,8 @@ import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
+
+import java.util.Set;
 
 import org.joda.time.DateTime;
 import org.junit.After;
@@ -137,18 +140,18 @@ public class StudyBurstTest {
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it works
-        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
+        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10), null);
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(10));
         // Try deleting one of these study burst events, it works
         assertEventTimestampDelete("study_burst:burst1:02", true);
         
         // Update the original mutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp2);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp2, null);
         // All the study burst events should be changed in line with the new timestamp
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp2, timestamp2);
     }
@@ -159,7 +162,7 @@ public class StudyBurstTest {
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it does not work
@@ -181,11 +184,11 @@ public class StudyBurstTest {
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it works
-        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
+        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10), null);
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(10));
         // Try deleting one of these study burst events, it works
         assertEventTimestampDelete("study_burst:burst1:02", true);
@@ -203,7 +206,7 @@ public class StudyBurstTest {
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it doesn't work
@@ -219,17 +222,44 @@ public class StudyBurstTest {
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
     }
     
-    private void createOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
+    @Test
+    public void verifyStudyBurstDependencies() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE);
+        
+        // Now submit that event
+        DateTime timestamp1 = DateTime.now(UTC);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, false);
+        // Verify the follow-on events were created
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
+        
+        // Update the original mutable event
+        DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp2, false);
+        // The study burst event should *not* be changed
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp2, timestamp1);
+        
+        // delete the origin event, the study burst events are also deleted
+        assertEventTimestampDelete(MUTABLE_EVENT, true);
+        
+        Set<String> eventIds = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body()
+                .getItems().stream().map(StudyActivityEvent::getEventId).collect(toSet());
+        assertFalse(eventIds.contains("study_burst:burst1:01"));
+        assertFalse(eventIds.contains("study_burst:burst1:02"));
+        assertFalse(eventIds.contains("study_burst:burst1:03"));
+        assertFalse(eventIds.contains("study_burst:burst1:04"));
+    }
+    
+    private void createOrUpdateEvent(String eventId, DateTime timestamp, Boolean updateBursts) throws Exception {
         StudyActivityEventRequest request = new StudyActivityEventRequest()
                 .eventId(eventId).timestamp(timestamp);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, request, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, request, true, updateBursts).execute();
     }
     
     private void failToCreateOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
         StudyActivityEventRequest request = new StudyActivityEventRequest()
                 .eventId(eventId).timestamp(timestamp);
         try {
-            usersApi.createStudyActivityEvent(STUDY_ID_1, request, true).execute();
+            usersApi.createStudyActivityEvent(STUDY_ID_1, request, true, null).execute();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
             // this was expected.
