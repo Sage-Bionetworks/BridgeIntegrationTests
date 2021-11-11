@@ -76,7 +76,7 @@ public class StudyActivityEventTest {
         DateTime studyScopedTimestamp = DateTime.now(UTC);  
         StudyActivityEventRequest studyScopedRequest = new StudyActivityEventRequest()
             .eventId(EVENT_KEY1).timestamp(studyScopedTimestamp);
-        researchersApi.createStudyParticipantStudyActivityEvent(STUDY_ID_1, user.getUserId(), studyScopedRequest, true).execute();
+        researchersApi.createStudyParticipantStudyActivityEvent(STUDY_ID_1, user.getUserId(), studyScopedRequest, true, null).execute();
         
         ActivityEventList globalList = researchersApi.getActivityEventsForParticipant(user.getUserId()).execute().body();
         ActivityEvent globalEvent = findEventByKey(globalList, "custom:"+EVENT_KEY1);
@@ -102,7 +102,7 @@ public class StudyActivityEventTest {
         
         studyScopedTimestamp = studyScopedTimestamp.minusWeeks(2);
         studyScopedRequest = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(studyScopedTimestamp);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, studyScopedRequest, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, studyScopedRequest, true, null).execute();
 
         // user can see these events
         scopedList = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
@@ -131,20 +131,20 @@ public class StudyActivityEventTest {
 
         // Create event #1 which is mutable
         StudyActivityEventRequest req = new StudyActivityEventRequest().eventId(EVENT_KEY1).timestamp(now);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true, null).execute();
         
         StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(now, getTimestamp(list, EVENT_KEY1));
         
         // future time updates
         req = new StudyActivityEventRequest().eventId(EVENT_KEY1).timestamp(futureTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true, null).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(futureTime, getTimestamp(list, EVENT_KEY1));
 
         // past time updates
         req = new StudyActivityEventRequest().eventId(EVENT_KEY1).timestamp(pastTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true, null).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(pastTime, getTimestamp(list, EVENT_KEY1));
         
@@ -183,19 +183,19 @@ public class StudyActivityEventTest {
 
         // Create event #2 which is immutable.
         StudyActivityEventRequest req = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(now);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, true, null).execute();
         StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(now, getTimestamp(list, EVENT_KEY2));
 
         // past time won't update
         req = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(pastTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req, false).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, false, null).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list, EVENT_KEY2), now);
         
         // it'll even thrown an exception if you want it to
         try {
-            usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();
+            usersApi.createStudyActivityEvent(STUDY_ID_1, req, true, null).execute();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
             assertTrue(e.getMessage().contains("Study event(s) failed to publish: custom:event2."));
@@ -203,13 +203,13 @@ public class StudyActivityEventTest {
         
         // future time won't update
         req = new StudyActivityEventRequest().eventId(EVENT_KEY2).timestamp(futureTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req, false).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req, false, null).execute();
         list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list, EVENT_KEY2), now);
         
         // still can throw an exception
         try {
-            usersApi.createStudyActivityEvent(STUDY_ID_1, req, true).execute();    
+            usersApi.createStudyActivityEvent(STUDY_ID_1, req, true, null).execute();    
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
             assertTrue(e.getMessage().contains("Study event(s) failed to publish: custom:event2."));
@@ -243,26 +243,26 @@ public class StudyActivityEventTest {
         DateTime futureTime = DateTime.now(DateTimeZone.UTC).plusHours(2);
 
         StudyActivityEventRequest req3 = new StudyActivityEventRequest().eventId(EVENT_KEY3).timestamp(now);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true, null).execute();
         
         StudyActivityEventList list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(now, getTimestamp(list3, EVENT_KEY3));
         
         // future will update
         req3 = new StudyActivityEventRequest().eventId(EVENT_KEY3).timestamp(futureTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true, null).execute();
         list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list3, EVENT_KEY3), futureTime);
         
         // past will not update
         req3 = new StudyActivityEventRequest().eventId(EVENT_KEY3).timestamp(pastTime);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, false).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, req3, false, null).execute();
         list3 = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
         assertEquals(getTimestamp(list3, EVENT_KEY3), futureTime);
         
         // heck it'll throw an error if you want it to
         try {
-            usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true).execute();
+            usersApi.createStudyActivityEvent(STUDY_ID_1, req3, true, null).execute();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
             assertTrue(e.getMessage().contains("Study event(s) failed to publish: custom:event3."));
