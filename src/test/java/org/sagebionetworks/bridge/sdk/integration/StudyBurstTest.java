@@ -323,7 +323,7 @@ public class StudyBurstTest {
     
     private void createOrUpdateEvent(String eventId, DateTime timestamp, Boolean updateBursts) throws Exception {
         StudyActivityEventRequest request = new StudyActivityEventRequest()
-                .eventId(eventId).timestamp(timestamp);
+                .clientTimeZone("America/Los_Angeles").eventId(eventId).timestamp(timestamp);
         usersApi.createStudyActivityEvent(STUDY_ID_1, request, true, updateBursts).execute();
     }
     
