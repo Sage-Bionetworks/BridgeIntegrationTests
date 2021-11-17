@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import org.sagebionetworks.bridge.config.Config;
+import org.sagebionetworks.bridge.config.Environment;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
@@ -199,7 +200,12 @@ public class OAuthTest {
         SignIn signIn = new SignIn().appId(TEST_APP_ID).email(userEmail).password(userPassword);
         AuthenticationApi authApi = worker.getClient(AuthenticationApi.class);
         
-        UserSessionInfo session = RestUtils.signInWithSynapseDev(authApi, signIn);
+        UserSessionInfo session;
+        if (config.getEnvironment() == Environment.PROD) {
+            session = RestUtils.signInWithSynapse(authApi, signIn);
+        } else {
+            session = RestUtils.signInWithSynapseDev(authApi, signIn);
+        }
         
         assertEquals(session.getId(), worker.getSession().getId());
         assertEquals(session.getSynapseUserId(), worker.getSession().getSynapseUserId());
