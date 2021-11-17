@@ -88,7 +88,7 @@ public class StudyBurstTest {
         }
     }
     
-    private void setupSchedule(String originEventId, ActivityEventUpdateType burstUpdateType)
+    private void setupSchedule(String originEventId, ActivityEventUpdateType burstUpdateType, String delayPeriod)
             throws Exception {
         // clean up any schedule that is there
         try {
@@ -107,6 +107,7 @@ public class StudyBurstTest {
         StudyBurst burst = new StudyBurst()
                 .identifier("burst1")
                 .originEventId(originEventId)
+                .delay(delayPeriod)
                 .interval("P1D")
                 .occurrences(4)
                 .updateType(burstUpdateType);
@@ -135,8 +136,8 @@ public class StudyBurstTest {
     }
     
     @Test
-    public void studyBurstGeneratesEvents() throws Exception {
-        setupSchedule(MUTABLE_EVENT, MUTABLE);
+    public void studyBurstGeneratesEvents_noDelay() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE, null);
         
         // This should trigger the study burst. We should see those events in the map.
         DateTime timestamp1 = DateTime.now(UTC);
@@ -157,37 +158,37 @@ public class StudyBurstTest {
         assertEquals("01", burst1.getAnswerValue());
         assertEquals("custom:event1", burst1.getOriginEventId());
         assertEquals("burst1", burst1.getStudyBurstId());
-        assertEquals("P1D", burst1.getPeriodFromOrigin());
+        assertNull(burst1.getPeriodFromOrigin());
         assertEquals(burst1.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst1.getRecordCount());
-        assertEquals(timestamp1.plusDays(1), burst1.getTimestamp());
+        assertEquals(timestamp1, burst1.getTimestamp());
         
         StudyActivityEvent burst2 = findEventById(list, "study_burst:burst1:02");
         assertEquals("02", burst2.getAnswerValue());
         assertEquals("custom:event1", burst2.getOriginEventId());
         assertEquals("burst1", burst2.getStudyBurstId());
-        assertEquals("P2D", burst2.getPeriodFromOrigin());
+        assertEquals("P1D", burst2.getPeriodFromOrigin());
         assertEquals(burst2.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst2.getRecordCount());
-        assertEquals(timestamp1.plusDays(2), burst2.getTimestamp());
+        assertEquals(timestamp1.plusDays(1), burst2.getTimestamp());
         
         StudyActivityEvent burst3 = findEventById(list, "study_burst:burst1:03");
         assertEquals("03", burst3.getAnswerValue());
         assertEquals("custom:event1", burst3.getOriginEventId());
         assertEquals("burst1", burst3.getStudyBurstId());
-        assertEquals("P3D", burst3.getPeriodFromOrigin());
+        assertEquals("P2D", burst3.getPeriodFromOrigin());
         assertEquals(burst3.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst3.getRecordCount());
-        assertEquals(timestamp1.plusDays(3), burst3.getTimestamp());
+        assertEquals(timestamp1.plusDays(2), burst3.getTimestamp());
         
         StudyActivityEvent burst4 = findEventById(list, "study_burst:burst1:04");
         assertEquals("04", burst4.getAnswerValue());
         assertEquals("custom:event1", burst4.getOriginEventId());
         assertEquals("burst1", burst4.getStudyBurstId());
-        assertEquals("P4D", burst4.getPeriodFromOrigin());
+        assertEquals("P3D", burst4.getPeriodFromOrigin());
         assertEquals(burst4.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst4.getRecordCount());
-        assertEquals(timestamp1.plusDays(4), burst4.getTimestamp());
+        assertEquals(timestamp1.plusDays(3), burst4.getTimestamp());
         
         // Verify the “always added” events for this user, who was enrolled.
         StudyActivityEvent en = findEventById(list, "enrollment");
@@ -207,8 +208,27 @@ public class StudyBurstTest {
     }
     
     @Test
+    public void studyBurstGeneratesEvents_zeroDelay() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P0D");
+        
+        // This should trigger the study burst. We should see those events in the map.
+        DateTime timestamp1 = DateTime.now(UTC);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, null);
+
+        StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
+
+        StudyActivityEvent burst1 = findEventById(list, "study_burst:burst1:01");
+        assertEquals("01", burst1.getAnswerValue());
+        assertEquals("custom:event1", burst1.getOriginEventId());
+        assertEquals("burst1", burst1.getStudyBurstId());
+        assertEquals("PT0S", burst1.getPeriodFromOrigin());
+        assertEquals(burst1.getClientTimeZone(), "America/Los_Angeles");
+        assertEquals(Integer.valueOf(1), burst1.getRecordCount());
+        assertEquals(timestamp1, burst1.getTimestamp());
+    }
+    @Test
     public void mutableOriginEventMutableStudyBurst() throws Exception {
-        setupSchedule(MUTABLE_EVENT, MUTABLE);
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
@@ -230,7 +250,7 @@ public class StudyBurstTest {
     
     @Test
     public void mutableOriginEventImmutableStudyBurst() throws Exception {
-        setupSchedule(MUTABLE_EVENT, IMMUTABLE);
+        setupSchedule(MUTABLE_EVENT, IMMUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
@@ -252,7 +272,7 @@ public class StudyBurstTest {
     
     @Test
     public void immutableOriginEventMutableStudyBurst() throws Exception {
-        setupSchedule(IMMUTABLE_EVENT, MUTABLE);
+        setupSchedule(IMMUTABLE_EVENT, MUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
@@ -274,7 +294,7 @@ public class StudyBurstTest {
     
     @Test
     public void immutableOriginEventImmutableStudyBurst() throws Exception {
-        setupSchedule(IMMUTABLE_EVENT, IMMUTABLE);
+        setupSchedule(IMMUTABLE_EVENT, IMMUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
@@ -296,7 +316,7 @@ public class StudyBurstTest {
     
     @Test
     public void verifyStudyBurstDependencies() throws Exception {
-        setupSchedule(MUTABLE_EVENT, MUTABLE);
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
