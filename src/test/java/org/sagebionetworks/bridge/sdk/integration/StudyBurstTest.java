@@ -217,6 +217,7 @@ public class StudyBurstTest {
             assertTrue(e.getMessage().contains("studyBursts[0].delay cannot be of no duration"));
         }
     }
+
     @Test
     public void mutableOriginEventMutableStudyBurst() throws Exception {
         setupSchedule(MUTABLE_EVENT, MUTABLE, "P1D");
