@@ -22,6 +22,7 @@ import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
@@ -209,22 +210,12 @@ public class StudyBurstTest {
     
     @Test
     public void studyBurstGeneratesEvents_zeroDelay() throws Exception {
-        setupSchedule(MUTABLE_EVENT, MUTABLE, "P0D");
-        
-        // This should trigger the study burst. We should see those events in the map.
-        DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, null);
-
-        StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
-
-        StudyActivityEvent burst1 = findEventById(list, "study_burst:burst1:01");
-        assertEquals("01", burst1.getAnswerValue());
-        assertEquals("custom:event1", burst1.getOriginEventId());
-        assertEquals("burst1", burst1.getStudyBurstId());
-        assertEquals("PT0S", burst1.getPeriodFromOrigin());
-        assertEquals(burst1.getClientTimeZone(), "America/Los_Angeles");
-        assertEquals(Integer.valueOf(1), burst1.getRecordCount());
-        assertEquals(timestamp1, burst1.getTimestamp());
+        try {
+            setupSchedule(MUTABLE_EVENT, MUTABLE, "P0D");    
+            fail("Should have thrown exception");
+        } catch(InvalidEntityException e) {
+            assertTrue(e.getMessage().contains("studyBursts[0].delay cannot be of no duration"));
+        }
     }
     @Test
     public void mutableOriginEventMutableStudyBurst() throws Exception {
