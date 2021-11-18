@@ -11,7 +11,6 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
-import java.math.BigDecimal;
 import java.util.Set;
 
 import org.joda.time.DateTime;
@@ -339,7 +338,7 @@ public class StudyBurstTest {
     
     @Test
     public void studyBurstsAppearCorrectlyInTimeline() throws Exception {
-        setupSchedule(MUTABLE_EVENT, MUTABLE, "P1D");
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P2D");
         
         designerSchedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
         
@@ -364,6 +363,7 @@ public class StudyBurstTest {
         assertEquals(1, timeline.getStudyBursts().size());
         StudyBurstInfo info = timeline.getStudyBursts().get(0);
         assertEquals("burst1", info.getIdentifier());
+        assertEquals("P2D", info.getDelay());
         assertEquals("P1D", info.getInterval());
         assertEquals(Integer.valueOf(4), info.getOccurrences());
     }
