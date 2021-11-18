@@ -28,12 +28,15 @@ import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
+import org.sagebionetworks.bridge.rest.model.StudyBurstInfo;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
+import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
@@ -331,6 +334,38 @@ public class StudyBurstTest {
         assertFalse(eventIds.contains("study_burst:burst1:02"));
         assertFalse(eventIds.contains("study_burst:burst1:03"));
         assertFalse(eventIds.contains("study_burst:burst1:04"));
+    }
+    
+    @Test
+    public void studyBurstsAppearCorrectlyInTimeline() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P2D");
+        
+        designerSchedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+        
+        Timeline timeline = designerSchedulesApi.getTimelineForStudy(STUDY_ID_1).execute().body();
+        
+        ScheduledSession schSession = timeline.getSchedule().get(1);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(1), schSession.getStudyBurstNum());
+        
+        schSession = timeline.getSchedule().get(2);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(2), schSession.getStudyBurstNum());
+
+        schSession = timeline.getSchedule().get(3);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(3), schSession.getStudyBurstNum());
+        
+        schSession = timeline.getSchedule().get(4);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(4), schSession.getStudyBurstNum());
+        
+        assertEquals(1, timeline.getStudyBursts().size());
+        StudyBurstInfo info = timeline.getStudyBursts().get(0);
+        assertEquals("burst1", info.getIdentifier());
+        assertEquals("P2D", info.getDelay());
+        assertEquals("P1D", info.getInterval());
+        assertEquals(Integer.valueOf(4), info.getOccurrences());
     }
     
     private void createOrUpdateEvent(String eventId, DateTime timestamp, Boolean updateBursts) throws Exception {
