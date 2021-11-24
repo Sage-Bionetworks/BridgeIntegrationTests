@@ -62,9 +62,7 @@ public class AccountSummarySearchTest {
     private static final List<String> TAGGED_USER_GROUPS = ImmutableList.of("sdk-int-1", "group1");
     private static final List<String> FRENCH_USER_GROUPS = ImmutableList.of("sdk-int-1");
     
-    private static final List<String> POST_TEST_USER_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
     private static final List<String> POST_TAGGED_USER_GROUPS = ImmutableList.of("test_user", "sdk-int-1", "group1");
-    private static final List<String> POST_FRENCH_USER_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
     
     private static String emailPrefix;
     private static TestUser testUser;
