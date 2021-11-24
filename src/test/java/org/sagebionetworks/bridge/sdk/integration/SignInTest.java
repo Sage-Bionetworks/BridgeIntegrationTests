@@ -10,6 +10,7 @@ import static org.sagebionetworks.bridge.rest.model.SharingScope.ALL_QUALIFIED_R
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -75,7 +76,7 @@ public class SignInTest {
 
     @Test
     public void canGetDataGroups() throws Exception {
-        List<String> dataGroups = Lists.newArrayList("sdk-int-1");
+        List<String> dataGroups = ImmutableList.of("sdk-int-1");
         
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
 
@@ -88,14 +89,14 @@ public class SignInTest {
         user.signInAgain();
         
         UserSessionInfo session = user.getSession();
-        assertEquals(dataGroups, session.getDataGroups());
+        assertEquals(ImmutableList.of("test_user", "sdk-int-1"), session.getDataGroups());
     }
     
     @Test
     public void createComplexUser() throws Exception {
         AuthenticationApi authApi = researcher.getClient(AuthenticationApi.class);
         
-        String externalId = Tests.randomIdentifier(SignInTest.class);
+        String externalId = Tests.randomIdentifier(getClass());
         
         Map<String,String> map = Maps.newHashMap();
         map.put("can_be_recontacted", "true");
@@ -140,7 +141,7 @@ public class SignInTest {
         assertEquals(signUp.getEmail(), retrieved.getEmail());
         assertEquals(SharingScope.ALL_QUALIFIED_RESEARCHERS, retrieved.getSharingScope());
         assertTrue(retrieved.isNotifyByEmail());
-        assertEquals(Lists.newArrayList("group1"), retrieved.getDataGroups());
+        assertEquals(Lists.newArrayList("test_user", "group1"), retrieved.getDataGroups());
         assertEquals(Lists.newArrayList("en"), retrieved.getLanguages());
         assertEquals("true", retrieved.getAttributes().get("can_be_recontacted"));
         

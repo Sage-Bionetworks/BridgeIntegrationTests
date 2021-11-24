@@ -126,7 +126,7 @@ public class WorkerApiTest {
     @SuppressWarnings("deprecation")
     @Test
     public void retrieveUsers() throws Exception {
-        String externalId = Tests.randomIdentifier(WorkerApiTest.class);
+        String externalId = Tests.randomIdentifier(getClass());
         
         user = new TestUserHelper.Builder(WorkerApiTest.class).withConsentUser(true)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_1, externalId)).withSynapseUserId(SYNAPSE_USER_ID).createAndSignInUser();

@@ -20,7 +20,6 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,10 +58,14 @@ import com.google.common.collect.Sets;
 
 public class AccountSummarySearchTest {
 
-    private static final ArrayList<String> TEST_USER_GROUPS = Lists.newArrayList("test_user", "sdk-int-1");
-    private static final ArrayList<String> TAGGED_USER_GROUPS = Lists.newArrayList("group1", "sdk-int-1");
-    private static final ArrayList<String> FRENCH_USER_GROUPS = Lists.newArrayList("sdk-int-1");
-
+    private static final List<String> TEST_USER_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
+    private static final List<String> TAGGED_USER_GROUPS = ImmutableList.of("sdk-int-1", "group1");
+    private static final List<String> FRENCH_USER_GROUPS = ImmutableList.of("sdk-int-1");
+    
+    private static final List<String> POST_TEST_USER_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
+    private static final List<String> POST_TAGGED_USER_GROUPS = ImmutableList.of("test_user", "sdk-int-1", "group1");
+    private static final List<String> POST_FRENCH_USER_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
+    
     private static String emailPrefix;
     private static TestUser testUser;
     private static TestUser taggedUser;
@@ -350,7 +353,7 @@ public class AccountSummarySearchTest {
         assertEquals(taggedUser.getEmail(), summary.getEmail());
         assertEquals(taggedUser.getUserId(), summary.getId());
         assertEquals(AccountStatus.ENABLED, summary.getStatus());
-        assertEquals(ImmutableSet.copyOf(TAGGED_USER_GROUPS), ImmutableSet.copyOf(summary.getDataGroups()));
+        assertEquals(POST_TAGGED_USER_GROUPS, summary.getDataGroups());
     }
     
     // These depend on the collection of enrollment records, so we particularly want to test

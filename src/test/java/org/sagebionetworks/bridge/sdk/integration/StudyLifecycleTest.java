@@ -149,7 +149,7 @@ public class StudyLifecycleTest {
     }
 
     protected String createStudy(StudiesApi coordinatorApi) throws IOException {
-        String id = Tests.randomIdentifier(StudyLifecycleTest.class);
+        String id = Tests.randomIdentifier(getClass());
         studiesToDelete.add(id);
         Study study = new Study().identifier(id).name("StudyLifecycleTest");
         coordinatorApi.createStudy(study).execute();

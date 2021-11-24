@@ -248,7 +248,7 @@ public class AppConfigTest {
         FileReference fileRef = new FileReference().guid(revision.getFileGuid()).createdOn(revision.getCreatedOn());
         
         Survey survey = TestSurvey.getSurvey(AppConfigTest.class);
-        survey.setIdentifier(Tests.randomIdentifier(this.getClass()));
+        survey.setIdentifier(Tests.randomIdentifier(getClass()));
         surveyKeys = surveysApi.createSurvey(survey).execute().body();
         surveysApi.publishSurvey(surveyKeys.getGuid(), surveyKeys.getCreatedOn(), false).execute();
         
@@ -275,7 +275,7 @@ public class AppConfigTest {
         criteria.setMaxAppVersions(ImmutableMap.of("Android", 10));
         
         AppConfig appConfig = new AppConfig();
-        appConfig.label(Tests.randomIdentifier(AppConfigTest.class));
+        appConfig.label(Tests.randomIdentifier(getClass()));
         appConfig.clientData(participant);
         appConfig.criteria(criteria);
         appConfig.surveyReferences(ImmutableList.of(surveyRef1));
@@ -427,7 +427,7 @@ public class AppConfigTest {
     @Test
     public void canPhysicallyDeleteLogicallyDeletedAppConfig() throws Exception {
         AppConfig appConfig = new AppConfig();
-        appConfig.setLabel(Tests.randomIdentifier(AppConfigTest.class));
+        appConfig.setLabel(Tests.randomIdentifier(getClass()));
         appConfig.setCriteria(new Criteria());
         
         GuidVersionHolder keys = appConfigsApi.createAppConfig(appConfig).execute().body();
@@ -454,7 +454,7 @@ public class AppConfigTest {
                 .sdkName(developer.getClientManager().getClientInfo().getSdkName())
                 .sdkVersion(developer.getClientManager().getClientInfo().getSdkVersion()));
         
-        String elementId = Tests.randomIdentifier(AppConfigTest.class);
+        String elementId = Tests.randomIdentifier(getClass());
         // Create an app config element
         element = new AppConfigElement().id(elementId).revision(1L).data(Tests.getSimpleSchedulePlan());
         

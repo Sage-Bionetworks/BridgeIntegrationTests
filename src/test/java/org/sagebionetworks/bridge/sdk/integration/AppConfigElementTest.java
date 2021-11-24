@@ -36,8 +36,8 @@ public class AppConfigElementTest {
     public void before() throws IOException {
         developer = TestUserHelper.createAndSignInUser(AppConfigElementTest.class, false, Role.DEVELOPER);
         admin = TestUserHelper.getSignedInAdmin();
-        id = Tests.randomIdentifier(AppConfigElementTest.class);
-        id2 = Tests.randomIdentifier(AppConfigElementTest.class);
+        id = Tests.randomIdentifier(getClass());
+        id2 = Tests.randomIdentifier(getClass());
         adminConfigsApi = admin.getClient(AppConfigsApi.class);
     }
 

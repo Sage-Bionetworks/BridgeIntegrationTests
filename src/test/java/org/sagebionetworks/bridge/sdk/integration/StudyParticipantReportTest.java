@@ -19,15 +19,19 @@ import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
+import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.ForwardCursorReportDataList;
 import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.ReportIndex;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
@@ -49,6 +53,8 @@ public class StudyParticipantReportTest {
     private ForConsentedUsersApi userApi;
     private ForStudyCoordinatorsApi coordApi;
     private ForStudyDesignersApi designerApi;
+    
+    private String studyId;
 
     @Before
     public void before() throws Exception {
@@ -77,6 +83,10 @@ public class StudyParticipantReportTest {
         }
         if (studyCoordinator != null) {
             studyCoordinator.signOutAndDeleteUser();
+        }
+        if (studyId != null) {
+            TestUser admin = TestUserHelper.getSignedInAdmin();
+            admin.getClient(ForAdminsApi.class).deleteStudy(studyId, true).execute();
         }
     }
     
@@ -129,28 +139,41 @@ public class StudyParticipantReportTest {
 
     @Test
     public void studyDesignerCannotWorkWithProductionReports() throws Exception {
-        user = createAndSignInUser(getClass(), true);
+        // Creating a non-design study to test non-test user account behavior
+        // Create a study that is not in design so this test doesn't fail on the
+        // enforced "test_user" flag.
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+
+        String studyId = Tests.randomIdentifier(getClass());
+        Study study = new Study().identifier(studyId).name("Study " + studyId);
+        studiesApi.createStudy(study).execute().body();
+        studiesApi.transitionStudyToRecruitment(studyId).execute();
+        
+        user = createAndSignInUser(getClass(), false);
+        studiesApi.enrollParticipant(studyId, new Enrollment().userId(user.getUserId())).execute();
+        
         studyDesigner = createAndSignInUser(getClass(), false, STUDY_DESIGNER);
         designerApi = studyDesigner.getClient(ForStudyDesignersApi.class);
         
         try {
-            designerApi.saveStudyParticipantReportRecord(STUDY_ID_1, user.getUserId(), reportId, DATA_1).execute();
+            designerApi.saveStudyParticipantReportRecord(studyId, user.getUserId(), reportId, DATA_1).execute();
             fail("Should have thrown exception");
         } catch(EntityNotFoundException e) {
         }
         try {
-            designerApi.getStudyParticipantReport(STUDY_ID_1, user.getUserId(), reportId, 
+            designerApi.getStudyParticipantReport(studyId, user.getUserId(), reportId, 
                     START_TIMESTAMP, END_TIMESTAMP, null, null).execute().body();
             fail("Should have thrown exception");
         } catch(EntityNotFoundException e) {
         }
         try {
-            designerApi.deleteStudyParticipantReport(STUDY_ID_1, user.getUserId(), reportId).execute();
+            designerApi.deleteStudyParticipantReport(studyId, user.getUserId(), reportId).execute();
             fail("Should have thrown exception");
         } catch(EntityNotFoundException e) {
         }
         try {
-            designerApi.deleteStudyParticipantReportIndex(STUDY_ID_1, reportId).execute().body();
+            designerApi.deleteStudyParticipantReportIndex(studyId, reportId).execute().body();
             fail("Should have thrown exception");
         } catch(EntityNotFoundException e) {
         }

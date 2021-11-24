@@ -38,7 +38,7 @@ public class OrgMembershipTest {
         orgAdmin = TestUserHelper.createAndSignInUser(OrgMembershipTest.class, false, ORG_ADMIN);
 
         OrganizationsApi orgApi = admin.getClient(OrganizationsApi.class);
-        orgId = Tests.randomIdentifier(OrgMembershipTest.class);
+        orgId = Tests.randomIdentifier(getClass());
         Organization org = new Organization();
         org.setIdentifier(orgId);
         org.setName(orgId);
