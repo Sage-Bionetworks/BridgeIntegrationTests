@@ -1,5 +1,6 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static java.util.stream.Collectors.toSet;
 import static org.joda.time.DateTimeZone.UTC;
 import static org.junit.Assert.*;
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
@@ -10,6 +11,8 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
+import java.util.Set;
+
 import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Before;
@@ -19,17 +22,21 @@ import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
+import org.sagebionetworks.bridge.rest.model.StudyBurstInfo;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
+import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
@@ -85,7 +92,7 @@ public class StudyBurstTest {
         }
     }
     
-    private void setupSchedule(String originEventId, ActivityEventUpdateType burstUpdateType)
+    private void setupSchedule(String originEventId, ActivityEventUpdateType burstUpdateType, String delayPeriod)
             throws Exception {
         // clean up any schedule that is there
         try {
@@ -104,6 +111,7 @@ public class StudyBurstTest {
         StudyBurst burst = new StudyBurst()
                 .identifier("burst1")
                 .originEventId(originEventId)
+                .delay(delayPeriod)
                 .interval("P1D")
                 .occurrences(4)
                 .updateType(burstUpdateType);
@@ -132,12 +140,12 @@ public class StudyBurstTest {
     }
     
     @Test
-    public void studyBurstGeneratesEvents() throws Exception {
-        setupSchedule(MUTABLE_EVENT, MUTABLE);
+    public void studyBurstGeneratesEvents_noDelay() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE, null);
         
         // This should trigger the study burst. We should see those events in the map.
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, null);
 
         StudyActivityEventList list = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
 
@@ -154,37 +162,37 @@ public class StudyBurstTest {
         assertEquals("01", burst1.getAnswerValue());
         assertEquals("custom:event1", burst1.getOriginEventId());
         assertEquals("burst1", burst1.getStudyBurstId());
-        assertEquals("P1D", burst1.getPeriodFromOrigin());
+        assertNull(burst1.getPeriodFromOrigin());
         assertEquals(burst1.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst1.getRecordCount());
-        assertEquals(timestamp1.plusDays(1), burst1.getTimestamp());
+        assertEquals(timestamp1, burst1.getTimestamp());
         
         StudyActivityEvent burst2 = findEventById(list, "study_burst:burst1:02");
         assertEquals("02", burst2.getAnswerValue());
         assertEquals("custom:event1", burst2.getOriginEventId());
         assertEquals("burst1", burst2.getStudyBurstId());
-        assertEquals("P2D", burst2.getPeriodFromOrigin());
+        assertEquals("P1D", burst2.getPeriodFromOrigin());
         assertEquals(burst2.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst2.getRecordCount());
-        assertEquals(timestamp1.plusDays(2), burst2.getTimestamp());
+        assertEquals(timestamp1.plusDays(1), burst2.getTimestamp());
         
         StudyActivityEvent burst3 = findEventById(list, "study_burst:burst1:03");
         assertEquals("03", burst3.getAnswerValue());
         assertEquals("custom:event1", burst3.getOriginEventId());
         assertEquals("burst1", burst3.getStudyBurstId());
-        assertEquals("P3D", burst3.getPeriodFromOrigin());
+        assertEquals("P2D", burst3.getPeriodFromOrigin());
         assertEquals(burst3.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst3.getRecordCount());
-        assertEquals(timestamp1.plusDays(3), burst3.getTimestamp());
+        assertEquals(timestamp1.plusDays(2), burst3.getTimestamp());
         
         StudyActivityEvent burst4 = findEventById(list, "study_burst:burst1:04");
         assertEquals("04", burst4.getAnswerValue());
         assertEquals("custom:event1", burst4.getOriginEventId());
         assertEquals("burst1", burst4.getStudyBurstId());
-        assertEquals("P4D", burst4.getPeriodFromOrigin());
+        assertEquals("P3D", burst4.getPeriodFromOrigin());
         assertEquals(burst4.getClientTimeZone(), "America/Los_Angeles");
         assertEquals(Integer.valueOf(1), burst4.getRecordCount());
-        assertEquals(timestamp1.plusDays(4), burst4.getTimestamp());
+        assertEquals(timestamp1.plusDays(3), burst4.getTimestamp());
         
         // Verify the “always added” events for this user, who was enrolled.
         StudyActivityEvent en = findEventById(list, "enrollment");
@@ -204,34 +212,44 @@ public class StudyBurstTest {
     }
     
     @Test
+    public void studyBurstGeneratesEvents_zeroDelay() throws Exception {
+        try {
+            setupSchedule(MUTABLE_EVENT, MUTABLE, "P0D");    
+            fail("Should have thrown exception");
+        } catch(InvalidEntityException e) {
+            assertTrue(e.getMessage().contains("studyBursts[0].delay cannot be of no duration"));
+        }
+    }
+
+    @Test
     public void mutableOriginEventMutableStudyBurst() throws Exception {
-        setupSchedule(MUTABLE_EVENT, MUTABLE);
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it works
-        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
+        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10), null);
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(10));
         // Try deleting one of these study burst events, it works
         assertEventTimestampDelete("study_burst:burst1:02", true);
         
         // Update the original mutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp2);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp2, null);
         // All the study burst events should be changed in line with the new timestamp
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp2, timestamp2);
     }
     
     @Test
     public void mutableOriginEventImmutableStudyBurst() throws Exception {
-        setupSchedule(MUTABLE_EVENT, IMMUTABLE);
+        setupSchedule(MUTABLE_EVENT, IMMUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(MUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it does not work
@@ -249,15 +267,15 @@ public class StudyBurstTest {
     
     @Test
     public void immutableOriginEventMutableStudyBurst() throws Exception {
-        setupSchedule(IMMUTABLE_EVENT, MUTABLE);
+        setupSchedule(IMMUTABLE_EVENT, MUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it works
-        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10));
+        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10), null);
         assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(10));
         // Try deleting one of these study burst events, it works
         assertEventTimestampDelete("study_burst:burst1:02", true);
@@ -271,11 +289,11 @@ public class StudyBurstTest {
     
     @Test
     public void immutableOriginEventImmutableStudyBurst() throws Exception {
-        setupSchedule(IMMUTABLE_EVENT, IMMUTABLE);
+        setupSchedule(IMMUTABLE_EVENT, IMMUTABLE, "P1D");
         
         // Now submit that event
         DateTime timestamp1 = DateTime.now(UTC);
-        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1);
+        createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
         // Try changing one of these events, it doesn't work
@@ -291,17 +309,76 @@ public class StudyBurstTest {
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
     }
     
-    private void createOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
+    @Test
+    public void verifyStudyBurstDependencies() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P1D");
+        
+        // Now submit that event
+        DateTime timestamp1 = DateTime.now(UTC);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp1, false);
+        // Verify the follow-on events were created
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp1, timestamp1);
+        
+        // Update the original mutable event
+        DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
+        createOrUpdateEvent(MUTABLE_EVENT, timestamp2, false);
+        // The study burst event should *not* be changed
+        verifyTimestampsStartFrom(MUTABLE_EVENT, timestamp2, timestamp1);
+        
+        // delete the origin event, the study burst events are also deleted
+        assertEventTimestampDelete(MUTABLE_EVENT, true);
+        
+        Set<String> eventIds = usersApi.getStudyActivityEvents(STUDY_ID_1).execute().body()
+                .getItems().stream().map(StudyActivityEvent::getEventId).collect(toSet());
+        assertFalse(eventIds.contains("study_burst:burst1:01"));
+        assertFalse(eventIds.contains("study_burst:burst1:02"));
+        assertFalse(eventIds.contains("study_burst:burst1:03"));
+        assertFalse(eventIds.contains("study_burst:burst1:04"));
+    }
+    
+    @Test
+    public void studyBurstsAppearCorrectlyInTimeline() throws Exception {
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P2D");
+        
+        designerSchedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+        
+        Timeline timeline = designerSchedulesApi.getTimelineForStudy(STUDY_ID_1).execute().body();
+        
+        ScheduledSession schSession = timeline.getSchedule().get(1);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(1), schSession.getStudyBurstNum());
+        
+        schSession = timeline.getSchedule().get(2);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(2), schSession.getStudyBurstNum());
+
+        schSession = timeline.getSchedule().get(3);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(3), schSession.getStudyBurstNum());
+        
+        schSession = timeline.getSchedule().get(4);
+        assertEquals("burst1", schSession.getStudyBurstId());
+        assertEquals(Integer.valueOf(4), schSession.getStudyBurstNum());
+        
+        assertEquals(1, timeline.getStudyBursts().size());
+        StudyBurstInfo info = timeline.getStudyBursts().get(0);
+        assertEquals("burst1", info.getIdentifier());
+        assertEquals("P2D", info.getDelay());
+        assertEquals("P1D", info.getInterval());
+        assertEquals(Integer.valueOf(4), info.getOccurrences());
+    }
+    
+    private void createOrUpdateEvent(String eventId, DateTime timestamp, Boolean updateBursts) throws Exception {
         StudyActivityEventRequest request = new StudyActivityEventRequest()
                 .clientTimeZone("America/Los_Angeles").eventId(eventId).timestamp(timestamp);
-        usersApi.createStudyActivityEvent(STUDY_ID_1, request, true).execute();
+        usersApi.createStudyActivityEvent(STUDY_ID_1, request, true, updateBursts).execute();
     }
     
     private void failToCreateOrUpdateEvent(String eventId, DateTime timestamp) throws Exception {
         StudyActivityEventRequest request = new StudyActivityEventRequest()
                 .eventId(eventId).timestamp(timestamp);
         try {
-            usersApi.createStudyActivityEvent(STUDY_ID_1, request, true).execute();
+            usersApi.createStudyActivityEvent(STUDY_ID_1, request, true, null).execute();
             fail("Should have thrown exception");
         } catch(BadRequestException e) {
             // this was expected.
