@@ -40,12 +40,6 @@ public class IntentToParticipateTest {
         admin = TestUserHelper.getSignedInAdmin();
         researcher = TestUserHelper.createAndSignInUser(IntentToParticipateTest.class, false, Role.RESEARCHER);
         IntegTestUtils.deletePhoneUser();
-
-        // Add dummy install link to trigger Intent SMS.
-        ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
-        App app = superadminApi.getApp(TEST_APP_ID).execute().body();
-        app.setInstallLinks(ImmutableMap.of("Universal", "http://example.com/"));
-        superadminApi.updateApp(app.getIdentifier(), app).execute();
     }
     
     @After

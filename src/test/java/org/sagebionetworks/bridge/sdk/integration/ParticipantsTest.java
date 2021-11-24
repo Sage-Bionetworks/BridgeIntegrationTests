@@ -37,6 +37,7 @@ import com.google.common.collect.Lists;
 import retrofit2.Response;
 
 import org.sagebionetworks.bridge.rest.RestUtils;
+import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
@@ -809,6 +810,7 @@ public class ParticipantsTest {
     
     @Test
     public void installLinkWorks() throws Exception {
+        // Execute test.
         emailUser = TestUserHelper.createAndSignInUser(ParticipantsTest.class, true);
         
         Response<Message> response = researcher.getClient(ForResearchersApi.class)

@@ -16,12 +16,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
@@ -29,6 +31,7 @@ import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.SubpopulationsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.SignIn;
@@ -150,7 +153,13 @@ public class InitListener extends RunListener {
         if (!SAGE_ID.equals(admin.getSession().getOrgMembership())) {
             admin.getClient(ForOrgAdminsApi.class).addMember(SAGE_ID, admin.getUserId()).execute();
         }
-        
+
+        // Add dummy install link.
+        ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
+        App app = superadminApi.getApp(TEST_APP_ID).execute().body();
+        app.setInstallLinks(ImmutableMap.of("Universal", "http://example.com/"));
+        superadminApi.updateApp(app.getIdentifier(), app).execute();
+
         admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(SHARED_APP_ID)).execute();
         
         try {
@@ -163,7 +172,6 @@ public class InitListener extends RunListener {
         } finally {
             admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(TEST_APP_ID)).execute();
         }
-        
 
         testRunInitialized = true;
     }
