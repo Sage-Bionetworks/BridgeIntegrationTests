@@ -145,7 +145,7 @@ public class StudyParticipantReportTest {
         TestUser admin = TestUserHelper.getSignedInAdmin();
         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
 
-        String studyId = Tests.randomIdentifier(getClass());
+        studyId = Tests.randomIdentifier(getClass());
         Study study = new Study().identifier(studyId).name("Study " + studyId);
         studiesApi.createStudy(study).execute().body();
         studiesApi.transitionStudyToRecruitment(studyId).execute();
