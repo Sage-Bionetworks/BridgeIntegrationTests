@@ -106,7 +106,7 @@ public class OrganizationTest {
     public void test() throws Exception {
         OrganizationsApi orgApi = admin.getClient(OrganizationsApi.class);
         
-        orgId1 = Tests.randomIdentifier(OrganizationTest.class);
+        orgId1 = Tests.randomIdentifier(getClass());
 
         Organization newOrg = new Organization();
         newOrg.setIdentifier(orgId1);
@@ -165,13 +165,13 @@ public class OrganizationTest {
         // Create an organization
         OrganizationsApi superadminOrgApi = admin.getClient(OrganizationsApi.class);
         
-        orgId1 = Tests.randomIdentifier(OrganizationTest.class);
+        orgId1 = Tests.randomIdentifier(getClass());
         Organization newOrg1 = new Organization();
         newOrg1.setIdentifier(orgId1);
         newOrg1.setName("Test Org 1");
         org1 = superadminOrgApi.createOrganization(newOrg1).execute().body();
         
-        orgId2 = Tests.randomIdentifier(OrganizationTest.class);
+        orgId2 = Tests.randomIdentifier(getClass());
         Organization newOrg2 = new Organization();
         newOrg2.setIdentifier(orgId2);
         newOrg2.setName("Test Org 2");
@@ -270,7 +270,7 @@ public class OrganizationTest {
     public void testDeleteWithAssessment() throws IOException {
         // Create an organization
         OrganizationsApi orgApi = admin.getClient(OrganizationsApi.class);
-        orgId3 = Tests.randomIdentifier(OrganizationTest.class);
+        orgId3 = Tests.randomIdentifier(getClass());
         org3 = new Organization();
         org3.setIdentifier(orgId3);
         org3.setName("Test Name");

@@ -88,7 +88,7 @@ public class SubpopulationTest {
 
         // Create a study, if needed
         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
-        String studyId = Tests.randomIdentifier(SubpopulationTest.class);
+        String studyId = Tests.randomIdentifier(getClass());
         study = new Study().identifier(studyId).name("Study " + studyId);
         studiesApi.createStudy(study).execute().body();
         List<String> studyIds = ImmutableList.of(study.getIdentifier());

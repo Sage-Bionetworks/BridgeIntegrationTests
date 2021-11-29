@@ -107,7 +107,7 @@ public class CRCTest {
             appsApi.updateUsersApp(app).execute();
         }
         // Create an account that is a system account and the target user account
-        String password = Tests.randomIdentifier(CRCTest.class);
+        String password = Tests.randomIdentifier(getClass());
         user = new TestUserHelper.Builder(CRCTest.class)
                 .withConsentUser(true)
                 .withSetPassword(false)

@@ -29,6 +29,7 @@ import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
@@ -44,6 +45,7 @@ import org.sagebionetworks.bridge.rest.model.Phone;
 import org.sagebionetworks.bridge.rest.model.RequestInfo;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
@@ -60,7 +62,9 @@ public class AccountsTest {
     private String orgId;
     private String phoneUserId;
     private String emailUserId;
+    private String studyId;
     private ForOrgAdminsApi orgAdminApi;
+    
 
     @Before
     public void before() throws Exception {
@@ -99,6 +103,9 @@ public class AccountsTest {
         }
         if (emailUserId != null) {
             admin.getClient(ForAdminsApi.class).deleteUser(emailUserId).execute();
+        }
+        if (studyId != null) {
+            admin.getClient(ForAdminsApi.class).deleteStudy(studyId, true).execute();
         }
     }
     
@@ -307,13 +314,20 @@ public class AccountsTest {
 
     @Test
     public void cannotDeleteUsedAccount() throws Exception {
+        // Create a study that is not in design so this test doesn't fail on the enforced 
+        // "test_user" flag.
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+        
+        studyId = Tests.randomIdentifier(getClass());
+        Study study = new Study().identifier(studyId).name("Study " + studyId);
+        studiesApi.createStudy(study).execute().body();
+        studiesApi.transitionStudyToRecruitment(studyId).execute();
+        
         String externalId = IntegTestUtils.makeEmail(AccountsTest.class).split("@")[0];
-        SignUp signUp = new SignUp()
-                .externalIds(ImmutableMap.of(STUDY_ID_1, externalId))
-                .password(PASSWORD);
+        SignUp signUp = new SignUp().password(PASSWORD).externalIds(ImmutableMap.of(studyId, externalId));
         
         StudyParticipantsApi coordParticipantApi = studyCoordinator.getClient(StudyParticipantsApi.class);
-        IdentifierHolder idHolder = coordParticipantApi.createStudyParticipant(STUDY_ID_1, signUp).execute().body();
+        IdentifierHolder idHolder = coordParticipantApi.createStudyParticipant(studyId, signUp).execute().body();
         
         try {
             SignIn signIn = new SignIn().appId(TEST_APP_ID).externalId(externalId).password(PASSWORD);
@@ -322,7 +336,7 @@ public class AccountsTest {
             
         }
         try {
-            coordParticipantApi.deleteStudyParticipant(STUDY_ID_1, idHolder.getIdentifier()).execute();
+            coordParticipantApi.deleteStudyParticipant(studyId, idHolder.getIdentifier()).execute();
             fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
             assertEquals("Account is not a test account or it is already in use.", e.getMessage());

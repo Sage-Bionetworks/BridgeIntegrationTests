@@ -228,7 +228,7 @@ public class AuthenticationTest {
     
     @Test
     public void accountWithOneAppSeparateFromAccountWithSecondApp() throws IOException {
-        String appId = Tests.randomIdentifier(AuthenticationTest.class);
+        String appId = Tests.randomIdentifier(getClass());
         try {
             testUser.signInAgain();
 

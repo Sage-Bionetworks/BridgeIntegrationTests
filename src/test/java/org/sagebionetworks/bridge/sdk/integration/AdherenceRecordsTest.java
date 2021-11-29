@@ -111,8 +111,8 @@ public class AdherenceRecordsTest {
             admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
         }        
         
-        asmtATag = Tests.randomIdentifier(AdherenceRecordsTest.class);
-        asmtBTag = Tests.randomIdentifier(AdherenceRecordsTest.class);
+        asmtATag = Tests.randomIdentifier(getClass());
+        asmtBTag = Tests.randomIdentifier(getClass());
         
         assessmentA = new Assessment()
                 .identifier(asmtATag)

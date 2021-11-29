@@ -123,7 +123,7 @@ public class ScheduledActivityTest {
         usersApi = user.getClient(ForConsentedUsersApi.class);
 
         // Run ID is a random string, used to uniquely identify schedules for this test.
-        runId = Tests.randomIdentifier(ScheduledActivityTest.class);
+        runId = Tests.randomIdentifier(getClass());
     }
 
     @SuppressWarnings("deprecation")
@@ -224,7 +224,7 @@ public class ScheduledActivityTest {
         fieldDef.setType(UploadFieldType.STRING);
         UploadSchema schema = new UploadSchema();
         schema.setName("Schema");
-        schema.setSchemaId(Tests.randomIdentifier(ScheduledActivityTest.class));
+        schema.setSchemaId(Tests.randomIdentifier(getClass()));
         schema.setSchemaType(UploadSchemaType.IOS_DATA);
         schema.setFieldDefinitions(Lists.newArrayList(fieldDef));
         

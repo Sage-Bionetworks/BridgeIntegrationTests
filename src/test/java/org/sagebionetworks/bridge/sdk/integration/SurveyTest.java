@@ -176,7 +176,7 @@ public class SurveyTest {
 
     @Before
     public void before() {
-        surveyId = Tests.randomIdentifier(this.getClass());
+        surveyId = Tests.randomIdentifier(getClass());
         surveysToDelete = new HashSet<>();
     }
 

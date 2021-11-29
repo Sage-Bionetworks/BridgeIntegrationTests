@@ -77,7 +77,7 @@ public class StudyConsentTest {
         // Because we create it from scratch, we know the exact number of consents that are in it.
         // It is not required, so shouldn't prevent other tests from creating users.
         Subpopulation subpop = new Subpopulation();
-        subpop.setName(Tests.randomIdentifier(StudyConsentTest.class));
+        subpop.setName(Tests.randomIdentifier(getClass()));
         subpop.setRequired(false);
         subpop.addStudyIdsAssignedOnConsentItem(STUDY_ID_1);
         GuidVersionHolder holder = subpopulationsApi.createSubpopulation(subpop).execute().body();

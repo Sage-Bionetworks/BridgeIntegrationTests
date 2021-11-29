@@ -38,9 +38,9 @@ public class HealthDataDocumentationTest {
         researcher = TestUserHelper.createAndSignInUser(HealthDataDocumentationTest.class, false, Role.RESEARCHER);
         developer = TestUserHelper.createAndSignInUser(HealthDataDocumentationTest.class, false, Role.DEVELOPER);
 
-        identifier1 = Tests.randomIdentifier(HealthDataDocumentationTest.class);
-        identifier2 = Tests.randomIdentifier(HealthDataDocumentationTest.class);
-        identifier3 = Tests.randomIdentifier(HealthDataDocumentationTest.class);
+        identifier1 = Tests.randomIdentifier(getClass());
+        identifier2 = Tests.randomIdentifier(getClass());
+        identifier3 = Tests.randomIdentifier(getClass());
     }
 
     @After

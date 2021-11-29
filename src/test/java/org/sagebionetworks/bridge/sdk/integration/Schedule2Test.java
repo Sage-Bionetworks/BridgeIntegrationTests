@@ -80,7 +80,7 @@ public class Schedule2Test {
         studyDesigner = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_DESIGNER);
         
         assessment = new Assessment().title(Schedule2Test.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
-                .identifier(Tests.randomIdentifier(Schedule2Test.class));
+                .identifier(Tests.randomIdentifier(getClass()));
         
         assessment = developer.getClient(AssessmentsApi.class).createAssessment(assessment).execute().body();
         

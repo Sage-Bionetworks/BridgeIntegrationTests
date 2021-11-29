@@ -122,7 +122,7 @@ public class ScheduledActivityAutoResolutionTest {
         // generate IDs
         activityLabel = ACTIVITY_LABEL_PREFIX + RandomStringUtils.randomAlphabetic(4);
         compoundTaskId = COMPOUND_TASK_ID_PREFIX + RandomStringUtils.randomAlphabetic(4);
-        surveyId = Tests.randomIdentifier(this.getClass());
+        surveyId = Tests.randomIdentifier(getClass());
 
         // init "to delete" holders
         compoundTaskIdToDelete = null;

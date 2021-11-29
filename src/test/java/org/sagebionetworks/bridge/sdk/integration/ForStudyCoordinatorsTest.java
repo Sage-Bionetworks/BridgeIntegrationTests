@@ -25,10 +25,11 @@ import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
+import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
@@ -66,6 +67,7 @@ public class ForStudyCoordinatorsTest {
     TestUser user;
     ForStudyCoordinatorsApi coordApi;
     IdentifierHolder id;
+    String studyId;
     
     @Before
     public void beforeMethod() throws Exception {
@@ -87,6 +89,10 @@ public class ForStudyCoordinatorsTest {
         }
         if (researcher != null) {
             researcher.signOutAndDeleteUser();
+        }
+        if (studyId != null) {
+            TestUser admin = TestUserHelper.getSignedInAdmin();
+            admin.getClient(ForAdminsApi.class).deleteStudy(studyId, true).execute();
         }
     }
     
@@ -249,7 +255,7 @@ public class ForStudyCoordinatorsTest {
     @Test
     public void crudStudyParticipantWithExternalId() throws Exception {
         String email = IntegTestUtils.makeEmail(ForStudyCoordinatorsTest.class);
-        String externalId = Tests.randomIdentifier(ForStudyCoordinatorsTest.class);
+        String externalId = Tests.randomIdentifier(getClass());
         // Enroll this person in study2.
         SignUp signUp = new SignUp()
                 .email(email)
@@ -271,25 +277,36 @@ public class ForStudyCoordinatorsTest {
     
     @Test
     public void deleteTestStudyParticipant() throws Exception {
-        // Enrolled in study 1 due to consent.
-        user = TestUserHelper.createAndSignInUser(ForStudyCoordinatorsTest.class, true);
+        // Create a study that is not in design so this test doesn't fail on the
+        // enforced "test_user" flag.
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+
+        studyId = Tests.randomIdentifier(getClass());
+        Study study = new Study().identifier(studyId).name("Study " + studyId);
+        studiesApi.createStudy(study).execute().body();
+        studiesApi.transitionStudyToRecruitment(studyId).execute();
+
+        // Enrolled in studyId
+        user = TestUserHelper.createAndSignInUser(ForStudyCoordinatorsTest.class, false);
+        coordApi.enrollParticipant(studyId, new Enrollment().userId(user.getUserId())).execute();
         
         // User is not a test user so this fails
         try {
-            coordApi.deleteStudyParticipant(STUDY_ID_1, user.getUserId()).execute();
+            coordApi.deleteStudyParticipant(studyId, user.getUserId()).execute();
             fail("Should have thrown an exception");
         } catch(UnauthorizedException e) {
         }
         
-        StudyParticipant participant = coordApi.getStudyParticipantById(STUDY_ID_1, user.getUserId(), false).execute().body();
+        StudyParticipant participant = coordApi.getStudyParticipantById(studyId, user.getUserId(), false).execute().body();
         participant.setDataGroups(ImmutableList.of("test_user"));
-        coordApi.updateStudyParticipant(STUDY_ID_1, user.getUserId(), participant).execute();
+        coordApi.updateStudyParticipant(studyId, user.getUserId(), participant).execute();
         
         // this now succeeds
-        coordApi.deleteStudyParticipant(STUDY_ID_1, user.getUserId()).execute();
+        coordApi.deleteStudyParticipant(studyId, user.getUserId()).execute();
         
         try {
-            coordApi.getStudyParticipantById(STUDY_ID_1, user.getUserId(), false).execute();
+            coordApi.getStudyParticipantById(studyId, user.getUserId(), false).execute();
             fail("Should have thrown exception");
         } catch(EntityNotFoundException e) {
         }

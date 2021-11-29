@@ -80,7 +80,7 @@ public class ScheduleTest {
         SimpleScheduleStrategy strategy = (SimpleScheduleStrategy)plan.getStrategy();
         
         List<Activity> acts = strategy.getSchedule().getActivities();
-        String randomLabel = Tests.randomIdentifier(ScheduleTest.class);
+        String randomLabel = Tests.randomIdentifier(getClass());
         List<Activity> taggedActivities = Tests.labelActivities(acts, randomLabel);
         
         // I've made this shorter so we can verify it without paging, etc.
@@ -144,7 +144,7 @@ public class ScheduleTest {
         // Make a schedule plan. Stick a probabilistically unique label on it so we can find it again later.
         // Note: We stick the label on the *schedule*, not the schedule *plan*. This is because the end user only ever
         // sees the schedule, not the schedule plan.
-        String label = Tests.randomIdentifier(this.getClass());
+        String label = Tests.randomIdentifier(getClass());
         SchedulePlan schedulePlan = Tests.getSimpleSchedulePlan();
         Tests.getSimpleSchedule(schedulePlan).setLabel(label);
 
@@ -199,13 +199,13 @@ public class ScheduleTest {
         SchedulePlan plan = new SchedulePlan();
         plan.setLabel("Criteria plan");
 
-        String activityLabel1 = Tests.randomIdentifier(this.getClass());
+        String activityLabel1 = Tests.randomIdentifier(getClass());
         Schedule schedule1 = new Schedule();
         schedule1.setLabel("Schedule 1");
         schedule1.setScheduleType(ScheduleType.ONCE);
         schedule1.setActivities(taskActivity(activityLabel1, "task:AAA"));
 
-        String activityLabel2 = Tests.randomIdentifier(this.getClass());
+        String activityLabel2 = Tests.randomIdentifier(getClass());
         Schedule schedule2 = new Schedule();
         schedule2.setLabel("Schedule 2");
         schedule2.setScheduleType(ScheduleType.ONCE);

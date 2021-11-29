@@ -134,7 +134,7 @@ public class StudyMembershipTest {
     // enrollment in a study, not just another way to identify the account.
 
     private String createStudy() throws Exception {
-        String id = Tests.randomIdentifier(StudyTest.class);
+        String id = Tests.randomIdentifier(getClass());
         Study study = new Study().identifier(id).name("Study " + id);
         studiesApi.createStudy(study).execute();
         studyIdsToDelete.add(id);
