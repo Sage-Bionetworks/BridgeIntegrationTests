@@ -64,7 +64,7 @@ public class PersistentActivityTest {
     @SuppressWarnings("deprecation")
     @Test
     public void persistentActivityCanBeFinishedMultipleTimesInDay() throws Exception {
-        String activityLabel1 = Tests.randomIdentifier(this.getClass());
+        String activityLabel1 = Tests.randomIdentifier(getClass());
         Schedule schedule = new Schedule();
         schedule.setLabel("Schedule 1");
         schedule.setScheduleType(ScheduleType.PERSISTENT);

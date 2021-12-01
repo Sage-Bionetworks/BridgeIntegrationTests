@@ -105,7 +105,7 @@ public class SignUpTest {
     
     @Test
     public void signUpForAppWithExternalIdValidation() throws Exception {
-        App app = Tests.getApp(Tests.randomIdentifier(SignUpTest.class), null);
+        App app = Tests.getApp(Tests.randomIdentifier(getClass()), null);
         app.setExternalIdRequiredOnSignup(true);
         
         TestUser admin = TestUserHelper.getSignedInAdmin();
@@ -140,7 +140,7 @@ public class SignUpTest {
         ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
         AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
 
-        String extId = Tests.randomIdentifier(SignUpTest.class);
+        String extId = Tests.randomIdentifier(getClass());
 
         // In the API app we have two studies created by the initializer for integration tests,
         // and neither is "test", so one will be chosen at random.
@@ -192,7 +192,7 @@ public class SignUpTest {
         }
         
         // Create an app with a test study only, and it will select that.
-        App app = Tests.getApp(Tests.randomIdentifier(SignUpTest.class), null);
+        App app = Tests.getApp(Tests.randomIdentifier(getClass()), null);
         superadminApi.createApp(app).execute();
         
         authApi.changeApp(new SignIn().appId(app.getIdentifier())).execute();
@@ -220,7 +220,7 @@ public class SignUpTest {
         }
         
         // One last scenario: add in another study, and now test should not be chosen
-        String study2Id = Tests.randomIdentifier(SignUpTest.class);
+        String study2Id = Tests.randomIdentifier(getClass());
         Study study2 = new Study().identifier(study2Id).name("Second Study");
         studiesApi.createStudy(study2).execute();
         

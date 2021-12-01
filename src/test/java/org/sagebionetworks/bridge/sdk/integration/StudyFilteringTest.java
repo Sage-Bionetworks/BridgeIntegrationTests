@@ -248,7 +248,7 @@ public class StudyFilteringTest {
     @SuppressWarnings("deprecation")
     @Test
     public void filterScheduling() throws Exception {
-        String activityLabel = Tests.randomIdentifier(StudyFilteringTest.class);
+        String activityLabel = Tests.randomIdentifier(getClass());
         
         App app = admin.getClient(AppsApi.class).getUsersApp().execute().body();
         if (app.getTaskIdentifiers().isEmpty()) {

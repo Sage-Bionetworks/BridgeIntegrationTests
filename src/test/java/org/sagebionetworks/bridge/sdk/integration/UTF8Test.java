@@ -19,7 +19,7 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 public class UTF8Test {
     @Test
     public void canSaveAndRetrieveDataStoredInDynamo() throws Exception {
-        String appId = Tests.randomIdentifier(UTF8Test.class);
+        String appId = Tests.randomIdentifier(getClass());
         String appName = "☃지구상의　３대　극지라　불리는";
         ForSuperadminsApi superadminApi = TestUserHelper.getSignedInAdmin().getClient(ForSuperadminsApi.class);
 

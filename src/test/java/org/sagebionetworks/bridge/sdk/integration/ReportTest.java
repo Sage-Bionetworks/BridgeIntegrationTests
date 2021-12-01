@@ -94,7 +94,7 @@ public class ReportTest {
 
     @Before
     public void before() throws Exception {
-        reportId = Tests.randomIdentifier(ReportTest.class);
+        reportId = Tests.randomIdentifier(getClass());
     }
 
     @After
@@ -460,7 +460,7 @@ public class ReportTest {
         // Not a member of the study used for these report records
         // Just assign an external ID in order to enroll the account in a study
         study2User = new TestUserHelper.Builder(ReportTest.class).withConsentUser(false)
-                .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(ReportTest.class)))
+                .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(getClass())))
                 .createAndSignInUser();
         StudyReportsApi reportsApi = study2User.getClient(StudyReportsApi.class);
         try {
@@ -507,7 +507,7 @@ public class ReportTest {
         // is not enrolled in. In this edge case we are now erring on the side of returning the report to
         // the user anyway.
         study2User = new TestUserHelper.Builder(ReportTest.class).withConsentUser(false)
-                .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(ReportTest.class)))
+                .withExternalIds(ImmutableMap.of(STUDY_ID_2, Tests.randomIdentifier(getClass())))
                 .createAndSignInUser();
         
         String healthCode = worker.getClient(ParticipantsApi.class)

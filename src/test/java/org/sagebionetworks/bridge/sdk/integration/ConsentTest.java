@@ -551,7 +551,7 @@ public class ConsentTest {
 
     @Test
     public void canWithdrawParticipantFromApp() throws Exception {
-        String externalId = Tests.randomIdentifier(ConsentTest.class);
+        String externalId = Tests.randomIdentifier(getClass());
         SignUp signUp = new SignUp().externalIds(ImmutableMap.of(STUDY_ID_2, externalId));
         TestUser testUser = TestUserHelper.createAndSignInUser(ConsentTest.class, true, signUp);
         String userId = testUser.getSession().getId();
@@ -595,7 +595,7 @@ public class ConsentTest {
             
             // verify that the session contains all the correct information
             assertFalse(updatedSession.getStudyIds().contains(STUDY_ID_2));
-            assertTrue(updatedSession.getDataGroups().isEmpty());
+            assertEquals(updatedSession.getDataGroups(), ImmutableList.of("test_user"));
             assertNotNull(updatedSession.getEnrollments().get(STUDY_ID_2).getWithdrawnOn());
             assertTrue(updatedSession.getEnrollments().get(STUDY_ID_2).isWithdrawnBySelf());
         });
@@ -612,7 +612,7 @@ public class ConsentTest {
             // verify the participant is now not enrolled in any study
             StudyParticipant participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
             assertTrue(participant.getStudyIds().isEmpty());
-            assertTrue(participant.getDataGroups().isEmpty());
+            assertEquals(participant.getDataGroups(), ImmutableList.of("test_user"));
             assertTrue(participant.getEnrollments().get(STUDY_ID_2).isWithdrawnBySelf());
         });
     }
@@ -745,7 +745,7 @@ public class ConsentTest {
         // so we’re doing it here and not in a separate test (since we've set up the right study/schedule to 
         // trigger the issue).
         
-        externalId = Tests.randomIdentifier(ConsentTest.class);
+        externalId = Tests.randomIdentifier(getClass());
         SignUp signUp = new SignUp().appId(TEST_APP_ID)
                 .dataGroups(ImmutableList.of("test_user"))
                 .externalIds(ImmutableMap.of(STUDY_ID_1, externalId)).password(PASSWORD);

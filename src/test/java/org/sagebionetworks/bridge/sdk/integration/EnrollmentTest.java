@@ -92,7 +92,7 @@ public class EnrollmentTest {
     
     @Test
     public void test() throws Exception {
-        String externalId = Tests.randomIdentifier(EnrollmentTest.class);
+        String externalId = Tests.randomIdentifier(getClass());
         user = TestUserHelper.createAndSignInUser(EnrollmentTest.class, true);
         
         DateTime timestamp = DateTime.now();
@@ -117,10 +117,10 @@ public class EnrollmentTest {
         assertEquals("test note on enrollment", retValue.getNote());
         
         // Now shows up in paged api
-        EnrollmentDetailList list = studiesApi.getEnrollments(STUDY_ID_1, "enrolled", false, null, null).execute().body();
+        EnrollmentDetailList list = studiesApi.getEnrollments(STUDY_ID_1, "enrolled", true, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
         
-        list = studiesApi.getEnrollments(STUDY_ID_1, null, false, null, null).execute().body();
+        list = studiesApi.getEnrollments(STUDY_ID_1, null, true, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
         
         retValue = studiesApi.withdrawParticipant(STUDY_ID_1, user.getUserId(), 
@@ -148,10 +148,10 @@ public class EnrollmentTest {
         assertEquals(user.getUserId(), participant.getId());
         
         // It is still in the paged API, despite being withdrawn.
-        list = studiesApi.getEnrollments(STUDY_ID_1, "withdrawn", false, null, null).execute().body();
+        list = studiesApi.getEnrollments(STUDY_ID_1, "withdrawn", true, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
         
-        list = studiesApi.getEnrollments(STUDY_ID_1, "all", false, null, null).execute().body();
+        list = studiesApi.getEnrollments(STUDY_ID_1, "all", true, null, null).execute().body();
         assertTrue(list.getItems().stream().anyMatch(e -> e.getParticipant().getIdentifier().equals(user.getUserId())));
         
         // Updating should be able to edit notes without affecting other fields.
@@ -160,7 +160,7 @@ public class EnrollmentTest {
         noteEnrollment.setWithdrawalNote("test updated withdrawal note field");
         
         studiesApi.updateEnrollment(STUDY_ID_1, user.getUserId(), noteEnrollment).execute();
-        list = studiesApi.getEnrollments(STUDY_ID_1, null, false, null, null).execute().body();
+        list = studiesApi.getEnrollments(STUDY_ID_1, null, true, null, null).execute().body();
         
         EnrollmentDetail enrollmentDetail = list.getItems().stream().filter(e -> e.getParticipant().getIdentifier().equals(user.getUserId()))
                 .findAny().orElse(null);
@@ -189,7 +189,7 @@ public class EnrollmentTest {
         // Enroll through the study coordinator API *and* add an external ID. This doesn't
         // look interesting from the client side, but it verifies correct behavior on the
         // server where we call enrollment code twice.
-        String externalId = Tests.randomIdentifier(EnrollmentTest.class);
+        String externalId = Tests.randomIdentifier(getClass());
         IdentifierHolder keys = null;
         
         studyCoordinator = TestUserHelper.createAndSignInUser(EnrollmentTest.class, false, STUDY_COORDINATOR);

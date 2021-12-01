@@ -103,8 +103,8 @@ public class UserParticipantTest {
 
     @Test
     public void cannotChangeExternalIdentifier() throws Exception {
-        String externalId1 = Tests.randomIdentifier(UserParticipantTest.class);
-        String externalId2 = Tests.randomIdentifier(UserParticipantTest.class);
+        String externalId1 = Tests.randomIdentifier(getClass());
+        String externalId2 = Tests.randomIdentifier(getClass());
         
         TestUser user = new TestUserHelper.Builder(UserParticipantTest.class)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_1, externalId1)).createAndSignInUser();
@@ -148,7 +148,8 @@ public class UserParticipantTest {
         developer.signInAgain();
         
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
-        assertListsEqualIgnoringOrder(dataGroups, participant.getDataGroups());
+        assertListsEqualIgnoringOrder(ImmutableList.of("test_user", "sdk-int-1", "sdk-int-2"), 
+                participant.getDataGroups());
 
         // now clear the values, it should be possible to remove them.
         participant.setDataGroups(ImmutableList.of());
@@ -158,7 +159,7 @@ public class UserParticipantTest {
         developer.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
-        assertListsEqualIgnoringOrder(ImmutableList.of(), participant.getDataGroups());
+        assertListsEqualIgnoringOrder(ImmutableList.of("test_user"), participant.getDataGroups());
     }
 
     @Test

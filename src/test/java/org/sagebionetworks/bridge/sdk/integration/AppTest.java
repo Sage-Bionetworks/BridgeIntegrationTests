@@ -216,7 +216,7 @@ public class AppTest {
     public void crudApp() throws Exception {
         ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
 
-        appId = Tests.randomIdentifier(AppTest.class);
+        appId = Tests.randomIdentifier(getClass());
         App app = Tests.getApp(appId, null);
         assertNull("app version should be null", app.getVersion());
 
@@ -361,7 +361,7 @@ public class AppTest {
     public void researcherCannotAccessAnotherApp() throws Exception {
         TestUser researcher = TestUserHelper.createAndSignInUser(AppTest.class, false, RESEARCHER);
         try {
-            appId = Tests.randomIdentifier(AppTest.class);
+            appId = Tests.randomIdentifier(getClass());
             App app = Tests.getApp(appId, null);
 
             ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);

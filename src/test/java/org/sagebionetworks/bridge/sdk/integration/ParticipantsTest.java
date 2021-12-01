@@ -111,7 +111,7 @@ public class ParticipantsTest {
         admin.getClient(OrganizationsApi.class).removeMember(SAGE_ID, studyCoordinator.getUserId()).execute();
         admin.getClient(OrganizationsApi.class).addMember(ORG_ID_1, studyCoordinator.getUserId()).execute();
         
-        externalId = Tests.randomIdentifier(ParticipantsTest.class);
+        externalId = Tests.randomIdentifier(getClass());
         
         IntegTestUtils.deletePhoneUser();
         
@@ -213,7 +213,7 @@ public class ParticipantsTest {
             
             self = userApi.getUsersParticipantRecord(false).execute().body();
             assertEquals(ALL_QUALIFIED_RESEARCHERS, self.getSharingScope());
-            assertEquals(ImmutableList.of("group1"), self.getDataGroups());
+            assertEquals(ImmutableList.of("test_user", "group1"), self.getDataGroups());
             assertTrue(self.isNotifyByEmail());  // BRIDGE-1604: true value returned
             
             List<String> deserClientData = (List<String>)RestUtils.toType(self.getClientData(), List.class);
@@ -397,7 +397,7 @@ public class ParticipantsTest {
             assertEquals(externalId, retrieved.getExternalIds().get(STUDY_ID_1));
             assertEquals(ALL_QUALIFIED_RESEARCHERS, retrieved.getSharingScope());
             assertTrue(retrieved.isNotifyByEmail());
-            assertListsEqualIgnoringOrder(dataGroups, retrieved.getDataGroups());
+            assertListsEqualIgnoringOrder(ImmutableList.of("test_user", "sdk-int-1", "sdk-int-2"), retrieved.getDataGroups());
             assertListsEqualIgnoringOrder(languages, retrieved.getLanguages());
             assertEquals(attributes.get("can_be_recontacted"), retrieved.getAttributes().get("can_be_recontacted"));
             assertEquals(UNVERIFIED, retrieved.getStatus());
@@ -420,8 +420,8 @@ public class ParticipantsTest {
             
             // Update the user. Identified by the email address
             Map<String,String> newAttributes = new ImmutableMap.Builder<String,String>().put("can_be_recontacted","206-555-1212").build();
-            List<String> newLanguages = Lists.newArrayList("de","sw");
-            List<String> newDataGroups = Lists.newArrayList("group1");
+            List<String> newLanguages = ImmutableList.of("de","sw");
+            List<String> newDataGroups = ImmutableList.of("group1");
             
             StudyParticipant newParticipant = new StudyParticipant();
             newParticipant.setFirstName("FirstName2");
@@ -461,7 +461,7 @@ public class ParticipantsTest {
             assertEquals(NO_SHARING, retrieved.getSharingScope());
             // BRIDGE-1604: should still be true, even though it was not sent to the server. Through participants API 
             assertTrue(retrieved.isNotifyByEmail());
-            assertListsEqualIgnoringOrder(newDataGroups, retrieved.getDataGroups());
+            assertListsEqualIgnoringOrder(ImmutableList.of("test_user", "group1"), retrieved.getDataGroups());
             assertListsEqualIgnoringOrder(newLanguages, retrieved.getLanguages());
             assertEquals(id, retrieved.getId());
             assertEquals(newAttributes.get("can_be_recontacted"), retrieved.getAttributes().get("can_be_recontacted"));

@@ -71,9 +71,9 @@ public class ExternalIdsV4Test {
 
     @Test
     public void test() throws Exception {
-        final String extIdA = prefix+Tests.randomIdentifier(ExternalIdsV4Test.class);
-        final String extIdB1 = prefix+Tests.randomIdentifier(ExternalIdsV4Test.class);
-        final String extIdB2 = prefix+Tests.randomIdentifier(ExternalIdsV4Test.class);
+        final String extIdA = prefix+Tests.randomIdentifier(getClass());
+        final String extIdB1 = prefix+Tests.randomIdentifier(getClass());
+        final String extIdB2 = prefix+Tests.randomIdentifier(getClass());
 
         ForResearchersApi researcherApi = researcher.getClient(ForResearchersApi.class);
         String userId1 = null;
@@ -228,7 +228,7 @@ public class ExternalIdsV4Test {
         try {
             // Manually create an account with external ID only. Can't use TestUserHelper because it expects either an
             // email or phone.
-            String extId = Tests.randomIdentifier(ExternalIdsV4Test.class);
+            String extId = Tests.randomIdentifier(getClass());
             SignUp signUp = new SignUp().appId(TEST_APP_ID).putExternalIdsItem(STUDY_ID_1, extId).password(PASSWORD)
                     .consent(true);
             String userId = adminApi.createUser(signUp).execute().body().getId();

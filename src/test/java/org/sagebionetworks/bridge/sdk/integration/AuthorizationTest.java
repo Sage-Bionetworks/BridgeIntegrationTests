@@ -7,7 +7,6 @@ import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
-import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 
 import java.util.concurrent.Callable;
@@ -25,6 +24,7 @@ import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
@@ -45,6 +45,7 @@ public class AuthorizationTest {
     private String prodUserEmail;
     private String testUserId;
     private String testUserEmail;
+    private String studyId;
 
     @BeforeClass
     public static void beforeTests() throws Exception {
@@ -69,6 +70,17 @@ public class AuthorizationTest {
         prodUserEmail = prodUser.getEmail();
         testUserId = testUser.getUserId();
         testUserEmail = testUser.getEmail();
+        
+         // Creating a non-design study to test non-test user account behavior
+         // Create a study that is not in design so this test doesn't fail on the enforced 
+         // "test_user" flag.
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+    
+        studyId = Tests.randomIdentifier(getClass());
+        Study study = new Study().identifier(studyId).name("Study " + studyId);
+        studiesApi.createStudy(study).execute().body();
+        studiesApi.transitionStudyToRecruitment(studyId).execute();
     }
     
     @AfterClass
@@ -95,6 +107,8 @@ public class AuthorizationTest {
         if (testUser != null) {
             testUser.signOutAndDeleteUser();
         }
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        admin.getClient(StudiesApi.class).deleteStudy(studyId, true).execute();
     }
     
     @Test
@@ -116,12 +130,12 @@ public class AuthorizationTest {
         resPartApi.getParticipantById(testUserId, false).execute();
         
         // Designers cannot access either of these users because they are not in a study
-        shouldFail(() -> desPartApi.getStudyParticipantById(STUDY_ID_1, prodUserId, false));
-        shouldFail(() -> desPartApi.getStudyParticipantById(STUDY_ID_1, testUserId, false));
+        shouldFail(() -> desPartApi.getStudyParticipantById(studyId, prodUserId, false));
+        shouldFail(() -> desPartApi.getStudyParticipantById(studyId, testUserId, false));
         
         // Coordinators also cannot access these users because they are not in a study
-        shouldFail(() -> coordPartApi.getStudyParticipantById(STUDY_ID_1, prodUserId, false));
-        shouldFail(() -> coordPartApi.getStudyParticipantById(STUDY_ID_1, testUserId, false));
+        shouldFail(() -> coordPartApi.getStudyParticipantById(studyId, prodUserId, false));
+        shouldFail(() -> coordPartApi.getStudyParticipantById(studyId, testUserId, false));
         
         // PUT STUDY-SCOPED ADMINS INTO ORG
         orgApi.addMember(SAGE_ID, developer.getUserId()).execute();
@@ -134,8 +148,8 @@ public class AuthorizationTest {
         resPartApi.getParticipantById(testUserId, false).execute();
         
         // ENROLL USERS IN STUDY 1
-        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(prodUserId)).execute();
-        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(testUserId)).execute();
+        coordStudiesApi.enrollParticipant(studyId, new Enrollment().userId(prodUserId)).execute();
+        coordStudiesApi.enrollParticipant(studyId, new Enrollment().userId(testUserId)).execute();
         
         // developer is the same
         shouldFail(() -> devPartApi.getParticipantById(prodUserId, false));
@@ -146,12 +160,12 @@ public class AuthorizationTest {
         resPartApi.getParticipantById(testUserId, false).execute();
         
         // designer can see the test account now that it is enrolled in accessible study
-        shouldFail(() -> desPartApi.getStudyParticipantById(STUDY_ID_1, prodUserId, false));
-        desPartApi.getStudyParticipantById(STUDY_ID_1, testUserId, false).execute();
+        shouldFail(() -> desPartApi.getStudyParticipantById(studyId, prodUserId, false));
+        desPartApi.getStudyParticipantById(studyId, testUserId, false).execute();
         
         // coordinator can see both now that they are enrolled in an accessible study
-        coordPartApi.getStudyParticipantById(STUDY_ID_1, prodUserId, false).execute();
-        coordPartApi.getStudyParticipantById(STUDY_ID_1, testUserId, false).execute();
+        coordPartApi.getStudyParticipantById(studyId, prodUserId, false).execute();
+        coordPartApi.getStudyParticipantById(studyId, testUserId, false).execute();
     }
     
     @Test
@@ -172,16 +186,16 @@ public class AuthorizationTest {
         shouldInclude(() -> resPartApi.searchAccountSummaries(search(prodUserEmail)) );
         
         // Designers cannot access either of these users because they are not in a study
-        shouldExclude(() -> desPartApi.getStudyParticipants(STUDY_ID_1, search(prodUserEmail)));
-        shouldExclude(() -> desPartApi.getStudyParticipants(STUDY_ID_1, search(testUserEmail)));
+        shouldExclude(() -> desPartApi.getStudyParticipants(studyId, search(prodUserEmail)));
+        shouldExclude(() -> desPartApi.getStudyParticipants(studyId, search(testUserEmail)));
         
         // Coordinators also cannot access these users because they are not in a study
-        shouldExclude(() -> desPartApi.getStudyParticipants(STUDY_ID_1, search(prodUserEmail)));
-        shouldExclude(() -> desPartApi.getStudyParticipants(STUDY_ID_1, search(testUserEmail)));
+        shouldExclude(() -> desPartApi.getStudyParticipants(studyId, search(prodUserEmail)));
+        shouldExclude(() -> desPartApi.getStudyParticipants(studyId, search(testUserEmail)));
 
         // ENROLL USERS IN STUDY 1
-        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(prodUserId)).execute();
-        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(testUserId)).execute();
+        coordStudiesApi.enrollParticipant(studyId, new Enrollment().userId(prodUserId)).execute();
+        coordStudiesApi.enrollParticipant(studyId, new Enrollment().userId(testUserId)).execute();
         
         // Developer is the same
         shouldInclude(() -> devPartApi.searchAccountSummaries(search(testUserEmail)) );
@@ -192,12 +206,12 @@ public class AuthorizationTest {
         shouldInclude(() -> resPartApi.searchAccountSummaries(search(prodUserEmail)) );
 
         // Study designers can now access test users
-        shouldExclude(() -> desPartApi.getStudyParticipants(STUDY_ID_1, search(prodUserEmail)));
-        shouldInclude(() -> desPartApi.getStudyParticipants(STUDY_ID_1, search(testUserEmail)));
+        shouldExclude(() -> desPartApi.getStudyParticipants(studyId, search(prodUserEmail)));
+        shouldInclude(() -> desPartApi.getStudyParticipants(studyId, search(testUserEmail)));
         
         // Study coordinators can now access all study users
-        shouldInclude(() -> coordPartApi.getStudyParticipants(STUDY_ID_1, search(prodUserEmail)));
-        shouldInclude(() -> coordPartApi.getStudyParticipants(STUDY_ID_1, search(testUserEmail)));
+        shouldInclude(() -> coordPartApi.getStudyParticipants(studyId, search(prodUserEmail)));
+        shouldInclude(() -> coordPartApi.getStudyParticipants(studyId, search(testUserEmail)));
     }
     
     @Test
@@ -221,15 +235,15 @@ public class AuthorizationTest {
         
         // As other tests, study coordinators and designers can't do anything with these
         // accounts because they are not in an accessible study
-        shouldFail(() -> desPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant));
-        shouldFail(() -> desPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant));
+        shouldFail(() -> desPartApi.updateStudyParticipant(studyId, prodUserId, prodParticipant));
+        shouldFail(() -> desPartApi.updateStudyParticipant(studyId, testUserId, testParticipant));
 
-        shouldFail(() -> coordPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant));
-        shouldFail(() -> coordPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant));
+        shouldFail(() -> coordPartApi.updateStudyParticipant(studyId, prodUserId, prodParticipant));
+        shouldFail(() -> coordPartApi.updateStudyParticipant(studyId, testUserId, testParticipant));
         
         // ENROLL USERS IN STUDY 1
-        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(prodUserId)).execute();
-        coordStudiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(testUserId)).execute();
+        coordStudiesApi.enrollParticipant(studyId, new Enrollment().userId(prodUserId)).execute();
+        coordStudiesApi.enrollParticipant(studyId, new Enrollment().userId(testUserId)).execute();
 
         // Devs and researchers don't change
         shouldFail(() -> devPartApi.updateParticipant(prodUserId, prodParticipant));
@@ -238,12 +252,12 @@ public class AuthorizationTest {
         resPartApi.updateParticipant(testUserId, testParticipant).execute();
         
         // Study designers can work with test accounts
-        shouldFail(() -> desPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant));
-        desPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant).execute();
+        shouldFail(() -> desPartApi.updateStudyParticipant(studyId, prodUserId, prodParticipant));
+        desPartApi.updateStudyParticipant(studyId, testUserId, testParticipant).execute();
         
         // Study coordinators can work with both
-        coordPartApi.updateStudyParticipant(STUDY_ID_1, prodUserId, prodParticipant).execute();
-        coordPartApi.updateStudyParticipant(STUDY_ID_1, testUserId, testParticipant).execute();
+        coordPartApi.updateStudyParticipant(studyId, prodUserId, prodParticipant).execute();
+        coordPartApi.updateStudyParticipant(studyId, testUserId, testParticipant).execute();
     }
     
     private void shouldFail(Callable<Call<?>> callable) throws Exception {

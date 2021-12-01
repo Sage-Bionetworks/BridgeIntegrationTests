@@ -126,7 +126,7 @@ public class StudyTest {
         Map<String,String> map = new HashMap<>();
         map.put("enrollmentType", "byExternalId");
         
-        String id = Tests.randomIdentifier(StudyTest.class);
+        String id = Tests.randomIdentifier(getClass());
         Study study = new Study().identifier(id).clientData(map).name("Study " + id);
         
         // IRB information
@@ -140,6 +140,8 @@ public class StudyTest {
         study.setDiseases(DISEASE_LIST);
         study.setStudyDesignTypes(DESIGN_TYPE_LIST);
         study.setSignInTypes(SIGN_IN_TYPES);
+        study.setStudyTimeZone("America/Chicago");
+        study.setAdherenceThresholdPercentage(60);
         study.setKeywords("some keywords");
         
         // We had an issue where you could not store two contacts with the same
@@ -183,6 +185,8 @@ public class StudyTest {
         assertEquals(DISEASE_LIST, study.getDiseases());
         assertEquals(DESIGN_TYPE_LIST, study.getStudyDesignTypes());
         assertEquals(SIGN_IN_TYPES, study.getSignInTypes());
+        assertEquals("America/Chicago", study.getStudyTimeZone());
+        assertEquals(Integer.valueOf(60), study.getAdherenceThresholdPercentage());
         assertEquals("some keywords", study.getKeywords());
         
         Contact retrievedContact1 = retrieved.getContacts().get(0);
@@ -270,10 +274,10 @@ public class StudyTest {
     public void usersAreTaintedByStudyAssociation() throws Exception {
         // Create a study for this test.
         
-        String id1 = Tests.randomIdentifier(StudyTest.class);
+        String id1 = Tests.randomIdentifier(getClass());
         Study study1 = new Study().identifier(id1).name("Study " + id1);
 
-        String id2 = Tests.randomIdentifier(StudyTest.class);
+        String id2 = Tests.randomIdentifier(getClass());
         Study study2 = new Study().identifier(id2).name("Study " + id2);
         
         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
@@ -302,7 +306,7 @@ public class StudyTest {
         // Cannot sign this user up because the enrollment includes one the study coordinator does not possess.
         String email2 = IntegTestUtils.makeEmail(StudyTest.class);
         SignUp signUp2 = new SignUp().email(email2).password(PASSWORD).appId(TEST_APP_ID)
-                .externalIds(ImmutableMap.of(STUDY_ID_1, Tests.randomIdentifier(StudyTest.class), 
+                .externalIds(ImmutableMap.of(STUDY_ID_1, Tests.randomIdentifier(getClass()), 
                         STUDY_ID_2, "cannot-work"));
         try {
             participantApi.createParticipant(signUp2).execute().body();
@@ -316,7 +320,7 @@ public class StudyTest {
     public void testSponsorship() throws Exception {
         StudiesApi adminStudiesApi = admin.getClient(StudiesApi.class);
         
-        String tempStudyId = Tests.randomIdentifier(StudyTest.class);
+        String tempStudyId = Tests.randomIdentifier(getClass());
         Study tempStudy = new Study().identifier(tempStudyId).name(tempStudyId);
         adminStudiesApi.createStudy(tempStudy).execute();
         studyIdsToDelete.add(tempStudyId);
@@ -393,7 +397,7 @@ public class StudyTest {
     public void canphysicallyDeleteStudyInDesign() throws Exception {
         StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
         
-        String tempStudyId = Tests.randomIdentifier(StudyTest.class);
+        String tempStudyId = Tests.randomIdentifier(getClass());
         Study tempStudy = new Study().identifier(tempStudyId).name(tempStudyId);
         desStudiesApi.createStudy(tempStudy).execute().body();
         
@@ -411,7 +415,7 @@ public class StudyTest {
     public void cannotPhysicallyDeleteStudyInWrongPhase() throws Exception {
         StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
         
-        String tempStudyId = Tests.randomIdentifier(StudyTest.class);
+        String tempStudyId = Tests.randomIdentifier(getClass());
         Study tempStudy = new Study().identifier(tempStudyId).name(tempStudyId);
         desStudiesApi.createStudy(tempStudy).execute().body();
         

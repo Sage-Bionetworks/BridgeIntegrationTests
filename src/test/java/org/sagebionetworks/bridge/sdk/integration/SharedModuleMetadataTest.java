@@ -104,7 +104,7 @@ public class SharedModuleMetadataTest {
         UploadSchema uploadSchema = makeSimpleSchema(schemaId, (long)SCHEMA_REV, SCHEMA_VERSION);
         devUploadSchemasApi.createUploadSchema(uploadSchema).execute().body();
 
-        Survey survey = new Survey().name(SURVEY_NAME).identifier(Tests.randomIdentifier(this.getClass()));
+        Survey survey = new Survey().name(SURVEY_NAME).identifier(Tests.randomIdentifier(getClass()));
         GuidCreatedOnVersionHolder retSurvey = devSurveysApi.createSurvey(survey).execute().body();
 
         // modify member var to fit with real survey info

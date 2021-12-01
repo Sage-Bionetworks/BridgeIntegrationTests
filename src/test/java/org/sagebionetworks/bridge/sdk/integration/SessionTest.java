@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.sagebionetworks.bridge.rest.model.Role.ADMIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
@@ -26,6 +27,7 @@ import org.sagebionetworks.bridge.rest.model.Withdrawal;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 public class SessionTest {
@@ -86,9 +88,9 @@ public class SessionTest {
     public void canGetStudyParticipantWithAllData() throws Exception {
         TestUser user = TestUserHelper.createAndSignInUser(SessionTest.class, true);
         try {
-            List<Role> roles = Lists.newArrayList(Role.ADMIN);
-            List<String> dataGroups = Lists.newArrayList("group1");
-            List<String> languages = Lists.newArrayList("de");
+            List<Role> roles = ImmutableList.of(ADMIN);
+            List<String> dataGroups = ImmutableList.of("group1");
+            List<String> languages = ImmutableList.of("de");
             
             ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
 
@@ -109,7 +111,7 @@ public class SessionTest {
             assertEquals("TestFirstName", asUpdated.getFirstName());
             assertEquals("TestLastName", asUpdated.getLastName());
             assertEquals(languages, asUpdated.getLanguages());
-            assertEquals(dataGroups, asUpdated.getDataGroups());
+            assertEquals(ImmutableList.of("test_user", "group1"), asUpdated.getDataGroups());
             assertFalse(asUpdated.isNotifyByEmail());
             assertEquals(SharingScope.SPONSORS_AND_PARTNERS, asUpdated.getSharingScope());
             assertTrue(asUpdated.getRoles().isEmpty()); // can't update the role

@@ -45,9 +45,9 @@ public class ParticipantDataTest {
         worker = TestUserHelper.createAndSignInUser(ParticipantDataTest.class, false, WORKER);
         user = TestUserHelper.createAndSignInUser(ParticipantDataTest.class, true);
 
-        identifier1 = Tests.randomIdentifier(ParticipantDataTest.class);
-        identifier2 = Tests.randomIdentifier(ParticipantDataTest.class);
-        identifier3 = Tests.randomIdentifier(ParticipantDataTest.class);
+        identifier1 = Tests.randomIdentifier(getClass());
+        identifier2 = Tests.randomIdentifier(getClass());
+        identifier3 = Tests.randomIdentifier(getClass());
 
     }
 
