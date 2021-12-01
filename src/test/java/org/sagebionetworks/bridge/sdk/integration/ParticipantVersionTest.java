@@ -6,14 +6,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.DEFAULT_STUDY_ID;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.List;
+import java.util.Map;
 
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -25,8 +29,10 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
+import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.ParticipantVersion;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
@@ -34,6 +40,7 @@ import org.sagebionetworks.bridge.rest.model.SharingScopeForm;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.rest.model.Withdrawal;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class ParticipantVersionTest {
@@ -41,6 +48,7 @@ public class ParticipantVersionTest {
     private static DateTime oneHourAgo;
     private static ForWorkersApi workersApi;
 
+    private String extId;
     private String userId;
 
     @BeforeClass
@@ -50,10 +58,15 @@ public class ParticipantVersionTest {
         workersApi = admin.getClient(ForWorkersApi.class);
     }
 
+    @Before
+    public void before() {
+        extId = Tests.randomIdentifier(ParticipantVersionTest.class);
+    }
+
     @After
     public void after() throws Exception {
         if (userId != null) {
-            admin.getClient(InternalApi.class).deleteAllParticipantVersionsForUser(TEST_APP_ID, userId).execute();
+            admin.getClient(InternalApi.class).deleteAllParticipantVersionsForUser(userId).execute();
             admin.getClient(ForAdminsApi.class).deleteUser(userId).execute();
         }
     }
@@ -64,7 +77,6 @@ public class ParticipantVersionTest {
         AuthenticationApi authApi = unauthenticatedProvider.getAuthenticationApi();
 
         // Create user via sign up. Use external ID so we can bypass email verification.
-        String extId = Tests.randomIdentifier(ParticipantVersionTest.class);
         SignUp signUp = new SignUp().appId(TEST_APP_ID).addDataGroupsItem("test_user").externalId(extId)
                 .password(PASSWORD);
         authApi.signUp(signUp).execute();
@@ -101,6 +113,13 @@ public class ParticipantVersionTest {
         assertEquals(SharingScope.SPONSORS_AND_PARTNERS, participantVersion1.getSharingScope());
         assertNull(participantVersion1.getTimeZone());
 
+        // TEST_APP_ID->extId is created when we create the user with an external ID.
+        // STUDY_ID_1->"<none>" is created when we consent.
+        Map<String, String> studyMembershipMap = participantVersion1.getStudyMemberships();
+        assertEquals(2, studyMembershipMap.size());
+        assertEquals(extId, studyMembershipMap.get(DEFAULT_STUDY_ID));
+        assertEquals("<none>", studyMembershipMap.get(STUDY_ID_1));
+
         // Update participant by updating time zone.
         ParticipantsApi participantsApi = admin.getClient(ParticipantsApi.class);
         StudyParticipant participant = participantsApi.getParticipantById(userId, false).execute().body();
@@ -119,6 +138,7 @@ public class ParticipantVersionTest {
                 .getMillis());
         assertEquals(SharingScope.SPONSORS_AND_PARTNERS, participantVersion2.getSharingScope());
         assertEquals("America/Los_Angeles", participantVersion2.getTimeZone());
+        assertEquals(studyMembershipMap, participantVersion2.getStudyMemberships());
 
         // Participant updates itself.
         TestUserHelper.TestUser user = TestUserHelper.getSignedInUser(signIn);
@@ -139,6 +159,7 @@ public class ParticipantVersionTest {
                 .getMillis());
         assertEquals(SharingScope.SPONSORS_AND_PARTNERS, participantVersion3.getSharingScope());
         assertEquals("Asia/Tokyo", participantVersion3.getTimeZone());
+        assertEquals(studyMembershipMap, participantVersion3.getStudyMemberships());
 
         // Update first/last name.
         participant = consentedUsersApi.getUsersParticipantRecord(false).execute().body();
@@ -167,6 +188,7 @@ public class ParticipantVersionTest {
                 .getMillis());
         assertEquals(SharingScope.ALL_QUALIFIED_RESEARCHERS, participantVersion4.getSharingScope());
         assertEquals("Asia/Tokyo", participantVersion4.getTimeZone());
+        assertEquals(studyMembershipMap, participantVersion4.getStudyMemberships());
 
         // Toggle to no_sharing and back.
         consentedUsersApi.changeSharingScope(new SharingScopeForm().scope(SharingScope.NO_SHARING))
@@ -207,6 +229,20 @@ public class ParticipantVersionTest {
                 .getMillis());
         assertEquals(SharingScope.ALL_QUALIFIED_RESEARCHERS, participantVersion5.getSharingScope());
         assertEquals("America/New_York", participantVersion5.getTimeZone());
+        assertEquals(studyMembershipMap, participantVersion5.getStudyMemberships());
+
+        // Withdraw consent.
+        consentedUsersApi.withdrawFromApp(new Withdrawal().reason("Testing")).execute();
+
+        // Worker updates the user again.
+        participant = participantsApi.getParticipantById(userId, false).execute().body();
+        participant.setClientTimeZone("Europe/London");
+        participantsApi.updateParticipant(userId, participant).execute();
+
+        // Participant is withdrawn. There is no new version.
+        participantVersionList = workersApi.getAllParticipantVersionsForUser(TEST_APP_ID,
+                userId).execute().body().getItems();
+        assertEquals(5, participantVersionList.size());
 
         // Test get by userId and participant version.
         ParticipantVersion result = workersApi.getParticipantVersion(TEST_APP_ID, userId, 1).execute().body();
@@ -256,6 +292,25 @@ public class ParticipantVersionTest {
         verifyCommonParams(participantVersion1);
         assertEquals(1, participantVersion1.getParticipantVersion().intValue());
         assertEquals(SharingScope.ALL_QUALIFIED_RESEARCHERS, participantVersion1.getSharingScope());
+
+        Map<String, String> studyMembershipMap = participantVersion1.getStudyMemberships();
+        assertEquals(1, studyMembershipMap.size());
+        assertEquals("<none>", studyMembershipMap.get(STUDY_ID_1));
+
+        // Unenrolling the participant will also prevent the participant from creating participant versions. (And this
+        // is different from withdrawing consent.)
+        StudyParticipantsApi studyParticipantsApi = admin.getClient(StudyParticipantsApi.class);
+        studyParticipantsApi.withdrawParticipant(STUDY_ID_1, userId, "Testing").execute();
+
+        // Update the participant again.
+        participant = participantsApi.getParticipantById(userId, false).execute().body();
+        participant.setClientTimeZone("America/Los_Angeles");
+        participantsApi.updateParticipant(userId, participant).execute();
+
+        // No new version is created.
+        participantVersionList = workersApi.getAllParticipantVersionsForUser(TEST_APP_ID,
+                userId).execute().body().getItems();
+        assertEquals(1, participantVersionList.size());
     }
 
     @Test
@@ -281,7 +336,7 @@ public class ParticipantVersionTest {
         assertTrue(participantVersionList.isEmpty());
     }
 
-    private static void verifyCommonParams(ParticipantVersion participantVersion) {
+    private void verifyCommonParams(ParticipantVersion participantVersion) {
         assertEquals(TEST_APP_ID, participantVersion.getAppId());
         // Health code exists (but we don't know what it is).
         assertNotNull(participantVersion.getHealthCode());
@@ -289,5 +344,8 @@ public class ParticipantVersionTest {
         // createdOn and modifiedOn exist and are recent.
         assertTrue(participantVersion.getCreatedOn().isAfter(oneHourAgo));
         assertTrue(participantVersion.getModifiedOn().isAfter(oneHourAgo));
+
+        assertEquals(1, participantVersion.getDataGroups().size());
+        assertEquals("test_user", participantVersion.getDataGroups().get(0));
     }
 }
