@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.sagebionetworks.bridge.sdk.integration.Tests.DEFAULT_STUDY_ID;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
@@ -32,7 +31,6 @@ import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
-import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.ParticipantVersion;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
@@ -77,8 +75,8 @@ public class ParticipantVersionTest {
         AuthenticationApi authApi = unauthenticatedProvider.getAuthenticationApi();
 
         // Create user via sign up. Use external ID so we can bypass email verification.
-        SignUp signUp = new SignUp().appId(TEST_APP_ID).addDataGroupsItem("test_user").externalId(extId)
-                .password(PASSWORD);
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).addDataGroupsItem("test_user")
+                .putExternalIdsItem(STUDY_ID_1, extId).password(PASSWORD);
         authApi.signUp(signUp).execute();
 
         // Sign in. This throws because we're not consented yet.
@@ -113,12 +111,9 @@ public class ParticipantVersionTest {
         assertEquals(SharingScope.SPONSORS_AND_PARTNERS, participantVersion1.getSharingScope());
         assertNull(participantVersion1.getTimeZone());
 
-        // TEST_APP_ID->extId is created when we create the user with an external ID.
-        // STUDY_ID_1->"<none>" is created when we consent.
         Map<String, String> studyMembershipMap = participantVersion1.getStudyMemberships();
-        assertEquals(2, studyMembershipMap.size());
-        assertEquals(extId, studyMembershipMap.get(DEFAULT_STUDY_ID));
-        assertEquals("<none>", studyMembershipMap.get(STUDY_ID_1));
+        assertEquals(1, studyMembershipMap.size());
+        assertEquals(extId, studyMembershipMap.get(STUDY_ID_1));
 
         // Update participant by updating time zone.
         ParticipantsApi participantsApi = admin.getClient(ParticipantsApi.class);
