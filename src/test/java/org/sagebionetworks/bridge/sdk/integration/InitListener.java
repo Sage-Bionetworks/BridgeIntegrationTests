@@ -151,19 +151,18 @@ public class InitListener extends RunListener {
             admin.getClient(ForOrgAdminsApi.class).addMember(SAGE_ID, admin.getUserId()).execute();
         }
         
-        admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(SHARED_APP_ID)).execute();
-        
-        try {
-            orgsApi.getOrganization(SAGE_ID).execute();
-        } catch(EntityNotFoundException e) {
-            Organization org = new Organization().identifier(SAGE_ID).name(SAGE_NAME)
-                    .description("Sage sponsors study1 and study2");
-            orgsApi.createOrganization(org).execute();
-            LOG.info("  Creating organization “{}” in shared study", SAGE_ID);
-        } finally {
-            admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(TEST_APP_ID)).execute();
-        }
-        
+//        admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(SHARED_APP_ID)).execute();
+//        
+//        try {
+//            orgsApi.getOrganization(SAGE_ID).execute();
+//        } catch(EntityNotFoundException e) {
+//            Organization org = new Organization().identifier(SAGE_ID).name(SAGE_NAME)
+//                    .description("Sage sponsors study1 and study2");
+//            orgsApi.createOrganization(org).execute();
+//            LOG.info("  Creating organization “{}” in shared study", SAGE_ID);
+//        } finally {
+//            admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(TEST_APP_ID)).execute();
+//        }
 
         testRunInitialized = true;
     }

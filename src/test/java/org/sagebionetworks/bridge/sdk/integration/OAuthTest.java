@@ -10,6 +10,7 @@ import static org.sagebionetworks.bridge.rest.model.Role.WORKER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.escapeJSON;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
@@ -31,7 +32,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import org.sagebionetworks.bridge.config.Config;
-import org.sagebionetworks.bridge.config.Environment;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
@@ -41,6 +41,7 @@ import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.AppList;
+import org.sagebionetworks.bridge.rest.model.Environment;
 import org.sagebionetworks.bridge.rest.model.ForwardCursorStringList;
 import org.sagebionetworks.bridge.rest.model.OAuthAuthorizationToken;
 import org.sagebionetworks.bridge.rest.model.OAuthProvider;
@@ -50,23 +51,17 @@ import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
+import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 @Category(IntegrationSmokeTest.class)
 public class OAuthTest {
     private static final String SYNAPSE_LOGIN_URL = "auth/v1/login";
     private static final String SYNAPSE_OAUTH_CONSENT = "auth/v1/oauth2/consent";
 
-    private static Config config;
-
     private TestUser admin;
     private TestUser user;
     private TestUser user2;
     private TestUser worker;
-
-    @BeforeClass
-    public static void beforeClass() throws Exception {
-        config = Tests.loadTestConfig();
-    }
 
     @Before
     public void before() throws Exception {
@@ -100,7 +95,7 @@ public class OAuthTest {
     
     @Test
     public void test() throws Exception {
-        String synapseUserId = config.get("synapse.test.user.id");
+        String synapseUserId = CONFIG.get("synapse.test.user.id");
         worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true, 
                 new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
         
@@ -144,11 +139,11 @@ public class OAuthTest {
     
     @Test
     public void signInWithSynapseAccount() throws Exception {
-        String oauthClientId = config.get("synapse.oauth.client.id");
-        String userEmail = config.get("synapse.test.user");
-        String userPassword = config.get("synapse.test.user.password");
-        String synapseEndpoint = config.get("synapse.endpoint");
-        String synapseUserId = config.get("synapse.test.user.id");
+        String oauthClientId = CONFIG.get("synapse.oauth.client.id");
+        String userEmail = CONFIG.get("synapse.test.user");
+        String userPassword = CONFIG.get("synapse.test.user.password");
+        String synapseEndpoint = CONFIG.get("synapse.endpoint");
+        String synapseUserId = CONFIG.get("synapse.test.user.id");
 
         worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true,
                 new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
@@ -189,19 +184,19 @@ public class OAuthTest {
     
     @Test
     public void signInWithSynapseAccountUsingRestUtils() throws Exception {
-        String synapseUserId = config.get("synapse.test.user.id");
+        String synapseUserId = CONFIG.get("synapse.test.user.id");
         worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true,
                 new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
         
-        String userEmail = config.get("synapse.test.user");
-        String userPassword = config.get("synapse.test.user.password");
+        String userEmail = CONFIG.get("synapse.test.user");
+        String userPassword = CONFIG.get("synapse.test.user.password");
         worker.signOut();
 
         SignIn signIn = new SignIn().appId(TEST_APP_ID).email(userEmail).password(userPassword);
         AuthenticationApi authApi = worker.getClient(AuthenticationApi.class);
         
         UserSessionInfo session;
-        if (config.getEnvironment() == Environment.PROD) {
+        if (CONFIG.getEnvironment() == Environment.PRODUCTION) {
             session = RestUtils.signInWithSynapse(authApi, signIn);
         } else {
             session = RestUtils.signInWithSynapseDev(authApi, signIn);
@@ -214,7 +209,7 @@ public class OAuthTest {
     @Test
     public void synapseUserCanSwitchBetweenStudies() throws Exception {
         // Going to use the shared app as well as the API app for this test.
-        String synapseUserId = config.get("synapse.test.user.id");
+        String synapseUserId = CONFIG.get("synapse.test.user.id");
         
         user = new TestUserHelper.Builder(OAuthTest.class).withAppId(TEST_APP_ID)
                 .withSignUp(new SignUp().appId(TEST_APP_ID)
