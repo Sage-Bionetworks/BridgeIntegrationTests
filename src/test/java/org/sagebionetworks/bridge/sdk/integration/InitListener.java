@@ -9,7 +9,6 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_NAME;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.ArrayList;
@@ -23,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.SubpopulationsApi;
@@ -31,7 +29,6 @@ import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.Organization;
-import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Subpopulation;
 import org.sagebionetworks.bridge.user.TestUserHelper;

@@ -47,6 +47,7 @@ import retrofit2.Response;
 import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.UploadsApi;
@@ -84,7 +85,7 @@ public class AppTest {
     private Team team;
 
     private static final String EXPORTER_SYNAPSE_USER_ID_NAME = "exporter.synapse.user.id";
-    private static final String TEST_USER_ID_NAME = "test.synapse.user.id";
+    private static final String TEST_USER_ID_NAME = "synapse.test.user.id";
 
     // synapse related attributes
     private static String EXPORTER_SYNAPSE_USER_ID;
@@ -215,6 +216,7 @@ public class AppTest {
     @Test
     public void crudApp() throws Exception {
         ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
+        AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
 
         appId = Tests.randomIdentifier(getClass());
         App app = Tests.getApp(appId, null);
@@ -231,7 +233,7 @@ public class AppTest {
         VersionHolder holder = superadminApi.createApp(app).execute().body();
         assertNotNull(holder.getVersion());
 
-        superadminApi.adminChangeApp(new SignIn().appId(appId)).execute();
+        authApi.changeApp(new SignIn().appId(appId)).execute();
         App newApp = superadminApi.getApp(app.getIdentifier()).execute().body();
         
         app.addDataGroupsItem("test_user"); // added by the server, required for equality of dataGroups.
@@ -340,7 +342,7 @@ public class AppTest {
         
         // and then you have to switch back, because after you delete this test app, 
         // all users signed into that app are locked out of working.
-        superadminApi.adminChangeApp(new SignIn().appId(TEST_APP_ID)).execute();
+        authApi.changeApp(new SignIn().appId(TEST_APP_ID)).execute();
 
         // logically delete a app by admin
         superadminApi.deleteApp(appId, false).execute();

@@ -359,8 +359,8 @@ public class Tests {
     public static SynapseClient getSynapseClient() throws IOException {
         // Create Synapse Client.
         SynapseClient synapseClient = new SynapseClientImpl();
-        synapseClient.setUsername(CONFIG.get("synapse.user"));
-        synapseClient.setApiKey(CONFIG.get("synapse.api.key"));
+        synapseClient.setUsername(CONFIG.get("synapse.test.user"));
+        synapseClient.setApiKey(CONFIG.get("synapse.test.user.api.key"));
 
         // Based on config, we either talk to Synapse Dev (local/dev/staging) or Synapse Prod.
         String synapseEndpoint = CONFIG.get("synapse.endpoint");

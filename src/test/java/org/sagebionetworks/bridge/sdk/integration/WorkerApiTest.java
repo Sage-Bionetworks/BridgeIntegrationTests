@@ -26,8 +26,9 @@ import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.ActivitiesApi;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV1Api;
@@ -76,11 +77,11 @@ public class WorkerApiTest {
         workersApi = worker.getClient(ForWorkersApi.class);
         
         // Turn on healthcode sharing, it is usually off 
-        ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
-        App app = superadminApi.getApp(TEST_APP_ID).execute().body();
+        ForAdminsApi adminApi = admin.getClient(ForAdminsApi.class);
+        App app = adminApi.getUsersApp().execute().body();
         if (!app.isHealthCodeExportEnabled()) {
             app.setHealthCodeExportEnabled(true);
-            superadminApi.updateApp(TEST_APP_ID, app).execute();
+            adminApi.updateUsersApp(app).execute();
         }
     }
 
@@ -91,11 +92,11 @@ public class WorkerApiTest {
         }
 
         // Turn off healthcode sharing to clean up
-        ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
-        App app = superadminApi.getApp(TEST_APP_ID).execute().body();
+        ForAdminsApi authApi = admin.getClient(ForAdminsApi.class);
+        App app = authApi.getUsersApp().execute().body();
         if (app.isHealthCodeExportEnabled()) {
             app.setHealthCodeExportEnabled(false);
-            superadminApi.updateApp(TEST_APP_ID, app).execute();
+            authApi.updateUsersApp(app).execute();
         }
     }
     @After
@@ -347,11 +348,11 @@ public class WorkerApiTest {
      */
     @Test
     public void retrieveUsersBetweenApps() throws Exception {
-        ForSuperadminsApi adminsApi = admin.getClient(ForSuperadminsApi.class);
-        adminsApi.adminChangeApp(new SignIn().appId(SHARED_APP_ID)).execute();
+        AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
+        authApi.changeApp(new SignIn().appId(SHARED_APP_ID)).execute();
         TestUser sharedUser = new TestUserHelper.Builder(WorkerApiTest.class).withAppId(SHARED_APP_ID).createUser();
         
-        adminsApi.adminChangeApp(new SignIn().appId(TEST_APP_ID)).execute();
+        authApi.changeApp(new SignIn().appId(TEST_APP_ID)).execute();
         TestUser testUser = new TestUserHelper.Builder(WorkerApiTest.class).withAppId(TEST_APP_ID).createUser();
         
         // This worker is by default in Sage Bionetworks, and thus is associated to studies in the 'api'

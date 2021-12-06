@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
@@ -42,6 +43,7 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
+@Category(IntegrationSmokeTest.class)
 public class SignUpTest {
 
     @Test

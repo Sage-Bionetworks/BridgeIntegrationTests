@@ -28,9 +28,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -65,7 +65,7 @@ public class SharedModuleMetadataTest {
     private static ForDevelopersApi nonAuthSharedModulesApi;
     private static UploadSchemasApi devUploadSchemasApi;
     private static SurveysApi devSurveysApi;
-    private static ForSuperadminsApi superadminsApi;
+    private static AuthenticationApi authApi;
     private static ForAdminsApi adminsApi;
     private static SurveysApi adminSurveysApi;
     
@@ -89,8 +89,8 @@ public class SharedModuleMetadataTest {
         devUploadSchemasApi = sharedDeveloper.getClient(UploadSchemasApi.class);
         devSurveysApi = sharedDeveloper.getClient(SurveysApi.class);
         adminsApi = admin.getClient(ForAdminsApi.class);
-        superadminsApi = admin.getClient(ForSuperadminsApi.class);
-        superadminsApi.adminChangeApp(Tests.SHARED_SIGNIN).execute();
+        authApi = admin.getClient(AuthenticationApi.class);
+        authApi.changeApp(Tests.SHARED_SIGNIN).execute();
         adminSurveysApi = admin.getClient(SurveysApi.class);
     }
 
@@ -112,13 +112,13 @@ public class SharedModuleMetadataTest {
         surveyCreatedOn = retSurvey.getCreatedOn();
 
         // Ensure all tests are consistent by having the admin start in the API app.
-        superadminsApi.adminChangeApp(API_SIGNIN).execute();
+        authApi.changeApp(API_SIGNIN).execute();
     }
 
     @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
-        superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+        authApi.changeApp(SHARED_SIGNIN).execute();
         try {
             adminsApi.deleteMetadataByIdAllVersions(moduleId, true).execute();
         } catch (EntityNotFoundException ex) {
@@ -129,7 +129,7 @@ public class SharedModuleMetadataTest {
             adminsApi.deleteAllRevisionsOfUploadSchema(schemaId, true).execute();
             adminSurveysApi.deleteSurvey(surveyGuid, surveyCreatedOn, true).execute();
         } finally {
-            superadminsApi.adminChangeApp(API_SIGNIN).execute();
+            authApi.changeApp(API_SIGNIN).execute();
         }
     }
     
@@ -277,7 +277,7 @@ public class SharedModuleMetadataTest {
         assertEquals(updatedMetadataV6, gettedByIdAndVersionV6);
 
         // Delete v2. Latest is still v6.
-        superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+        authApi.changeApp(SHARED_SIGNIN).execute();
         adminsApi.deleteMetadataByIdAndVersion(moduleId, 2, true).execute();
         SharedModuleMetadata gettedLatestAfterDeleteV2 = sharedDeveloperModulesApi.getMetadataByIdLatestVersion(
                 moduleId).execute().body();
@@ -505,7 +505,7 @@ public class SharedModuleMetadataTest {
             assertFalse(moduleMetadataListContains(case13MetadataList, moduleBV2));
             
             // Verify physical delete
-            superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+            authApi.changeApp(SHARED_SIGNIN).execute();
             adminsApi.deleteMetadataByIdAndVersion(moduleAV1.getId(), moduleAV1.getVersion(), true).execute();
             try {
                 sharedDeveloperModulesApi.getMetadataByIdAndVersion(moduleAV1.getId(), moduleAV1.getVersion()).execute();
@@ -513,7 +513,7 @@ public class SharedModuleMetadataTest {
             } catch(EntityNotFoundException e) {
             }
         } finally {
-            superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+            authApi.changeApp(SHARED_SIGNIN).execute();
             try {
                 adminsApi.deleteMetadataByIdAllVersions(moduleId + "A", true).execute();
             } catch (BridgeSDKException ex) {
@@ -602,7 +602,7 @@ public class SharedModuleMetadataTest {
             assertTrue(case4MetadataList.contains(moduleV3));
         } finally {
             try {
-                superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+                authApi.changeApp(SHARED_SIGNIN).execute();
                 adminsApi.deleteMetadataByIdAllVersions(moduleId + "other", true).execute();
             } catch (BridgeSDKException ex) {
                 LOG.error("Error deleting module " + moduleId + "other: " + ex.getMessage(), ex);
@@ -613,14 +613,14 @@ public class SharedModuleMetadataTest {
     @SuppressWarnings("deprecation")
     @Test(expected = EntityNotFoundException.class)
     public void deleteByIdAllVersions404() throws Exception {
-        superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+        authApi.changeApp(SHARED_SIGNIN).execute();
         adminsApi.deleteMetadataByIdAllVersions(moduleId, true).execute();
     }
 
     @SuppressWarnings("deprecation")
     @Test(expected = EntityNotFoundException.class)
     public void deleteByIdAndVersion404() throws Exception {
-        superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+        authApi.changeApp(SHARED_SIGNIN).execute();
         adminsApi.deleteMetadataByIdAndVersion(moduleId, 1, true).execute();
     }
 
@@ -712,7 +712,7 @@ public class SharedModuleMetadataTest {
             assertEquals(2, list.getItems().size());
 
         } finally {
-            superadminsApi.adminChangeApp(SHARED_SIGNIN).execute();
+            authApi.changeApp(SHARED_SIGNIN).execute();
             adminsApi.deleteMetadataByIdAllVersions(moduleId + "A", true).execute();
             adminsApi.deleteMetadataByIdAllVersions(moduleId + "B", true).execute();
         }

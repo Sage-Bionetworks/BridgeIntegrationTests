@@ -32,8 +32,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.SharedAssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.TagsApi;
@@ -344,7 +344,7 @@ public class AssessmentTest {
         }
         
         TestUser admin = TestUserHelper.getSignedInAdmin();
-        ForSuperadminsApi superAdminApi = admin.getClient(ForSuperadminsApi.class);
+        AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
         SharedAssessmentsApi adminSharedApi = admin.getClient(SharedAssessmentsApi.class);
 
         // Import a shared assessment back into the app
@@ -373,7 +373,7 @@ public class AssessmentTest {
             adminAssessmentsApi.deleteAssessment(revision.getGuid(), true).execute();
         }
         try {
-            superAdminApi.adminChangeApp(SHARED_SIGNIN).execute();
+            authApi.changeApp(SHARED_SIGNIN).execute();
             // test logical delete of shared assessments
             adminSharedApi.deleteSharedAssessment(shared.getGuid(), false).execute().body();
             
@@ -387,7 +387,7 @@ public class AssessmentTest {
             
             adminSharedApi.deleteSharedAssessment(shared.getGuid(), true).execute().body();
         } finally {
-            superAdminApi.adminChangeApp(API_SIGNIN).execute();
+            authApi.changeApp(API_SIGNIN).execute();
         }
         // Should all be gone...
         list = sharedApi.getSharedAssessments(null, null, ImmutableList.of(markerTag), true).execute().body();
