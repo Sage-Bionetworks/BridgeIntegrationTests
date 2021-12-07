@@ -16,7 +16,7 @@ The integration tests use the Bridge Java REST SDK, and both the SDK and the tes
 
 **~/bridge-sdk-test.properties**
 
-    dev.name = alxdark
+    dev.name = <dev name>
 
     admin.email = <email address>
     admin.password = <password>
