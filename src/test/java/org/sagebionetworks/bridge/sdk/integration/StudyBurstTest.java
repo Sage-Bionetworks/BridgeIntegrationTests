@@ -362,6 +362,7 @@ public class StudyBurstTest {
         
         assertEquals(1, timeline.getStudyBursts().size());
         StudyBurstInfo info = timeline.getStudyBursts().get(0);
+        assertEquals(MUTABLE_EVENT, info.getOriginEventId());
         assertEquals("burst1", info.getIdentifier());
         assertEquals("P2D", info.getDelay());
         assertEquals("P1D", info.getInterval());
