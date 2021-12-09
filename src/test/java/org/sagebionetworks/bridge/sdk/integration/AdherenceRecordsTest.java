@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -47,6 +48,8 @@ import org.sagebionetworks.bridge.rest.model.AdherenceRecordsSearch;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentInfo;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
+import org.sagebionetworks.bridge.rest.model.EventStream;
+import org.sagebionetworks.bridge.rest.model.EventStreamAdherenceReport;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.ScheduledAssessment;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
@@ -516,6 +519,27 @@ public class AdherenceRecordsTest {
         assertTrue(sessionRecord.isDeclined());
         assertNull(sessionRecord.getStartedOn());
         assertNull(sessionRecord.getFinishedOn());
+    }
+    
+    @Test
+    public void eventStreamAdherenceReport() throws Exception { 
+        participant = TestUserHelper.createAndSignInUser(AdherenceRecordsTest.class, true);
+        ForConsentedUsersApi usersApi = participant.getClient(ForConsentedUsersApi.class);
+        
+        // Create the fake enrollment timestamp
+        usersApi.createStudyActivityEvent(STUDY_ID_1, new StudyActivityEventRequest()
+                .eventId(CLINIC_VISIT).timestamp(T1), true, null).execute();
+
+        EventStreamAdherenceReport report = usersApi.getUsersStudyParticipantEventStreamAdherenceReport(STUDY_ID_1, DateTime.now(), false).execute().body();
+        
+        List<String> eventIds = report.getStreams().stream().map(EventStream::getStartEventId).collect(Collectors.toList());
+        assertEquals(ImmutableList.of("custom:clinic_visit", "custom:fake_enrollment"), eventIds);
+        
+        EventStream clinicVisitStream = report.getStreams().get(0);
+        assertEquals(clinicVisitStream.getByDayEntries().keySet(), ImmutableSet.of("0", "7", "14", "21"));
+        
+        EventStream fakeEnrollmentStream = report.getStreams().get(1);
+        assertEquals(fakeEnrollmentStream.getByDayEntries().keySet(), ImmutableSet.of("2", "5", "8", "11", "14", "17", "20"));
     }
     
     private void updateAssessmentRecord(ForConsentedUsersApi usersApi, String instanceGuid, DateTime startedOn,
