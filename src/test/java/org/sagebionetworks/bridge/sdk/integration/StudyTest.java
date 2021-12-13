@@ -140,6 +140,8 @@ public class StudyTest {
         study.setDiseases(DISEASE_LIST);
         study.setStudyDesignTypes(DESIGN_TYPE_LIST);
         study.setSignInTypes(SIGN_IN_TYPES);
+        study.setStudyTimeZone("America/Chicago");
+        study.setAdherenceThresholdPercentage(60);
         study.setKeywords("some keywords");
         
         // We had an issue where you could not store two contacts with the same
@@ -183,6 +185,8 @@ public class StudyTest {
         assertEquals(DISEASE_LIST, study.getDiseases());
         assertEquals(DESIGN_TYPE_LIST, study.getStudyDesignTypes());
         assertEquals(SIGN_IN_TYPES, study.getSignInTypes());
+        assertEquals("America/Chicago", study.getStudyTimeZone());
+        assertEquals(Integer.valueOf(60), study.getAdherenceThresholdPercentage());
         assertEquals("some keywords", study.getKeywords());
         
         Contact retrievedContact1 = retrieved.getContacts().get(0);

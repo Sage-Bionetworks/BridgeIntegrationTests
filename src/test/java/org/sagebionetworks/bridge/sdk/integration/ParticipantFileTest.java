@@ -77,8 +77,8 @@ public class ParticipantFileTest {
 
         assertNotNull(keys);
         assertEquals(file.getMimeType(), keys.getMimeType());
-        assertTrue("Should be close to 24hrs difference between createdOn and expiresOn",
-                Math.abs(keys.getCreatedOn().plusDays(1).getMillis() - keys.getExpiresOn().getMillis()) < 1000);
+        assertTrue("Should be close to 24hrs difference (give or take 5min) between createdOn and expiresOn",
+                Math.abs(keys.getCreatedOn().plusDays(1).getMillis() - keys.getExpiresOn().getMillis()) < (1000*60*5));
         String uploadUrl = keys.getUploadUrl();
 
         URL url = new URL(uploadUrl);

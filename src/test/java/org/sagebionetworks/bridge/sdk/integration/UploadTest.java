@@ -85,13 +85,13 @@ public class UploadTest {
     public static void beforeClass() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
 
-        try {
-            admin.getClient(ForAdminsApi.class).getStudy(STUDY_ID_1).execute();
-        } catch(EntityNotFoundException e) {
-            Study study = new Study().name(STUDY_ID_1).identifier(STUDY_ID_1);
-            VersionHolder version = admin.getClient(ForAdminsApi.class).createStudy(study).execute().body();
-            study.setVersion(version.getVersion());
-        }
+//        try {
+//            admin.getClient(ForAdminsApi.class).getStudy(STUDY_ID_1).execute();
+//        } catch(EntityNotFoundException e) {
+//            Study study = new Study().name(STUDY_ID_1).identifier(STUDY_ID_1);
+//            VersionHolder version = admin.getClient(ForAdminsApi.class).createStudy(study).execute().body();
+//            study.setVersion(version.getVersion());
+//        }
         
         // developer is to ensure schemas exist. user is to do uploads
         developer = TestUserHelper.createAndSignInUser(UploadTest.class, false, Role.DEVELOPER);
@@ -303,8 +303,7 @@ public class UploadTest {
         }
         // userClient.upload marks the download complete
         // marking an already completed download as complete again should succeed (and be a no-op)
-        admin.getClient(ForWorkersApi.class)
-            .completeUploadSession(session.getId(), false, false).execute();
+        usersApi.completeUploadSession(session.getId(), false, false).execute();
 
         validateUploadValidationStatus(uploadId, status);
 

@@ -17,18 +17,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.SubpopulationsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -150,6 +153,12 @@ public class InitListener extends RunListener {
             admin.getClient(ForOrgAdminsApi.class).addMember(SAGE_ID, admin.getUserId()).execute();
         }
         
+        // Add dummy install link.
+        ForAdminsApi adminApi = admin.getClient(ForAdminsApi.class);
+        App app = adminApi.getUsersApp().execute().body();
+        app.setInstallLinks(ImmutableMap.of("Universal", "http://example.com/"));
+        adminApi.updateUsersApp(app).execute();
+
         admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
         
         try {
