@@ -3,8 +3,10 @@ package org.sagebionetworks.bridge.sdk.integration;
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.FUTURE_ONLY;
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_2;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
@@ -20,7 +22,7 @@ import org.junit.runner.Result;
 import org.junit.runner.notification.RunListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -148,18 +150,18 @@ public class InitListener extends RunListener {
             admin.getClient(ForOrgAdminsApi.class).addMember(SAGE_ID, admin.getUserId()).execute();
         }
         
-//        admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(SHARED_APP_ID)).execute();
-//        
-//        try {
-//            orgsApi.getOrganization(SAGE_ID).execute();
-//        } catch(EntityNotFoundException e) {
-//            Organization org = new Organization().identifier(SAGE_ID).name(SAGE_NAME)
-//                    .description("Sage sponsors study1 and study2");
-//            orgsApi.createOrganization(org).execute();
-//            LOG.info("  Creating organization “{}” in shared study", SAGE_ID);
-//        } finally {
-//            admin.getClient(ForSuperadminsApi.class).adminChangeApp(new SignIn().appId(TEST_APP_ID)).execute();
-//        }
+        admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
+        
+        try {
+            orgsApi.getOrganization(SAGE_ID).execute();
+        } catch(EntityNotFoundException e) {
+            Organization org = new Organization().identifier(SAGE_ID).name(SAGE_NAME)
+                    .description("Sage sponsors study1 and study2");
+            orgsApi.createOrganization(org).execute();
+            LOG.info("  Creating organization “{}” in shared study", SAGE_ID);
+        } finally {
+            admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
+        }
 
         testRunInitialized = true;
     }
