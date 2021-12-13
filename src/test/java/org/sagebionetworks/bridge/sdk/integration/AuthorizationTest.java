@@ -16,6 +16,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -31,6 +32,7 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import retrofit2.Call;
 
+@Category(IntegrationSmokeTest.class)
 public class AuthorizationTest {
 
     private static TestUser developer;

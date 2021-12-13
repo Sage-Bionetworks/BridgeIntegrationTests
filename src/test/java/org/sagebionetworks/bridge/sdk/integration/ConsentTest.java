@@ -44,7 +44,6 @@ import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
@@ -123,10 +122,10 @@ public class ConsentTest {
                 .withSignUp(phoneOnlyUser).createAndSignInUser();
 
         // Verify necessary flags (health code export) are enabled
-        ForSuperadminsApi adminApi = adminUser.getClient(ForSuperadminsApi.class);
-        App app = adminApi.getApp(TEST_APP_ID).execute().body();
+        ForAdminsApi adminApi = adminUser.getClient(ForAdminsApi.class);
+        App app = adminApi.getUsersApp().execute().body();
         app.setHealthCodeExportEnabled(true);
-        adminApi.updateApp(app.getIdentifier(), app).execute();
+        adminApi.updateUsersApp(app).execute();
     }
 
     @AfterClass

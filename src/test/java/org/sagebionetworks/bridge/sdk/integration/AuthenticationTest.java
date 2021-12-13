@@ -12,8 +12,8 @@ import org.junit.experimental.categories.Category;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.exceptions.AuthenticationFailedException;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -40,9 +40,6 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import retrofit2.Response;
 
 import java.io.IOException;
@@ -55,19 +52,19 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.PHONE;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 @Category(IntegrationSmokeTest.class)
 @SuppressWarnings({ "ConstantConditions", "unchecked" })
 public class AuthenticationTest {
-    private static final Logger LOG = LoggerFactory.getLogger(AuthenticationTest.class);
 
     private static TestUser adminUser;
     private static TestUser researchUser;
     private static TestUser testUser;
     private static TestUser phoneOnlyTestUser;
     private static AuthenticationApi authApi;
-    private static ForSuperadminsApi superadminApi;
+    private static ForAdminsApi adminApi;
 
     @BeforeClass
     public static void beforeClass() throws IOException {
@@ -81,15 +78,15 @@ public class AuthenticationTest {
         authApi = testUser.getClient(AuthenticationApi.class);
 
         adminUser = TestUserHelper.getSignedInAdmin();
-        superadminApi = adminUser.getClient(ForSuperadminsApi.class);
+        adminApi = adminUser.getClient(ForAdminsApi.class);
 
         // Verify necessary flags (health code export, email sign in, phone sign in, reauth) are enabled
-        App app = superadminApi.getApp(TEST_APP_ID).execute().body();
+        App app = adminApi.getUsersApp().execute().body();
         app.setHealthCodeExportEnabled(true);
         app.setPhoneSignInEnabled(true);
         app.setEmailSignInEnabled(true);
         app.setReauthenticationEnabled(true);
-        superadminApi.updateApp(app.getIdentifier(), app).execute();
+        adminApi.updateUsersApp(app).execute();
     }
     
     @AfterClass
@@ -114,31 +111,31 @@ public class AuthenticationTest {
     @AfterClass
     public static void disableReauth() throws Exception {
         // Because of https://sagebionetworks.jira.com/browse/BRIDGE-2091, we don't want to leave reauth enabled.
-        App app = superadminApi.getApp(TEST_APP_ID).execute().body();
+        App app = adminApi.getUsersApp().execute().body();
         app.setReauthenticationEnabled(false);
-        superadminApi.updateApp(app.getIdentifier(), app).execute();
+        adminApi.updateUsersApp(app).execute();
     }
 
     @Test
     public void requestEmailSignIn() throws Exception {
         EmailSignInRequest emailSignInRequest = new EmailSignInRequest().appId(testUser.getAppId())
                 .email(testUser.getEmail());
-        App app = superadminApi.getApp(testUser.getAppId()).execute().body();
+        App app = adminApi.getUsersApp().execute().body();
         try {
             // Turn on email-based sign in for test. We can't verify the email was sent... we can verify this call
             // works and returns the right error conditions.
             app.setEmailSignInEnabled(true);
             
             // Bug: this call does not return VersionHolder (BRIDGE-1809). Retrieve app again.
-            superadminApi.updateApp(app.getIdentifier(), app).execute();
-            app = superadminApi.getApp(testUser.getAppId()).execute().body();
+            adminApi.updateUsersApp(app).execute();
+            app = adminApi.getUsersApp().execute().body();
             assertTrue(app.isEmailSignInEnabled());
             
             Response<Message> response = authApi.requestEmailSignIn(emailSignInRequest).execute();
             assertEquals(202, response.code());
         } finally {
             app.setEmailSignInEnabled(false);
-            superadminApi.updateApp(app.getIdentifier(), app).execute();
+            adminApi.updateUsersApp(app).execute();
         }
     }
     
@@ -228,41 +225,22 @@ public class AuthenticationTest {
     
     @Test
     public void accountWithOneAppSeparateFromAccountWithSecondApp() throws IOException {
-        String appId = Tests.randomIdentifier(getClass());
+        // this works fine
+        testUser.signInAgain();
+
+        // User the shared app for this test. Can we sign in to the shared app? No.
+        // 
         try {
-            testUser.signInAgain();
-
-            // Make a second app for this test:
-            App app = new App();
-            app.setIdentifier(appId);
-            app.setName("Second App");
-            app.setSponsorName("Second App");
-            app.setSupportEmail("bridge-testing+support@sagebase.org");
-            app.setConsentNotificationEmail("bridge-testing+consent@sagebase.org");
-            app.setTechnicalEmail("bridge-testing+technical@sagebase.org");
-            app.setEmailVerificationEnabled(true);
-
-            superadminApi.createApp(app).execute();
-
-            // Can we sign in to secondapp? No.
-            try {
-                SignIn otherAppSignIn = new SignIn().appId(appId).email(testUser.getEmail())
-                        .password(testUser.getPassword());
-                ClientManager otherAppManager = new ClientManager.Builder().withSignIn(otherAppSignIn).build();
-                
-                AuthenticationApi authClient = otherAppManager.getClient(AuthenticationApi.class);
-                
-                authClient.signInV4(otherAppSignIn).execute();
-                fail("Should not have allowed sign in");
-            } catch (EntityNotFoundException e) {
-                assertEquals(404, e.getStatusCode());
-            }
-        } finally {
-            try {
-                superadminApi.deleteApp(appId, true).execute();
-            } catch (Exception ex) {
-                LOG.error("Error deleting app " + appId + ": " + ex.getMessage(), ex);
-            }
+            SignIn otherAppSignIn = new SignIn().appId(SHARED_APP_ID).email(testUser.getEmail())
+                    .password(testUser.getPassword());
+            ClientManager otherAppManager = new ClientManager.Builder().withSignIn(otherAppSignIn).build();
+            
+            AuthenticationApi authClient = otherAppManager.getClient(AuthenticationApi.class);
+            
+            authClient.signInV4(otherAppSignIn).execute();
+            fail("Should not have allowed sign in");
+        } catch (EntityNotFoundException e) {
+            assertEquals(404, e.getStatusCode());
         }
     }
     

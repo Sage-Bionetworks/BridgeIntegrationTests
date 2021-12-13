@@ -97,6 +97,7 @@ public class UserManagementTest {
         admin.signOut();
         
         ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
+        AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
         SignIn signIn = new SignIn().appId(admin.getAppId())
                 .email(admin.getEmail()).password((admin.getPassword()));
         
@@ -105,7 +106,7 @@ public class UserManagementTest {
         assertEquals(TEST_APP_ID, currentApp.getIdentifier());
         
         superadminApi = admin.getClient(ForSuperadminsApi.class);
-        superadminApi.adminChangeApp(SHARED_SIGNIN).execute().body();
+        authApi.changeApp(SHARED_SIGNIN).execute().body();
         
         currentApp = admin.getClient(AppsApi.class).getUsersApp().execute().body();
         assertEquals(SHARED_APP_ID, currentApp.getIdentifier());
@@ -122,7 +123,7 @@ public class UserManagementTest {
         assertEquals(SHARED_APP_ID, currentApp.getIdentifier());
         
         superadminApi = admin.getClient(ForSuperadminsApi.class);
-        superadminApi.adminChangeApp(API_SIGNIN).execute().body();
+        authApi.changeApp(API_SIGNIN).execute().body();
         
         currentApp = admin.getClient(AppsApi.class).getUsersApp().execute().body();
         assertEquals(TEST_APP_ID, currentApp.getIdentifier());

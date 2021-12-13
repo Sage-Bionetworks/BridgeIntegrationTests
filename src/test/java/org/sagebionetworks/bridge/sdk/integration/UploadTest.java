@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 
@@ -29,6 +31,7 @@ import org.junit.experimental.categories.Category;
 
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.rest.RestUtils;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
@@ -59,7 +62,6 @@ import org.sagebionetworks.bridge.util.IntegTestUtils;
 import com.google.common.collect.Lists;
 
 @Category(IntegrationSmokeTest.class)
-@SuppressWarnings({ "ConstantConditions", "unchecked" })
 public class UploadTest {
     
     private static final String EXTERNAL_ID = "upload-test-extid";
@@ -72,11 +74,9 @@ public class UploadTest {
     // Retry up to 6 times, so we don't spend more than 30 seconds per test.
     private static final int UPLOAD_STATUS_DELAY_RETRIES = 6;
     
-    private static TestUserHelper.TestUser worker;
     private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser otherStudyAdmin;
+    private static TestUserHelper.TestUser otherAppAdmin;
     private static TestUserHelper.TestUser researcher;
-    private static TestUserHelper.TestUser studyAdmin;
     private static TestUserHelper.TestUser user;
     private static TestUserHelper.TestUser admin;
 
@@ -85,20 +85,21 @@ public class UploadTest {
     public static void beforeClass() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
 
-        try {
-            admin.getClient(ForAdminsApi.class).getStudy(STUDY_ID_1).execute();
-        } catch(EntityNotFoundException e) {
-            Study study = new Study().name(STUDY_ID_1).identifier(STUDY_ID_1);
-            VersionHolder version = admin.getClient(ForAdminsApi.class).createStudy(study).execute().body();
-            study.setVersion(version.getVersion());
-        }
+//        try {
+//            admin.getClient(ForAdminsApi.class).getStudy(STUDY_ID_1).execute();
+//        } catch(EntityNotFoundException e) {
+//            Study study = new Study().name(STUDY_ID_1).identifier(STUDY_ID_1);
+//            VersionHolder version = admin.getClient(ForAdminsApi.class).createStudy(study).execute().body();
+//            study.setVersion(version.getVersion());
+//        }
         
         // developer is to ensure schemas exist. user is to do uploads
-        worker = TestUserHelper.createAndSignInUser(UploadTest.class, false, Role.WORKER);
         developer = TestUserHelper.createAndSignInUser(UploadTest.class, false, Role.DEVELOPER);
-        otherStudyAdmin = TestUserHelper.createAndSignInUser(UploadTest.class, SHARED_APP_ID, Role.ADMIN);
         researcher = TestUserHelper.createAndSignInUser(UploadTest.class, false, Role.RESEARCHER);
-        studyAdmin = TestUserHelper.createAndSignInUser(UploadTest.class, false, Role.ADMIN);
+
+        admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
+        otherAppAdmin = TestUserHelper.createAndSignInUser(UploadTest.class, SHARED_APP_ID, Role.ADMIN);
+        admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
 
         String emailAddress = IntegTestUtils.makeEmail(UploadTest.class);
         SignUp signUp = new SignUp().email(emailAddress).password(Tests.PASSWORD);
@@ -178,13 +179,6 @@ public class UploadTest {
     }
 
     @AfterClass
-    public static void deleteWorker() throws Exception {
-        if (worker != null) {
-            worker.signOutAndDeleteUser();
-        }
-    }
-
-    @AfterClass
     public static void deleteDeveloper() throws Exception {
         if (developer != null) {
             developer.signOutAndDeleteUser();
@@ -193,8 +187,8 @@ public class UploadTest {
 
     @AfterClass
     public static void deleteOtherStudyAdmin() throws Exception {
-        if (otherStudyAdmin != null) {
-            otherStudyAdmin.signOutAndDeleteUser();
+        if (otherAppAdmin != null) {
+            otherAppAdmin.signOutAndDeleteUser();
         }
     }
 
@@ -202,13 +196,6 @@ public class UploadTest {
     public static void deleteResearcher() throws Exception {
         if (researcher != null) {
             researcher.signOutAndDeleteUser();
-        }
-    }
-
-    @AfterClass
-    public static void deleteStudyAdmin() throws Exception {
-        if (studyAdmin != null) {
-            studyAdmin.signOutAndDeleteUser();
         }
     }
 
@@ -316,8 +303,7 @@ public class UploadTest {
         }
         // userClient.upload marks the download complete
         // marking an already completed download as complete again should succeed (and be a no-op)
-        worker.getClient(ForWorkersApi.class).completeUploadSession(session.getId(), false, false)
-                .execute();
+        usersApi.completeUploadSession(session.getId(), false, false).execute();
 
         validateUploadValidationStatus(uploadId, status);
 
@@ -328,7 +314,8 @@ public class UploadTest {
         RecordExportStatusRequest statusRequest = new RecordExportStatusRequest();
         statusRequest.setRecordIds(ImmutableList.of(record.getId()));
         statusRequest.setSynapseExporterStatus(SynapseExporterStatus.NOT_EXPORTED);
-        worker.getClient(ForWorkersApi.class).updateRecordExportStatuses(statusRequest).execute();
+        admin.getClient(ForWorkersApi.class)
+            .updateRecordExportStatuses(statusRequest).execute();
 
         status = usersApi.getUploadStatus(session.getId()).execute().body();
         assertEquals(SynapseExporterStatus.NOT_EXPORTED, status.getRecord().getSynapseExporterStatus());
@@ -387,25 +374,22 @@ public class UploadTest {
         assertNotNull(retrieved2.getHealthData());
         assertEquals(retrieved1, retrieved2);
 
-        // Worker can also retrieve this records.
-        ForWorkersApi workerApi = worker.getClient(ForWorkersApi.class);
+        // this is the same API used by workers, but in a smoke test on production,
+        // our ADMIN account cannot create a worker.
+        ForAdminsApi studyAdminApi = admin.getClient(ForAdminsApi.class);
 
-        Upload retrieved3 = workerApi.getUploadById(status.getId()).execute().body();
-        Upload retrieved4 = workerApi.getUploadByRecordId(record.getId()).execute().body();
+        Upload retrieved3 = studyAdminApi.getUploadById(status.getId()).execute().body();
+        Upload retrieved4 = studyAdminApi.getUploadByRecordId(record.getId()).execute().body();
 
         assertNotNull(retrieved3.getHealthData());
         assertNotNull(retrieved4.getHealthData());
         assertEquals(retrieved3, retrieved4);
 
-        // Study admin can also retrieve this record.
-        ForAdminsApi studyAdminApi = studyAdmin.getClient(ForAdminsApi.class);
-        studyAdminApi.getUploadById(status.getId()).execute();
-        studyAdminApi.getUploadByRecordId(record.getId()).execute();
-
         // Other study admin cannot retrieve this record.
-        ForAdminsApi otherStudyAdminApi = otherStudyAdmin.getClient(ForAdminsApi.class);
+        ForAdminsApi otherStudyAdminApi = otherAppAdmin.getClient(ForAdminsApi.class);
         try {
-            otherStudyAdminApi.getUploadById(status.getId()).execute();
+            Upload retValue = otherStudyAdminApi.getUploadById(status.getId()).execute().body();
+            System.out.println(retValue);
             fail("exception expected");
         } catch (UnauthorizedException ex) {
             // expected exception

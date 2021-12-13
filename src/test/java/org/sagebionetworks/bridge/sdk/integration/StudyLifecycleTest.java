@@ -18,7 +18,7 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
+import org.junit.experimental.categories.Category;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -31,6 +31,7 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import retrofit2.Call;
 
+@Category(IntegrationSmokeTest.class)
 public class StudyLifecycleTest {
     
     @FunctionalInterface
