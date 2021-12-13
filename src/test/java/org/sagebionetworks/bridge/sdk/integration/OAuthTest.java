@@ -84,11 +84,15 @@ public class OAuthTest {
     @Test
     public void signInWithSynapseAccount() throws Exception {
         String oauthClientId = CONFIG.get("synapse.oauth.client.id");
+        String synapseEndpoint = CONFIG.get("synapse.endpoint");
+        if (CONFIG.getEnvironment() == Environment.PRODUCTION) {
+            oauthClientId = CONFIG.get("prod.synapse.oauth.client.id");
+            synapseEndpoint = CONFIG.get("prod.synapse.endpoint");
+        }
         String userEmail = CONFIG.get("synapse.test.user");
         String userPassword = CONFIG.get("synapse.test.user.password");
-        String synapseEndpoint = CONFIG.get("synapse.endpoint");
         String synapseUserId = CONFIG.get("synapse.test.user.id");
-
+        
         developer = TestUserHelper.createAndSignInUser(OAuthTest.class, true,
                 new SignUp().roles(ImmutableList.of(DEVELOPER)).synapseUserId(synapseUserId));
         developer.signOut();
