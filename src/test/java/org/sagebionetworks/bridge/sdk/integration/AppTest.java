@@ -11,13 +11,11 @@ import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTA
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualIgnoringOrder;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 import static org.sagebionetworks.repo.model.util.ModelConstants.ENTITY_ADMIN_ACCESS_PERMISSIONS;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -44,7 +42,6 @@ import org.sagebionetworks.repo.model.ResourceAccess;
 import org.sagebionetworks.repo.model.Team;
 import retrofit2.Response;
 
-import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
@@ -88,19 +85,13 @@ public class AppTest {
     private static final String TEST_USER_ID_NAME = "synapse.test.user.id";
 
     // synapse related attributes
-    private static String EXPORTER_SYNAPSE_USER_ID;
-    private static Long TEST_USER_ID; // test user exists in synapse
-    private static final String CONFIG_FILE = "bridge-sdk-test.properties";
-    private static final String DEFAULT_CONFIG_FILE = CONFIG_FILE;
-    private static final String USER_CONFIG_FILE = System.getProperty("user.home") + "/" + CONFIG_FILE;
-
+    private static String EXPORTER_SYNAPSE_USER_ID = CONFIG.get(EXPORTER_SYNAPSE_USER_ID_NAME);
+    private static Long TEST_USER_ID = Long.parseLong(CONFIG.get(TEST_USER_ID_NAME));
+    
     private static final int MAX_PAGE_SIZE = 100;
 
     @Before
     public void before() throws IOException {
-        // pre-load test user id and exporter synapse user id
-        setupProperties();
-
         admin = TestUserHelper.getSignedInAdmin();
         synapseClient = Tests.getSynapseClient();
     }
@@ -117,23 +108,6 @@ public class AppTest {
             synapseClient.deleteTeam(team.getId());
         }
         admin.signOut();
-    }
-
-    private org.sagebionetworks.bridge.config.Config bridgeIntegTestConfig() throws IOException {
-        Path localConfigPath = Paths.get(USER_CONFIG_FILE);
-
-        if (Files.exists(localConfigPath)) {
-            return new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
-        } else {
-            return new PropertiesConfig(DEFAULT_CONFIG_FILE);
-        }
-    }
-
-    private void setupProperties() throws IOException {
-        org.sagebionetworks.bridge.config.Config config = bridgeIntegTestConfig();
-
-        EXPORTER_SYNAPSE_USER_ID = config.get(EXPORTER_SYNAPSE_USER_ID_NAME);
-        TEST_USER_ID = Long.parseLong(config.get(TEST_USER_ID_NAME));
     }
 
     // Disabled this test: This test stomps the Synapse configuration in the API app. This is used by the
