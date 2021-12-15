@@ -61,6 +61,8 @@ public class OAuthTest {
     
     @After
     public void after() throws Exception {
+        // Using OAuth will have messed up this sign in, so force it again for the next test.
+        admin = TestUserHelper.getSignedInAdmin(true);
         if (user != null) {
             user.signOutAndDeleteUser();
         }
