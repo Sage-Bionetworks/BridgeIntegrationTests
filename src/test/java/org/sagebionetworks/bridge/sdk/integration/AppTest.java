@@ -93,7 +93,8 @@ public class AppTest {
     @Before
     public void before() throws IOException {
         admin = TestUserHelper.getSignedInAdmin();
-        synapseClient = Tests.getSynapseClient();
+        // This signs out our admin since it uses the same credentials.
+        // synapseClient = Tests.getSynapseClient();
     }
 
     @After
@@ -107,7 +108,6 @@ public class AppTest {
         if (team != null) {
             synapseClient.deleteTeam(team.getId());
         }
-        admin.signOut();
     }
 
     // Disabled this test: This test stomps the Synapse configuration in the API app. This is used by the

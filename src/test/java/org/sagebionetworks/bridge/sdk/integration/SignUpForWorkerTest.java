@@ -38,7 +38,7 @@ public class SignUpForWorkerTest {
     
     @Test
     public void signUpWithExternalIdAndNoAccountSucceeds() throws Exception {
-        TestUser admin = TestUserHelper.getSignedInAdmin();
+        TestUser admin = TestUserHelper.getSignedInAdmin(true);
         ForAdminsApi adminsApi = admin.getClient(ForAdminsApi.class);
         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
         OrganizationsApi orgsApi = admin.getClient(OrganizationsApi.class);

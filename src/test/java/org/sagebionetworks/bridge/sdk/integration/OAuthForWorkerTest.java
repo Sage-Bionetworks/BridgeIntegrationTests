@@ -8,6 +8,7 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
@@ -22,6 +23,7 @@ import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.google.common.collect.ImmutableList;
 
+@Ignore // For this test to pass, we'll need a second Synapse ID that can be assigned to the worker. 
 public class OAuthForWorkerTest {
     
     private TestUser admin;

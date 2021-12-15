@@ -40,6 +40,7 @@ import org.sagebionetworks.bridge.rest.model.AndroidAppLink;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.AppleAppLink;
 import org.sagebionetworks.bridge.rest.model.ClientInfo;
+import org.sagebionetworks.bridge.rest.model.Environment;
 import org.sagebionetworks.bridge.rest.model.MasterSchedulerConfig;
 import org.sagebionetworks.bridge.rest.model.OAuthProvider;
 import org.sagebionetworks.bridge.rest.model.Phone;
@@ -362,8 +363,11 @@ public class Tests {
         synapseClient.setUsername(CONFIG.get("synapse.test.user"));
         synapseClient.setApiKey(CONFIG.get("synapse.test.user.api.key"));
 
-        // Based on config, we either talk to Synapse Dev (local/dev/staging) or Synapse Prod.
+        // SDK Config does not pick up environment-prefixed property, we must do so here
         String synapseEndpoint = CONFIG.get("synapse.endpoint");
+        if (CONFIG.getEnvironment() == Environment.PRODUCTION) {
+            synapseEndpoint = CONFIG.get("prod.synapse.endpoint");   
+        }
         synapseClient.setAuthEndpoint(synapseEndpoint + "auth/v1");
         synapseClient.setFileEndpoint(synapseEndpoint + "file/v1");
         synapseClient.setRepositoryEndpoint(synapseEndpoint + "repo/v1");

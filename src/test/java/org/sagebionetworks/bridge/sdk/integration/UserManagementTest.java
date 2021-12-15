@@ -37,8 +37,6 @@ public class UserManagementTest {
     @Before
     public void before() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
-
-        researcher = TestUserHelper.createAndSignInUser(UserManagementTest.class, true, RESEARCHER);
     }
 
     @After
@@ -46,11 +44,12 @@ public class UserManagementTest {
         if (researcher != null) {
             researcher.signOutAndDeleteUser(); //must do before admin session signout    
         }
-        admin.signOut();
     }
 
     @Test
     public void canCreateAndSignOutAndDeleteUser() throws Exception {
+        researcher = TestUserHelper.createAndSignInUser(UserManagementTest.class, true, RESEARCHER);
+
         String email = IntegTestUtils.makeEmail(UserManagementTest.class);
         String password = "P4ssword";
 
@@ -90,42 +89,7 @@ public class UserManagementTest {
         }
     }
     
-    @Test
-    public void canSignInAsAdminAndChangeStudy() throws Exception {
-        // Unfortunately right now, we only have one study, but try all the APIs to make sure you
-        // don't get any mistakes
-        admin.signOut();
-        
-        ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
-        AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
-        SignIn signIn = new SignIn().appId(admin.getAppId())
-                .email(admin.getEmail()).password((admin.getPassword()));
-        
-        superadminApi.adminSignIn(signIn).execute().body();
-        App currentApp = admin.getClient(AppsApi.class).getUsersApp().execute().body();
-        assertEquals(TEST_APP_ID, currentApp.getIdentifier());
-        
-        superadminApi = admin.getClient(ForSuperadminsApi.class);
-        authApi.changeApp(SHARED_SIGNIN).execute().body();
-        
-        currentApp = admin.getClient(AppsApi.class).getUsersApp().execute().body();
-        assertEquals(SHARED_APP_ID, currentApp.getIdentifier());
-        
-        // now reverse the order
-        admin.signOut(); // so it's not necessary to switch back to the API study for future tests
-        
-        superadminApi = admin.getClient(ForSuperadminsApi.class);
-        signIn = new SignIn().appId(SHARED_APP_ID)
-                .email(admin.getEmail()).password((admin.getPassword()));
-        
-        superadminApi.adminSignIn(signIn).execute().body();
-        currentApp = admin.getClient(AppsApi.class).getUsersApp().execute().body();
-        assertEquals(SHARED_APP_ID, currentApp.getIdentifier());
-        
-        superadminApi = admin.getClient(ForSuperadminsApi.class);
-        authApi.changeApp(API_SIGNIN).execute().body();
-        
-        currentApp = admin.getClient(AppsApi.class).getUsersApp().execute().body();
-        assertEquals(TEST_APP_ID, currentApp.getIdentifier());
-    }
+    // "canSignInAsAdminAndChangeStudy" is tested by OAuthTest#synapseUserCanSwitchBetweenStudies
+    // without creating accounts that would need to be tied to Synapse IDs.
+
 }
