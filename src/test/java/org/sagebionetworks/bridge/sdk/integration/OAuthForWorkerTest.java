@@ -4,12 +4,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.WORKER;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
@@ -36,8 +38,7 @@ public class OAuthForWorkerTest {
     
     @After
     public void after() throws Exception {
-        // Force admin back to the API test
-        admin.signOut();
+        admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
         if (worker != null) {
             worker.signOutAndDeleteUser();
         }
