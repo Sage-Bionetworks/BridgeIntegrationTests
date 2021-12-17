@@ -7,6 +7,7 @@ import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.FUTU
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.io.IOException;
@@ -57,6 +58,7 @@ public class Tests {
     private static final Logger LOG = LoggerFactory.getLogger(Tests.class);
 
     public static final SignIn API_SIGNIN = new SignIn().appId(TEST_APP_ID);
+    public static final SignIn API_2_SIGNIN = new SignIn().appId(TEST_APP_2_ID);
     public static final SignIn SHARED_SIGNIN = new SignIn().appId(SHARED_APP_ID);
     public static final String PACKAGE = "org.sagebionetworks.bridge";
     public static final String MOBILE_APP_NAME = "DummyApp";
