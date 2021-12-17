@@ -36,6 +36,7 @@ import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
+import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,7 +53,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.PHONE;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 @Category(IntegrationSmokeTest.class)
@@ -228,10 +229,10 @@ public class AuthenticationTest {
         // this works fine
         testUser.signInAgain();
 
-        // User the shared app for this test. Can we sign in to the shared app? No.
+        // Use api 2 for this test. Can we sign in to this other app? No.
         // 
         try {
-            SignIn otherAppSignIn = new SignIn().appId(SHARED_APP_ID).email(testUser.getEmail())
+            SignIn otherAppSignIn = new SignIn().appId(TEST_APP_2_ID).email(testUser.getEmail())
                     .password(testUser.getPassword());
             ClientManager otherAppManager = new ClientManager.Builder().withSignIn(otherAppSignIn).build();
             

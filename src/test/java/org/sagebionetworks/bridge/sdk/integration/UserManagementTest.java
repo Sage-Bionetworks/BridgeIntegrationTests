@@ -1,26 +1,18 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
-import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
-import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.sagebionetworks.bridge.rest.ClientManager;
-import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
-import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.SignUp;
@@ -91,5 +83,4 @@ public class UserManagementTest {
     
     // "canSignInAsAdminAndChangeStudy" is tested by OAuthTest#synapseUserCanSwitchBetweenStudies
     // without creating accounts that would need to be tied to Synapse IDs.
-
 }

@@ -1,8 +1,6 @@
 # BridgeIntegrationTests
 
-Integration tests for the BridgeServer2 server. Integration tests require bootstrap accounts on the server to execute. All tests run outside of production using a `SUPERADMIN` account. In production, for security reasons, a subset of these tests execute using an `ADMIN` account (marked with the `@Category(IntegrationSmokeTest.class)` class annotation). The `ADMIN` account can’t access all apps, or create worker accounts that can access all apps.
-
-## Setting up your environment to run integration tests
+Integration tests for the BridgeServer2 server. 
 
 The integration tests use the Bridge Java REST SDK, and both the SDK and the tests need some properties to be set in order to run (in the following property files):
 
@@ -21,8 +19,18 @@ The integration tests use the Bridge Java REST SDK, and both the SDK and the tes
     synapse.test.user.password = <password>
     synapse.test.user.api.key = <api key>
 
-Create two bootstrap accounts in each environment, one in the 'api' app and one in the 'shared' app. Each account should have the `synapseUserId` ID set in the `synapse.test.user.id` property. In production these accounts should have the `ADMIN` role and in other environments, these accounts should have the `SUPERADMIN` role.
-
 The **synapse.test.*** keys for environments other than `local` are available in LastPass.
 
-It should be possible at this point to start the server and run the tests (`mvn clean test`).
+## Server configuration
+
+On startup, the `BridgeServer2` server will create the following apps and accounts if they do not currently exist on the server in your environment:
+
+**In all environments** the bootstrapper creates three apps with the IDs of `api`, `api-2`, and `shared`. The API apps are used solely for testing, while the `shared` app is used to test shared assessment functionality outside of production. In production, `shared` is only used to host our shared assessment library.
+
+It also reads the `admin.email` and `admin.synapse.user.id` properties in the `~/BridgeServer2.conf` file. The `admin.synapse.user.id` property should have the same number as the `synapse.test.user.id` property described above.
+
+**In local, development, and staging environments:** the bootstrapper creates three admin accounts, one in each of the `api`,  `api-2`, and `shared` apps. The accounts will have the role of `SUPERADMIN`.
+
+**In the production environment:** the bootstrapper creates three admin accounts, one in each of the `api`,  `api-2`, and `shared` apps. The accounts will have the role of `ADMIN` (**NOT** `SUPERADMIN`).
+
+Once the Bridge server has started, it should be possible to run the test suite with `mvn clean test`.
