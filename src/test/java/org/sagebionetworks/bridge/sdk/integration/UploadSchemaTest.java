@@ -31,10 +31,9 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -60,7 +59,7 @@ public class UploadSchemaTest {
     private static TestUserHelper.TestUser worker;
     private static TestUserHelper.TestUser sharedDeveloper;
     private static ForAdminsApi adminApi;
-    private static ForSuperadminsApi superadminApi;
+    private static AuthenticationApi authApi;
     private static UploadSchemasApi devUploadSchemasApi;
     private static ForWorkersApi workerUploadSchemasApi;
     private static ForDevelopersApi sharedDeveloperModulesApi;
@@ -78,7 +77,7 @@ public class UploadSchemaTest {
         sharedDeveloperModulesApi = sharedDeveloper.getClient(ForDevelopersApi.class);
 
         adminApi = admin.getClient(ForAdminsApi.class);
-        superadminApi = admin.getClient(ForSuperadminsApi.class);
+        authApi = admin.getClient(AuthenticationApi.class);
         devUploadSchemasApi = developer.getClient(UploadSchemasApi.class);
         sharedUploadSchemasApi = sharedDeveloper.getClient(UploadSchemasApi.class);
         workerUploadSchemasApi = worker.getClient(ForWorkersApi.class);
@@ -93,7 +92,7 @@ public class UploadSchemaTest {
     @After
     public void deleteSchemas() throws Exception {
         try {
-            superadminApi.adminChangeApp(API_SIGNIN).execute();
+            authApi.changeApp(API_SIGNIN).execute();
             adminApi.deleteAllRevisionsOfUploadSchema(schemaId, true).execute();
         } catch (EntityNotFoundException ex) {
             // Suppress the exception, as the test may have already deleted the schema.
@@ -145,9 +144,9 @@ public class UploadSchemaTest {
         // execute delete
         Exception thrownEx = null;
         try {
-            superadminApi.adminChangeApp(SHARED_SIGNIN).execute();
+            authApi.changeApp(SHARED_SIGNIN).execute();
             adminApi.deleteAllRevisionsOfUploadSchema(retSchema.getSchemaId(), true).execute();
-            superadminApi.adminChangeApp(API_SIGNIN).execute();
+            authApi.changeApp(API_SIGNIN).execute();
             fail("expected exception");
         } catch (BadRequestException e) {
             thrownEx = e;
@@ -155,9 +154,9 @@ public class UploadSchemaTest {
             // finally delete shared module and uploaded schema
             adminApi.deleteMetadataByIdAllVersions(moduleId, true).execute();
 
-            superadminApi.adminChangeApp(SHARED_SIGNIN).execute();
+            authApi.changeApp(SHARED_SIGNIN).execute();
             adminApi.deleteAllRevisionsOfUploadSchema(retSchema.getSchemaId(), true).execute();
-            superadminApi.adminChangeApp(API_SIGNIN).execute();
+            authApi.changeApp(API_SIGNIN).execute();
         }
         assertNotNull(thrownEx);
     }

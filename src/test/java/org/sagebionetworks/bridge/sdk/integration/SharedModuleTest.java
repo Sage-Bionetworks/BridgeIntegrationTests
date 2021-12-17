@@ -17,9 +17,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.SurveysApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -82,16 +82,16 @@ public class SharedModuleTest {
         // Delete schemas created by test. We do it in a single After method instead of multiple, in case there are any
         // referential integrity concerns.
         ForAdminsApi adminApi = admin.getClient(ForAdminsApi.class);
-        ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
+        AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
 
         if (module != null) {
             try {
-                superadminApi.adminChangeApp(SHARED_SIGNIN).execute();
+                authApi.changeApp(SHARED_SIGNIN).execute();
                 adminApi.deleteMetadataByIdAllVersions(module.getId(), true).execute();
             } catch (BridgeSDKException ex) {
                 LOG.error("Error deleting module " + module.getId() + ": "  + ex.getMessage(), ex);
             } finally {
-                superadminApi.adminChangeApp(API_SIGNIN).execute();
+                authApi.changeApp(API_SIGNIN).execute();
             }
         }
 
@@ -107,13 +107,13 @@ public class SharedModuleTest {
 
         if (sharedSchema != null) {
             try {
-                superadminApi.adminChangeApp(SHARED_SIGNIN).execute();
+                authApi.changeApp(SHARED_SIGNIN).execute();
                 adminApi.deleteAllRevisionsOfUploadSchema(sharedSchema.getSchemaId(), true).execute();
             } catch (BridgeSDKException ex) {
                 LOG.error("Error deleting schema " + sharedSchema.getSchemaId() + " in app " +
                         sharedDeveloper.getAppId() + ": "  + ex.getMessage(), ex);
             } finally {
-                superadminApi.adminChangeApp(API_SIGNIN).execute();
+                authApi.changeApp(API_SIGNIN).execute();
             }
         }
 
@@ -127,12 +127,12 @@ public class SharedModuleTest {
 
         if (sharedSurvey != null) {
             try {
-                superadminApi.adminChangeApp(SHARED_SIGNIN).execute();
+                authApi.changeApp(SHARED_SIGNIN).execute();
                 adminApi.deleteSurvey(sharedSurvey.getGuid(), sharedSurvey.getCreatedOn(), true).execute();
             } catch (BridgeSDKException ex) {
                 LOG.error("Error deleting shared survey " + sharedSurvey.getGuid() + ": "  + ex.getMessage(), ex);
             } finally {
-                superadminApi.adminChangeApp(API_SIGNIN).execute();
+                authApi.changeApp(API_SIGNIN).execute();
             }
         }
     }

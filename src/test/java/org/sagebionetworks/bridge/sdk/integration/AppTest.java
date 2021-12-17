@@ -11,13 +11,11 @@ import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTA
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualIgnoringOrder;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 import static org.sagebionetworks.repo.model.util.ModelConstants.ENTITY_ADMIN_ACCESS_PERMISSIONS;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -44,9 +42,9 @@ import org.sagebionetworks.repo.model.ResourceAccess;
 import org.sagebionetworks.repo.model.Team;
 import retrofit2.Response;
 
-import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.UploadsApi;
@@ -84,24 +82,19 @@ public class AppTest {
     private Team team;
 
     private static final String EXPORTER_SYNAPSE_USER_ID_NAME = "exporter.synapse.user.id";
-    private static final String TEST_USER_ID_NAME = "test.synapse.user.id";
+    private static final String TEST_USER_ID_NAME = "synapse.test.user.id";
 
     // synapse related attributes
-    private static String EXPORTER_SYNAPSE_USER_ID;
-    private static Long TEST_USER_ID; // test user exists in synapse
-    private static final String CONFIG_FILE = "bridge-sdk-test.properties";
-    private static final String DEFAULT_CONFIG_FILE = CONFIG_FILE;
-    private static final String USER_CONFIG_FILE = System.getProperty("user.home") + "/" + CONFIG_FILE;
-
+    private static String EXPORTER_SYNAPSE_USER_ID = CONFIG.get(EXPORTER_SYNAPSE_USER_ID_NAME);
+    private static Long TEST_USER_ID = Long.parseLong(CONFIG.get(TEST_USER_ID_NAME));
+    
     private static final int MAX_PAGE_SIZE = 100;
 
     @Before
     public void before() throws IOException {
-        // pre-load test user id and exporter synapse user id
-        setupProperties();
-
         admin = TestUserHelper.getSignedInAdmin();
-        synapseClient = Tests.getSynapseClient();
+        // This signs out our admin since it uses the same credentials.
+        // synapseClient = Tests.getSynapseClient();
     }
 
     @After
@@ -115,24 +108,6 @@ public class AppTest {
         if (team != null) {
             synapseClient.deleteTeam(team.getId());
         }
-        admin.signOut();
-    }
-
-    private org.sagebionetworks.bridge.config.Config bridgeIntegTestConfig() throws IOException {
-        Path localConfigPath = Paths.get(USER_CONFIG_FILE);
-
-        if (Files.exists(localConfigPath)) {
-            return new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
-        } else {
-            return new PropertiesConfig(DEFAULT_CONFIG_FILE);
-        }
-    }
-
-    private void setupProperties() throws IOException {
-        org.sagebionetworks.bridge.config.Config config = bridgeIntegTestConfig();
-
-        EXPORTER_SYNAPSE_USER_ID = config.get(EXPORTER_SYNAPSE_USER_ID_NAME);
-        TEST_USER_ID = Long.parseLong(config.get(TEST_USER_ID_NAME));
     }
 
     // Disabled this test: This test stomps the Synapse configuration in the API app. This is used by the
@@ -215,6 +190,7 @@ public class AppTest {
     @Test
     public void crudApp() throws Exception {
         ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
+        AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
 
         appId = Tests.randomIdentifier(getClass());
         App app = Tests.getApp(appId, null);
@@ -231,7 +207,7 @@ public class AppTest {
         VersionHolder holder = superadminApi.createApp(app).execute().body();
         assertNotNull(holder.getVersion());
 
-        superadminApi.adminChangeApp(new SignIn().appId(appId)).execute();
+        authApi.changeApp(new SignIn().appId(appId)).execute();
         App newApp = superadminApi.getApp(app.getIdentifier()).execute().body();
         
         app.addDataGroupsItem("test_user"); // added by the server, required for equality of dataGroups.
@@ -340,7 +316,7 @@ public class AppTest {
         
         // and then you have to switch back, because after you delete this test app, 
         // all users signed into that app are locked out of working.
-        superadminApi.adminChangeApp(new SignIn().appId(TEST_APP_ID)).execute();
+        authApi.changeApp(new SignIn().appId(TEST_APP_ID)).execute();
 
         // logically delete a app by admin
         superadminApi.deleteApp(appId, false).execute();

@@ -2,14 +2,12 @@ package org.sagebionetworks.bridge.sdk.integration;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
-import static org.sagebionetworks.bridge.rest.model.Role.WORKER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.escapeJSON;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
@@ -26,28 +24,22 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import org.sagebionetworks.bridge.config.Config;
-import org.sagebionetworks.bridge.config.Environment;
+import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
-import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.AppList;
-import org.sagebionetworks.bridge.rest.model.ForwardCursorStringList;
+import org.sagebionetworks.bridge.rest.model.Environment;
 import org.sagebionetworks.bridge.rest.model.OAuthAuthorizationToken;
-import org.sagebionetworks.bridge.rest.model.OAuthProvider;
 import org.sagebionetworks.bridge.rest.model.SignIn;
-import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
-import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
@@ -56,42 +48,29 @@ public class OAuthTest {
     private static final String SYNAPSE_LOGIN_URL = "auth/v1/login";
     private static final String SYNAPSE_OAUTH_CONSENT = "auth/v1/oauth2/consent";
 
-    private static Config config;
-
     private TestUser admin;
     private TestUser user;
-    private TestUser user2;
-    private TestUser worker;
-
-    @BeforeClass
-    public static void beforeClass() throws Exception {
-        config = Tests.loadTestConfig();
-    }
-
+    
+    private String adminUserId;
+    
     @Before
     public void before() throws Exception {
-        admin = TestUserHelper.getSignedInAdmin();
+        admin = TestUserHelper.getSignedInAdmin(true);
+        adminUserId = admin.getUserId();
     }
     
     @After
     public void after() throws Exception {
-        // Force admin back to the API test
-        admin.signOut();
+        // Using OAuth will have messed up this sign in, so force it again for the next test.
+        admin = TestUserHelper.getSignedInAdmin(true);
         if (user != null) {
             user.signOutAndDeleteUser();
-        }
-        if (worker != null) {
-            worker.signOutAndDeleteUser();
-        }
-        if (user2 != null) {
-            user2.signOutAndDeleteUser();
         }
     }
     
     @Test(expected = EntityNotFoundException.class)
     public void requestOAuthAccessTokenExists() throws Exception {
         user = TestUserHelper.createAndSignInUser(OAuthTest.class, true);
-        
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         
         OAuthAuthorizationToken token = new OAuthAuthorizationToken().authToken("authToken");
@@ -99,61 +78,18 @@ public class OAuthTest {
     }
     
     @Test
-    public void test() throws Exception {
-        String synapseUserId = config.get("synapse.test.user.id");
-        worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true, 
-                new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
-        
-        ForWorkersApi workersApi = worker.getClient(ForWorkersApi.class);
-        
-        try {
-            workersApi.getHealthCodesGrantingOAuthAccess(worker.getAppId(), "unused-vendor-id", null, null).execute().body();
-            fail("Should have thrown exception.");
-        } catch(EntityNotFoundException e) {
-            assertEquals("OAuthProvider not found.", e.getMessage());
-        }
-        try {
-            workersApi.getOAuthAccessToken(worker.getAppId(), "unused-vendor-id", "ABC-DEF-GHI").execute().body();
-            fail("Should have thrown exception.");
-        } catch(EntityNotFoundException e) {
-            assertEquals("OAuthProvider not found.", e.getMessage());
-        }
-        ForSuperadminsApi superadminApi = admin.getClient(ForSuperadminsApi.class);
-        App app = superadminApi.getApp(worker.getAppId()).execute().body();
-        try {
-            OAuthProvider provider = new OAuthProvider().clientId("foo").endpoint("https://webservices.sagebridge.org/")
-                    .callbackUrl("https://webservices.sagebridge.org/").secret("secret");
-            
-            app.getOAuthProviders().put("bridge", provider);
-            VersionHolder version = superadminApi.updateApp(app.getIdentifier(), app).execute().body();
-            app.setVersion(version.getVersion()); 
-            
-            ForwardCursorStringList list = workersApi.getHealthCodesGrantingOAuthAccess(worker.getAppId(), "bridge", null, null).execute().body();
-            assertTrue(list.getItems().isEmpty());
-            try {
-                workersApi.getOAuthAccessToken(worker.getAppId(), "bridge", "ABC-DEF-GHI").execute();
-                fail("Should have thrown an exception");
-            } catch(EntityNotFoundException e) {
-                
-            }
-        } finally {
-            app.getOAuthProviders().remove("bridge");
-            superadminApi.updateApp(app.getIdentifier(), app).execute();
-        }
-    }
-    
-    @Test
     public void signInWithSynapseAccount() throws Exception {
-        String oauthClientId = config.get("synapse.oauth.client.id");
-        String userEmail = config.get("synapse.test.user");
-        String userPassword = config.get("synapse.test.user.password");
-        String synapseEndpoint = config.get("synapse.endpoint");
-        String synapseUserId = config.get("synapse.test.user.id");
-
-        worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true,
-                new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
-        worker.signOut();
-
+        String oauthClientId = CONFIG.get("synapse.oauth.client.id");
+        String synapseEndpoint = CONFIG.get("synapse.endpoint");
+        if (CONFIG.getEnvironment() == Environment.PRODUCTION) {
+            oauthClientId = CONFIG.get("prod.synapse.oauth.client.id");
+            synapseEndpoint = CONFIG.get("prod.synapse.endpoint");
+        }
+        String userEmail = CONFIG.get("synapse.test.user");
+        String userPassword = CONFIG.get("synapse.test.user.password");
+        String synapseUserId = CONFIG.get("synapse.test.user.id");
+        
+        // this is the admin user, so the account does not need to be created
         // Sign in to Synapse
         String payload = escapeJSON(format("{'username':'%s','password':'%s'}", userEmail, userPassword));
         HttpResponse response = Request.Post(synapseEndpoint + SYNAPSE_LOGIN_URL)
@@ -180,75 +116,62 @@ public class OAuthTest {
                 .authToken(authToken)
                 .callbackUrl("https://research.sagebridge.org");
         
-        AuthenticationApi authApi = worker.getClient(AuthenticationApi.class);
+        // These don't have to be valid credentials, as we're only going to use this client to sign in
+        // via Synapse.
+        ClientManager cm = new ClientManager.Builder().withSignIn(new SignIn().appId(TEST_APP_ID)
+                .email(userEmail).password(userPassword)).build();
+        AuthenticationApi authApi = cm.getClient(AuthenticationApi.class);
+
         UserSessionInfo session = authApi.signInWithOauthToken(token).execute().body();
         
-        assertEquals(session.getId(), worker.getSession().getId());
-        assertEquals(session.getSynapseUserId(), worker.getSession().getSynapseUserId());
+        assertEquals(session.getId(), adminUserId);
+        assertEquals(session.getSynapseUserId(), synapseUserId);
     }
     
     @Test
     public void signInWithSynapseAccountUsingRestUtils() throws Exception {
-        String synapseUserId = config.get("synapse.test.user.id");
-        worker = TestUserHelper.createAndSignInUser(OAuthTest.class, true,
-                new SignUp().roles(ImmutableList.of(WORKER)).synapseUserId(synapseUserId));
-        
-        String userEmail = config.get("synapse.test.user");
-        String userPassword = config.get("synapse.test.user.password");
-        worker.signOut();
-
+        String userEmail = CONFIG.get("synapse.test.user");
+        String userPassword = CONFIG.get("synapse.test.user.password");
+        String synapseUserId = CONFIG.get("synapse.test.user.id");
         SignIn signIn = new SignIn().appId(TEST_APP_ID).email(userEmail).password(userPassword);
-        AuthenticationApi authApi = worker.getClient(AuthenticationApi.class);
+        
+        // These don't have to be valid credentials, as we're only going to use this client to sign in
+        // via Synapse.
+        ClientManager cm = new ClientManager.Builder().withSignIn(new SignIn().appId(TEST_APP_ID)
+                .email(userEmail).password(userPassword)).build();
+        AuthenticationApi authApi = cm.getClient(AuthenticationApi.class);
         
         UserSessionInfo session;
-        if (config.getEnvironment() == Environment.PROD) {
+        if (CONFIG.getEnvironment() == Environment.PRODUCTION) {
             session = RestUtils.signInWithSynapse(authApi, signIn);
         } else {
             session = RestUtils.signInWithSynapseDev(authApi, signIn);
         }
-        
-        assertEquals(session.getId(), worker.getSession().getId());
-        assertEquals(session.getSynapseUserId(), worker.getSession().getSynapseUserId());
+        assertEquals(session.getId(), adminUserId);
+        assertEquals(session.getSynapseUserId(), synapseUserId);
     }
     
     @Test
     public void synapseUserCanSwitchBetweenStudies() throws Exception {
-        // Going to use the shared app as well as the API app for this test.
-        String synapseUserId = config.get("synapse.test.user.id");
+        // Use the admin we know to be in two studies.
+        admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
+        App app = admin.getClient(AppsApi.class).getUsersApp().execute().body();
+        assertEquals(app.getIdentifier(), SHARED_APP_ID);
         
-        user = new TestUserHelper.Builder(OAuthTest.class).withAppId(TEST_APP_ID)
-                .withSignUp(new SignUp().appId(TEST_APP_ID)
-                .roles(ImmutableList.of(DEVELOPER)).synapseUserId(synapseUserId))
-                .createAndSignInUser();
-        String userId = user.getUserId();
-
-        admin.getClient(ForSuperadminsApi.class).adminChangeApp(SHARED_SIGNIN).execute();
-        
-        user2 = new TestUserHelper.Builder(OAuthTest.class).withAppId(SHARED_APP_ID)
-                .withSignUp(new SignUp().appId(SHARED_APP_ID)
-                .roles(ImmutableList.of(DEVELOPER)).synapseUserId(synapseUserId))
-                .createAndSignInUser();
-        String user2Id = user2.getUserId();
-
-        AppsApi appsApi = user2.getClient(AppsApi.class);
-        AppList list = appsApi.getAppMemberships().execute().body();
-        assertEquals(2, list.getItems().size());
-        
-        Set<String> appIds = list.getItems().stream().map(el -> el.getIdentifier()).collect(toSet());
-        assertEquals(ImmutableSet.of(TEST_APP_ID, SHARED_APP_ID), appIds);
-        
-        UserSessionInfo info = appsApi.changeApp(SHARED_SIGNIN).execute().body();
-        assertEquals(user2Id, info.getId());
-        
-        info = appsApi.changeApp(API_SIGNIN).execute().body();
-        assertEquals(userId, info.getId());
-        
-        // Before the admin switches back to the API app, delete this user in the shared app
-        user2.signOutAndDeleteUser();
-        
-        // Verify this has an immediate effect on the other user
-        list = user.getClient(AppsApi.class).getAppMemberships().execute().body();
-        assertEquals(list.getItems().size(), 1);
+        admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
+        app = admin.getClient(AppsApi.class).getUsersApp().execute().body();
+        assertEquals(app.getIdentifier(), TEST_APP_ID);
+    }
+    
+    @Test
+    public void nonSynapseSignInCannotSwitchBetweenStudies() throws Exception {
+        try {
+            user = TestUserHelper.createAndSignInUser(OAuthTest.class, true);
+            user.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
+            fail("Should have throw exception");
+        } catch(UnauthorizedException e) {
+            assertEquals(e.getMessage(), "Account has not authenticated through Synapse.");
+        }
     }
     
     private String getValue(HttpResponse response, String property) throws Exception {
