@@ -23,7 +23,7 @@ The **synapse.test.*** keys for environments other than `local` are available in
 
 ## Server configuration
 
-On startup, the `BridgeServer2` server will create the following apps and accounts on start-up if they do not currently exist on the server in your environment:
+On startup, the `BridgeServer2` server will create the following apps and accounts if they do not currently exist on the server in your environment:
 
 **In all environments** the bootstrapper creates three apps with the IDs of `api`, `api-2`, and `shared`. The API apps are used solely for testing, while the `shared` app is used to test shared assessment functionality outside of production. In production, `shared` is only used to host our shared assessment library.
 
