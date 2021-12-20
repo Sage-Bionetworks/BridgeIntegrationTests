@@ -379,7 +379,6 @@ public class UploadTest {
         ForAdminsApi otherStudyAdminApi = otherAppAdmin.getClient(ForAdminsApi.class);
         try {
             Upload retValue = otherStudyAdminApi.getUploadById(status.getId()).execute().body();
-            System.out.println(retValue);
             fail("exception expected");
         } catch (UnauthorizedException ex) {
             // expected exception

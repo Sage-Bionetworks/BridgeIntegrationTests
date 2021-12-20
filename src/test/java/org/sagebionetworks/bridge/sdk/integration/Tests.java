@@ -367,9 +367,6 @@ public class Tests {
 
         // SDK Config does not pick up environment-prefixed property, we must do so here
         String synapseEndpoint = CONFIG.get("synapse.endpoint");
-        if (CONFIG.getEnvironment() == Environment.PRODUCTION) {
-            synapseEndpoint = CONFIG.get("prod.synapse.endpoint");   
-        }
         synapseClient.setAuthEndpoint(synapseEndpoint + "auth/v1");
         synapseClient.setFileEndpoint(synapseEndpoint + "file/v1");
         synapseClient.setRepositoryEndpoint(synapseEndpoint + "repo/v1");
