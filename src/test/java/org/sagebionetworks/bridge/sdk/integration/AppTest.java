@@ -69,8 +69,8 @@ import org.sagebionetworks.bridge.rest.model.UploadRequest;
 import org.sagebionetworks.bridge.rest.model.UploadSession;
 import org.sagebionetworks.bridge.rest.model.UploadValidationStrictness;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 @SuppressWarnings({ "ConstantConditions", "deprecation" })
 public class AppTest {

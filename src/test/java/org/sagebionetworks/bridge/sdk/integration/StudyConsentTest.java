@@ -17,8 +17,8 @@ import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.StudyConsent;
 import org.sagebionetworks.bridge.rest.model.StudyConsentList;
 import org.sagebionetworks.bridge.rest.model.Subpopulation;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class StudyConsentTest {
 

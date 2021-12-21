@@ -20,8 +20,8 @@ import org.sagebionetworks.bridge.rest.model.DateTimeHolder;
 import org.sagebionetworks.bridge.rest.model.MasterSchedulerConfig;
 import org.sagebionetworks.bridge.rest.model.MasterSchedulerConfigList;
 import org.sagebionetworks.bridge.rest.model.Message;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

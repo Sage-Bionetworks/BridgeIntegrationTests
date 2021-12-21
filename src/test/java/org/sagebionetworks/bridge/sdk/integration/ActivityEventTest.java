@@ -35,15 +35,16 @@ import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.CustomActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class ActivityEventTest {
     private static final String TWO_WEEKS_AFTER_KEY = "2-weeks-after";
     private static final String TWO_WEEKS_AFTER_VALUE = "enrollment:P2W";
     
-    private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser researcher;
-    private static TestUserHelper.TestUser user;
+    private static TestUser developer;
+    private static TestUser researcher;
+    private static TestUser user;
     private static ForConsentedUsersApi usersApi;
     private static ForResearchersApi researchersApi;
 

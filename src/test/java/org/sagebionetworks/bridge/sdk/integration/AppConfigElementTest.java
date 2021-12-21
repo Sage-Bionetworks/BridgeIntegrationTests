@@ -20,8 +20,8 @@ import org.sagebionetworks.bridge.rest.model.AppConfigElementList;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 @SuppressWarnings("ConstantConditions")
 public class AppConfigElementTest {

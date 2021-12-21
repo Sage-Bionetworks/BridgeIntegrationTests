@@ -46,6 +46,7 @@ import org.sagebionetworks.bridge.rest.model.UploadFieldDefinition;
 import org.sagebionetworks.bridge.rest.model.UploadFieldType;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class ScheduledActivityAutoResolutionTest {
@@ -61,8 +62,8 @@ public class ScheduledActivityAutoResolutionTest {
     private static SchedulesV1Api schedulePlanApi;
     private static SurveysApi adminSurveyApi;
     private static SurveysApi surveyApi;
-    private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser admin;
+    private static TestUser developer;
+    private static TestUser admin;
 
     private List<GuidCreatedOnVersionHolder> surveysToDelete;
     private String activityLabel;
@@ -70,7 +71,8 @@ public class ScheduledActivityAutoResolutionTest {
     private String compoundTaskIdToDelete;
     private String schedulePlanGuidToDelete;
     private String surveyId;
-    private TestUserHelper.TestUser user;
+    private TestUser user1;
+    private TestUser user2;
 
     @SuppressWarnings("deprecation")
     @BeforeClass
@@ -128,20 +130,18 @@ public class ScheduledActivityAutoResolutionTest {
         compoundTaskIdToDelete = null;
         schedulePlanGuidToDelete = null;
         surveysToDelete = new ArrayList<>();
-
-        // We need to create a user for each test. This is because we modify the user client info, and this changes the
-        // manager, which changes the scheduled activities client.
-        user = TestUserHelper.createAndSignInUser(ScheduledActivityAutoResolutionTest.class, true);
     }
 
     @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
         // Delete the test user.
-        if (user != null) {
-            user.signOutAndDeleteUser();
+        if (user1 != null) {
+            user1.signOutAndDeleteUser();
         }
-
+        if (user2 != null) {
+            user2.signOutAndDeleteUser();
+        }
         // Delete schedules first, or we get constraint violation exceptions.
         if (schedulePlanGuidToDelete != null) {
             admin.getClient(SchedulesV1Api.class).deleteSchedulePlan(schedulePlanGuidToDelete, true).execute();
@@ -178,8 +178,9 @@ public class ScheduledActivityAutoResolutionTest {
         {
             // Note that we can't cache the scheduled activity API, because changing the client info requires us to get
             // a new client.
-            user.setClientInfo(Tests.getClientInfoWithVersion(INTEG_TEST_OS_NAME, 3));
-            List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
+            user1 = new TestUserHelper.Builder(ScheduledActivityAutoResolutionTest.class).withConsentUser(true)
+                    .withClientInfo(Tests.getClientInfoWithVersion(INTEG_TEST_OS_NAME, 3)).createAndSignInUser();
+            List<ScheduledActivity> scheduledActivityList = user1.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 
             // App may have other schedules. Find the scheduled activity for our test using the label.
@@ -192,8 +193,9 @@ public class ScheduledActivityAutoResolutionTest {
 
         // Now user has app v5. Should get schema rev2 back.
         {
-            user.setClientInfo(Tests.getClientInfoWithVersion(INTEG_TEST_OS_NAME, 5));
-            List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
+            user2 = new TestUserHelper.Builder(ScheduledActivityAutoResolutionTest.class).withConsentUser(true)
+                    .withClientInfo(Tests.getClientInfoWithVersion(INTEG_TEST_OS_NAME, 5)).createAndSignInUser();
+            List<ScheduledActivity> scheduledActivityList = user2.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 
             ScheduledActivity gettedScheduledActivity = findScheduledActivityByLabel(activityLabel,
@@ -217,9 +219,11 @@ public class ScheduledActivityAutoResolutionTest {
         Activity activity = new Activity().label(activityLabel).survey(surveyRef);
         schedulePlanGuidToDelete = createSchedulePlanWithActivity(activity);
 
+        user1 = TestUserHelper.createAndSignInUser(ScheduledActivityAutoResolutionTest.class, true);
+        
         // User gets survey back in scheduled activities.
         {
-            List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
+            List<ScheduledActivity> scheduledActivityList = user1.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 
             ScheduledActivity gettedScheduledActivity = findScheduledActivityByLabel(activityLabel,
@@ -238,7 +242,7 @@ public class ScheduledActivityAutoResolutionTest {
 
         // User now gets the new survey createdOn back.
         {
-            List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
+            List<ScheduledActivity> scheduledActivityList = user1.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 
             ScheduledActivity gettedScheduledActivity = findScheduledActivityByLabel(activityLabel,
@@ -273,9 +277,11 @@ public class ScheduledActivityAutoResolutionTest {
         Activity activity = new Activity().label(activityLabel).compoundActivity(compoundActivity);
         schedulePlanGuidToDelete = createSchedulePlanWithActivity(activity);
 
+        user1 = TestUserHelper.createAndSignInUser(ScheduledActivityAutoResolutionTest.class, true);
+        
         // User gets schema rev 2 and whatever survey createdOn that is.
         {
-            List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
+            List<ScheduledActivity> scheduledActivityList = user1.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 
             ScheduledActivity gettedScheduledActivity = findScheduledActivityByLabel(activityLabel,
@@ -302,7 +308,7 @@ public class ScheduledActivityAutoResolutionTest {
 
         // Get scheduled activities again. Now we should get the updated compound activity.
         {
-            List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
+            List<ScheduledActivity> scheduledActivityList = user1.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 
             ScheduledActivity gettedScheduledActivity = findScheduledActivityByLabel(activityLabel,

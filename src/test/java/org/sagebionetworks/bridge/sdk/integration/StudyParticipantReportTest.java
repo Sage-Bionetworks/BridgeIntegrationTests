@@ -32,8 +32,8 @@ import org.sagebionetworks.bridge.rest.model.ForwardCursorReportDataList;
 import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.ReportIndex;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.google.common.collect.ImmutableMap;
 

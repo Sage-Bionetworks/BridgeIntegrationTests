@@ -22,20 +22,21 @@ import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Subpopulation;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 public class ParticipantIsConsentedTest {
     private static final String DATA_GROUP = "sdk-int-2";
 
-    private static TestUserHelper.TestUser admin;
-    private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser studyCoordinator;
+    private static TestUser admin;
+    private static TestUser developer;
+    private static TestUser studyCoordinator;
     private static StudyParticipantsApi participantsApi;
     private static SubpopulationsApi subpopApi;
     private static String subpopGuid2;
 
-    private TestUserHelper.TestUser user;
+    private TestUser user;
 
     @BeforeClass
     public static void setup() throws Exception {

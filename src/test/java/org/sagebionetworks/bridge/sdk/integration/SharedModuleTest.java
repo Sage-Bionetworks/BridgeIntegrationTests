@@ -34,14 +34,15 @@ import org.sagebionetworks.bridge.rest.model.UploadFieldDefinition;
 import org.sagebionetworks.bridge.rest.model.UploadFieldType;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class SharedModuleTest {
     private static final Logger LOG = LoggerFactory.getLogger(SharedModuleTest.class);
 
-    private static TestUserHelper.TestUser admin;
-    private static TestUserHelper.TestUser apiDeveloper;
-    private static TestUserHelper.TestUser sharedDeveloper;
+    private static TestUser admin;
+    private static TestUser apiDeveloper;
+    private static TestUser sharedDeveloper;
 
     private SharedModuleMetadata module;
     private UploadSchema sharedSchema;

@@ -12,8 +12,8 @@ import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.model.ForwardCursorStringList;
 import org.sagebionetworks.bridge.rest.model.ParticipantData;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import java.io.IOException;
 import java.util.HashSet;

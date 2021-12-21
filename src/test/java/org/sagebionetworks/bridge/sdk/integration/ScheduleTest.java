@@ -26,41 +26,44 @@ import org.sagebionetworks.bridge.rest.model.ScheduleType;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
 import org.sagebionetworks.bridge.rest.model.SimpleScheduleStrategy;
 import org.sagebionetworks.bridge.rest.model.TaskReference;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 
 public class ScheduleTest {
-
+    
     private String planGuid;
     
-    private TestUser admin;
-    private TestUser user;
+    private TestUser user1;
+    private TestUser user2;
+    private TestUser user3;
     private TestUser developer;
     
     @Before
     public void before() throws Exception {
         ClientInfo clientInfo = getClientInfo(Tests.APP_NAME, 3);
-        
-        admin = TestUserHelper.getSignedInAdmin();
-        user = new TestUserHelper.Builder(ScheduleTest.class).withClientInfo(clientInfo).withConsentUser(true)
-                .createAndSignInUser();
-
-        developer = new TestUserHelper.Builder(ScheduleTest.class).withClientInfo(clientInfo).withConsentUser(true)
+        developer = new TestUserHelper.Builder(getClass()).withClientInfo(clientInfo).withConsentUser(true)
                 .withRoles(Role.DEVELOPER).createAndSignInUser();
     }
     
     @SuppressWarnings("deprecation")
     @After
     public void after() throws Exception {
-        if (user != null) {
-            user.signOutAndDeleteUser();    
+        if (user1 != null) {
+            user1.signOutAndDeleteUser();    
+        }
+        if (user2 != null) {
+            user2.signOutAndDeleteUser();    
+        }
+        if (user3 != null) {
+            user3.signOutAndDeleteUser();    
         }
         if (developer != null) {
             try {
                 if (planGuid != null) {
+                    TestUser admin = TestUserHelper.getSignedInAdmin();
                     SchedulesV1Api schedulesApi = admin.getClient(SchedulesV1Api.class);
                     schedulesApi.deleteSchedulePlan(planGuid, true).execute();
                 }
@@ -96,7 +99,8 @@ public class ScheduleTest {
 
         planGuid = schedulesApi.createSchedulePlan(plan).execute().body().getGuid();
         
-        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        user1 = TestUserHelper.createAndSignInUser(getClass(), true);
+        ForConsentedUsersApi usersApi = user1.getClient(ForConsentedUsersApi.class);
         
         String scheduledOn1 = LocalDate.now(DateTimeZone.UTC).toString() + "T14:00:00.000Z";
         String scheduledOn2 = LocalDate.now(DateTimeZone.UTC).plusDays(1).toString() + "T14:00:00.000Z";
@@ -151,7 +155,8 @@ public class ScheduleTest {
         SchedulesV1Api schedulesApi = developer.getClient(SchedulesV1Api.class);
         planGuid = schedulesApi.createSchedulePlan(schedulePlan).execute().body().getGuid();
 
-        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        user1 = TestUserHelper.createAndSignInUser(getClass(), true);
+        ForConsentedUsersApi usersApi = user1.getClient(ForConsentedUsersApi.class);
 
         // There may be multiple schedules from other tests. Loop through all schedules until we find the one we're
         // looking for.
@@ -212,15 +217,15 @@ public class ScheduleTest {
         schedule2.setActivities(taskActivity(activityLabel2, "task:BBB"));
         
         Criteria criteria1 = new Criteria();
-        criteria1.setMinAppVersions(new ImmutableMap.Builder<String,Integer>().put("Android",0).build());
-        criteria1.setMaxAppVersions(new ImmutableMap.Builder<String,Integer>().put("Android",10).build());
+        criteria1.setMinAppVersions(ImmutableMap.of("Android", 0));
+        criteria1.setMaxAppVersions(ImmutableMap.of("Android", 10));
         
         ScheduleCriteria scheduleCriteria1 = new ScheduleCriteria();
         scheduleCriteria1.setCriteria(criteria1);
         scheduleCriteria1.setSchedule(schedule1);
         
         Criteria criteria2 = new Criteria();
-        criteria2.setMinAppVersions(new ImmutableMap.Builder<String,Integer>().put("Android",11).build());
+        criteria2.setMinAppVersions(ImmutableMap.of("Android", 11));
         
         ScheduleCriteria scheduleCriteria2 = new ScheduleCriteria();
         scheduleCriteria2.setCriteria(criteria2);
@@ -230,26 +235,23 @@ public class ScheduleTest {
         strategy.setScheduleCriteria(Lists.newArrayList(scheduleCriteria1, scheduleCriteria2));
         plan.setStrategy(strategy);
         
-        user.signOut();        
         SchedulesV1Api schedulesApi = developer.getClient(SchedulesV1Api.class);
         planGuid = schedulesApi.createSchedulePlan(plan).execute().body().getGuid();
         
         // Manipulate the User-Agent string and see scheduled activity change accordingly
-        user.setClientInfo(getClientInfoWithVersion("Android", 2));
-        user.signInAgain();
-        activitiesShouldContainTask(activityLabel1);
+        user1 = new TestUserHelper.Builder(getClass()).withClientInfo(getClientInfoWithVersion("Android", 2))
+                .withConsentUser(true).createAndSignInUser();
+        activitiesShouldContainTask(user1,activityLabel1);
         
-        user.signOut();
-        user.setClientInfo(getClientInfoWithVersion("Android", 12));
-        user.signInAgain();
-        activitiesShouldContainTask(activityLabel2);
+        user2 = new TestUserHelper.Builder(getClass()).withClientInfo(getClientInfoWithVersion("Android", 12))
+                .withConsentUser(true).createAndSignInUser();
+        activitiesShouldContainTask(user2, activityLabel2);
 
         // In this final test no matching occurs, but this simply means that the first schedule will match and be 
         // returned (not that all of the schedules in the plan will be returned, that's not how a plan works).
-        user.signOut();
-        user.setClientInfo(getClientInfoWithVersion("iPhone OS", 12));
-        user.signInAgain();
-        activitiesShouldContainTask(activityLabel1);
+        user3 = new TestUserHelper.Builder(getClass()).withClientInfo(getClientInfoWithVersion("iPhone OS", 12))
+                .withConsentUser(true).createAndSignInUser();
+        activitiesShouldContainTask(user3, activityLabel1);
     }
     
     private ClientInfo getClientInfo(String appName, Integer appVersion) {
@@ -271,7 +273,8 @@ public class ScheduleTest {
     }
 
     @SuppressWarnings("deprecation")
-    private void activitiesShouldContainTask(String activityLabel) throws Exception {
+    private void activitiesShouldContainTask(TestUser user, String activityLabel) throws Exception {
+        // user1 = TestUserHelper.createAndSignInUser(ScheduleTest.class, true);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         ScheduledActivityList activities = usersApi.getScheduledActivities("+00:00", 1, null).execute().body();
 

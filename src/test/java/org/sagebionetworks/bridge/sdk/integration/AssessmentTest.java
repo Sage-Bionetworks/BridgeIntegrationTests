@@ -46,8 +46,8 @@ import org.sagebionetworks.bridge.rest.model.ColorScheme;
 import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.PropertyInfo;
 import org.sagebionetworks.bridge.rest.model.RequestParams;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class AssessmentTest {
     private static final ImmutableList<Label> LABELS = ImmutableList.of(new Label().lang("en").value("English"),

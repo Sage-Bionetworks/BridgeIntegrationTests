@@ -44,8 +44,8 @@ import org.sagebionetworks.bridge.rest.model.SharedModuleMetadataList;
 import org.sagebionetworks.bridge.rest.model.SharedModuleType;
 import org.sagebionetworks.bridge.rest.model.Survey;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class SharedModuleMetadataTest {
     private static final Logger LOG = LoggerFactory.getLogger(SharedModuleMetadataTest.class);
@@ -79,7 +79,7 @@ public class SharedModuleMetadataTest {
 
     @BeforeClass
     public static void beforeClass() throws Exception {
-        TestUserHelper.TestUser admin = TestUserHelper.getSignedInAdmin();
+        TestUser admin = TestUserHelper.getSignedInAdmin();
         apiDeveloper = TestUserHelper.createAndSignInUser(SharedModuleMetadataTest.class, false, DEVELOPER);
         apiDeveloperModulesApi = apiDeveloper.getClient(ForDevelopersApi.class);
         sharedDeveloper = TestUserHelper.createAndSignInUser(SharedModuleMetadataTest.class, SHARED_APP_ID, DEVELOPER);

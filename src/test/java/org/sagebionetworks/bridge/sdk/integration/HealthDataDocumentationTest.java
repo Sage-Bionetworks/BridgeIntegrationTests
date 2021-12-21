@@ -9,8 +9,8 @@ import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.model.HealthDataDocumentation;
 import org.sagebionetworks.bridge.rest.model.HealthDataDocumentationList;
 import org.sagebionetworks.bridge.rest.model.Role;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import java.io.EOFException;
 import java.io.IOException;

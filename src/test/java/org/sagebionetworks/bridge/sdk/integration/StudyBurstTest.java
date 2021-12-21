@@ -37,8 +37,8 @@ import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.StudyBurstInfo;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.google.common.collect.ImmutableList;
 
