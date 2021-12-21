@@ -1,22 +1,16 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
-import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.API_2_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
-import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.escapeJSON;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
-
-import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
@@ -24,7 +18,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.sagebionetworks.bridge.rest.ClientManager;
@@ -35,7 +28,6 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.App;
-import org.sagebionetworks.bridge.rest.model.AppList;
 import org.sagebionetworks.bridge.rest.model.Environment;
 import org.sagebionetworks.bridge.rest.model.OAuthAuthorizationToken;
 import org.sagebionetworks.bridge.rest.model.SignIn;
@@ -81,10 +73,6 @@ public class OAuthTest {
     public void signInWithSynapseAccount() throws Exception {
         String oauthClientId = CONFIG.get("synapse.oauth.client.id");
         String synapseEndpoint = CONFIG.get("synapse.endpoint");
-        if (CONFIG.getEnvironment() == Environment.PRODUCTION) {
-            oauthClientId = CONFIG.get("prod.synapse.oauth.client.id");
-            synapseEndpoint = CONFIG.get("prod.synapse.endpoint");
-        }
         String userEmail = CONFIG.get("synapse.test.user");
         String userPassword = CONFIG.get("synapse.test.user.password");
         String synapseUserId = CONFIG.get("synapse.test.user.id");
@@ -154,9 +142,9 @@ public class OAuthTest {
     @Test
     public void synapseUserCanSwitchBetweenStudies() throws Exception {
         // Use the admin we know to be in two studies.
-        admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
+        admin.getClient(AuthenticationApi.class).changeApp(API_2_SIGNIN).execute();
         App app = admin.getClient(AppsApi.class).getUsersApp().execute().body();
-        assertEquals(app.getIdentifier(), SHARED_APP_ID);
+        assertEquals(app.getIdentifier(), TEST_APP_2_ID);
         
         admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
         app = admin.getClient(AppsApi.class).getUsersApp().execute().body();
@@ -167,7 +155,7 @@ public class OAuthTest {
     public void nonSynapseSignInCannotSwitchBetweenStudies() throws Exception {
         try {
             user = TestUserHelper.createAndSignInUser(OAuthTest.class, true);
-            user.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
+            user.getClient(AuthenticationApi.class).changeApp(API_2_SIGNIN).execute();
             fail("Should have throw exception");
         } catch(UnauthorizedException e) {
             assertEquals(e.getMessage(), "Account has not authenticated through Synapse.");

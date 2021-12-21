@@ -3,11 +3,11 @@ package org.sagebionetworks.bridge.sdk.integration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.sagebionetworks.bridge.rest.model.SharingScope.NO_SHARING;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.API_2_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
-import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.Map;
@@ -75,19 +75,19 @@ public class SignUpForWorkerTest {
             }
         }
         
-        // In shared there is only one study, "shared", and so that is the one that is used.
-        signUp = new SignUp().appId(SHARED_APP_ID).dataGroups(ImmutableList.of("test_user"))
+        // In api 2 there is only one study, and so that is the one that is used.
+        signUp = new SignUp().appId(TEST_APP_2_ID).dataGroups(ImmutableList.of("test_user"))
                 .password(PASSWORD).externalId(extId).sharingScope(NO_SHARING);
         try {
             authApi.signUp(signUp).execute();
             
-            authApi.changeApp(SHARED_SIGNIN).execute();
+            authApi.changeApp(API_2_SIGNIN).execute();
             participant = participantsApi.getParticipantByExternalId(extId, false).execute().body();
             assertEquals(1, participant.getExternalIds().size());
             // ... however that study is named differently in different environments.
-            String extIdValue = participant.getExternalIds().get("shared-study");
+            String extIdValue = participant.getExternalIds().get("api-2-study");
             if (extIdValue == null) {
-                extIdValue = participant.getExternalIds().get("shared");
+                extIdValue = participant.getExternalIds().get("api-2");
             }
             assertEquals(extId, extIdValue);
             adminsApi.deleteUser(participant.getId()).execute();

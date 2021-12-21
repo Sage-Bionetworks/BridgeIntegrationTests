@@ -5,10 +5,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.API_2_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
-import static org.sagebionetworks.bridge.sdk.integration.Tests.SHARED_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
 
 import java.io.File;
 import java.util.List;
@@ -43,7 +43,6 @@ import org.sagebionetworks.bridge.rest.model.RecordExportStatusRequest;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SignUp;
-import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.SynapseExporterStatus;
 import org.sagebionetworks.bridge.rest.model.Upload;
@@ -55,7 +54,6 @@ import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
 import org.sagebionetworks.bridge.rest.model.UploadSession;
 import org.sagebionetworks.bridge.rest.model.UploadStatus;
 import org.sagebionetworks.bridge.rest.model.UploadValidationStatus;
-import org.sagebionetworks.bridge.rest.model.VersionHolder;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
@@ -85,20 +83,12 @@ public class UploadTest {
     public static void beforeClass() throws Exception {
         admin = TestUserHelper.getSignedInAdmin();
 
-//        try {
-//            admin.getClient(ForAdminsApi.class).getStudy(STUDY_ID_1).execute();
-//        } catch(EntityNotFoundException e) {
-//            Study study = new Study().name(STUDY_ID_1).identifier(STUDY_ID_1);
-//            VersionHolder version = admin.getClient(ForAdminsApi.class).createStudy(study).execute().body();
-//            study.setVersion(version.getVersion());
-//        }
-        
         // developer is to ensure schemas exist. user is to do uploads
         developer = TestUserHelper.createAndSignInUser(UploadTest.class, false, Role.DEVELOPER);
         researcher = TestUserHelper.createAndSignInUser(UploadTest.class, false, Role.RESEARCHER);
 
-        admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
-        otherAppAdmin = TestUserHelper.createAndSignInUser(UploadTest.class, SHARED_APP_ID, Role.ADMIN);
+        admin.getClient(AuthenticationApi.class).changeApp(API_2_SIGNIN).execute();
+        otherAppAdmin = TestUserHelper.createAndSignInUser(UploadTest.class, TEST_APP_2_ID, Role.ADMIN);
         admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
 
         String emailAddress = IntegTestUtils.makeEmail(UploadTest.class);
@@ -389,7 +379,6 @@ public class UploadTest {
         ForAdminsApi otherStudyAdminApi = otherAppAdmin.getClient(ForAdminsApi.class);
         try {
             Upload retValue = otherStudyAdminApi.getUploadById(status.getId()).execute().body();
-            System.out.println(retValue);
             fail("exception expected");
         } catch (UnauthorizedException ex) {
             // expected exception

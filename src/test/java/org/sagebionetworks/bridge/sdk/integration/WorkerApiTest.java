@@ -8,7 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.WORKER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SHARED_APP_ID;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.List;
@@ -349,8 +349,8 @@ public class WorkerApiTest {
     @Test
     public void retrieveUsersBetweenApps() throws Exception {
         AuthenticationApi authApi = admin.getClient(AuthenticationApi.class);
-        authApi.changeApp(new SignIn().appId(SHARED_APP_ID)).execute();
-        TestUser sharedUser = new TestUserHelper.Builder(WorkerApiTest.class).withAppId(SHARED_APP_ID).createUser();
+        authApi.changeApp(new SignIn().appId(TEST_APP_2_ID)).execute();
+        TestUser sharedUser = new TestUserHelper.Builder(WorkerApiTest.class).withAppId(TEST_APP_2_ID).createUser();
         
         authApi.changeApp(new SignIn().appId(TEST_APP_ID)).execute();
         TestUser testUser = new TestUserHelper.Builder(WorkerApiTest.class).withAppId(TEST_APP_ID).createUser();
@@ -362,14 +362,14 @@ public class WorkerApiTest {
             ForWorkersApi workerApi = worker.getClient(ForWorkersApi.class);
             
             // First verify that list methods work...
-            AccountSummaryList sharedList = workerApi.getParticipantsForApp(SHARED_APP_ID, 0, 50, null, null, null, null).execute().body();
+            AccountSummaryList sharedList = workerApi.getParticipantsForApp(TEST_APP_2_ID, 0, 50, null, null, null, null).execute().body();
             assertUserInList(sharedList.getItems(), sharedUser.getUserId());
             
             AccountSummaryList apiList = workerApi.getParticipantsForApp(TEST_APP_ID, 0, 50, null, null, null, null).execute().body();
             assertUserInList(apiList.getItems(), testUser.getUserId());
             
             // Getting individual accounts also works
-            StudyParticipant p1 = workerApi.getParticipantByIdForApp(SHARED_APP_ID, sharedUser.getUserId(), false).execute().body();
+            StudyParticipant p1 = workerApi.getParticipantByIdForApp(TEST_APP_2_ID, sharedUser.getUserId(), false).execute().body();
             assertEquals(sharedUser.getUserId(), p1.getId());
             
             StudyParticipant p2 = workerApi.getParticipantByIdForApp(TEST_APP_ID, testUser.getUserId(), false).execute().body();
@@ -380,7 +380,7 @@ public class WorkerApiTest {
             search.endTime(DateTime.now().plusHours(1));
             
             AccountSummaryList sharedSearchList = workerApi.searchAccountSummariesForApp(
-                    SHARED_APP_ID, search).execute().body();
+                    TEST_APP_2_ID, search).execute().body();
             assertUserInList(sharedSearchList.getItems(), sharedUser.getUserId());
             
             AccountSummaryList testSearchList = workerApi.searchAccountSummariesForApp(
