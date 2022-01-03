@@ -18,8 +18,8 @@ import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class ForStudyDesignersTest {
     

@@ -54,6 +54,7 @@ import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
 import org.sagebionetworks.bridge.rest.model.UploadSession;
 import org.sagebionetworks.bridge.rest.model.UploadStatus;
 import org.sagebionetworks.bridge.rest.model.UploadValidationStatus;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
@@ -72,11 +73,11 @@ public class UploadTest {
     // Retry up to 6 times, so we don't spend more than 30 seconds per test.
     private static final int UPLOAD_STATUS_DELAY_RETRIES = 6;
     
-    private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser otherAppAdmin;
-    private static TestUserHelper.TestUser researcher;
-    private static TestUserHelper.TestUser user;
-    private static TestUserHelper.TestUser admin;
+    private static TestUser developer;
+    private static TestUser otherAppAdmin;
+    private static TestUser researcher;
+    private static TestUser user;
+    private static TestUser admin;
 
     @SuppressWarnings("deprecation")
     @BeforeClass

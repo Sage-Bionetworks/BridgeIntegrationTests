@@ -38,8 +38,8 @@ import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;

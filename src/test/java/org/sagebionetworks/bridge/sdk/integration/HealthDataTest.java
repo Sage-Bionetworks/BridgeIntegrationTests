@@ -49,6 +49,7 @@ import org.sagebionetworks.bridge.rest.model.UploadFieldType;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
 import org.sagebionetworks.bridge.rest.model.UploadValidationStrictness;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 @Category(IntegrationSmokeTest.class)
@@ -62,12 +63,12 @@ public class HealthDataTest {
     private static final long SCHEMA_REV = 1L;
     private static final String SURVEY_ID = "health-data-integ-test-survey";
 
-    private static TestUserHelper.TestUser developer;
+    private static TestUser developer;
     private static String externalIdentifier;
     private static AppsApi studiesApi;
     private static DateTime surveyCreatedOn;
     private static String surveyGuid;
-    private static TestUserHelper.TestUser user;
+    private static TestUser user;
 
     private DateTime createdOn;
 

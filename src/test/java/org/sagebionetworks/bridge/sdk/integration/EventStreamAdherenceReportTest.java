@@ -25,7 +25,6 @@ import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
-import org.sagebionetworks.bridge.rest.model.CustomActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.EventStreamAdherenceReport;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
@@ -34,10 +33,9 @@ import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 public class EventStreamAdherenceReportTest {

@@ -22,8 +22,8 @@ import org.sagebionetworks.bridge.rest.api.SharedAssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.TagsApi;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentList;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class AssessmentIdentifierChangeTest {
     private TestUser admin;

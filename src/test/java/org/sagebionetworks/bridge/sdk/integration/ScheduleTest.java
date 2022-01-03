@@ -2,6 +2,7 @@ package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.getClientInfoWithVersion;
 
 import java.util.List;
 
@@ -26,8 +27,8 @@ import org.sagebionetworks.bridge.rest.model.ScheduleType;
 import org.sagebionetworks.bridge.rest.model.ScheduledActivityList;
 import org.sagebionetworks.bridge.rest.model.SimpleScheduleStrategy;
 import org.sagebionetworks.bridge.rest.model.TaskReference;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -42,7 +43,7 @@ public class ScheduleTest {
     
     @Before
     public void before() throws Exception {
-        ClientInfo clientInfo = getClientInfo(Tests.APP_NAME, 3);
+        ClientInfo clientInfo = Tests.getClientInfoWithVersion("Android", 3);
         
         admin = TestUserHelper.getSignedInAdmin();
         user = new TestUserHelper.Builder(ScheduleTest.class).withClientInfo(clientInfo).withConsentUser(true)
@@ -235,29 +236,21 @@ public class ScheduleTest {
         planGuid = schedulesApi.createSchedulePlan(plan).execute().body().getGuid();
         
         // Manipulate the User-Agent string and see scheduled activity change accordingly
-        user.setClientInfo(getClientInfoWithVersion("Android", 2));
+        user = Tests.withClientInfo(user, getClientInfoWithVersion("Android", 2));
         user.signInAgain();
         activitiesShouldContainTask(activityLabel1);
         
         user.signOut();
-        user.setClientInfo(getClientInfoWithVersion("Android", 12));
+        user = Tests.withClientInfo(user, getClientInfoWithVersion("Android", 12));
         user.signInAgain();
         activitiesShouldContainTask(activityLabel2);
 
         // In this final test no matching occurs, but this simply means that the first schedule will match and be 
         // returned (not that all of the schedules in the plan will be returned, that's not how a plan works).
         user.signOut();
-        user.setClientInfo(getClientInfoWithVersion("iPhone OS", 12));
+        user = Tests.withClientInfo(user, getClientInfoWithVersion("iPhone OS", 12));
         user.signInAgain();
         activitiesShouldContainTask(activityLabel1);
-    }
-    
-    private ClientInfo getClientInfo(String appName, Integer appVersion) {
-        ClientInfo info = new ClientInfo();
-        info.setAppName(appName);
-        info.setAppVersion(appVersion);
-        info.setDeviceName("Integration Tests");
-        return info;
     }
     
     private List<Activity> taskActivity(String label, String taskIdentifier) {
@@ -285,14 +278,4 @@ public class ScheduleTest {
         }
         assertEquals(1, numMatchingActivities);
     }
-    
-    private ClientInfo getClientInfoWithVersion(String osName, Integer version) {
-        ClientInfo info = new ClientInfo();
-        info.setAppName("app");
-        info.setAppVersion(version);
-        info.setOsName(osName);
-        info.setDeviceName("Integrate Tests");
-        info.setOsVersion("2.0.0");
-        return info;
-    }    
 }

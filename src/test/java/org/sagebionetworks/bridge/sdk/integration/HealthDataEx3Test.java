@@ -27,6 +27,7 @@ import org.sagebionetworks.bridge.rest.model.HealthDataRecordEx3;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecordEx3List;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
@@ -34,13 +35,13 @@ import org.sagebionetworks.bridge.util.IntegTestUtils;
 public class HealthDataEx3Test {
     private static final String TEST_CLIENT_INFO = "Integration Tests";
 
-    private static TestUserHelper.TestUser admin;
+    private static TestUser admin;
     private static DateTime createdOn;
     private static Study study;
     private static String studyId;
-    private static TestUserHelper.TestUser worker;
+    private static TestUser worker;
 
-    private TestUserHelper.TestUser user;
+    private TestUser user;
     private String userHealthCode;
 
     @BeforeClass

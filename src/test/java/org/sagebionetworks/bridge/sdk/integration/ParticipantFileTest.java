@@ -10,8 +10,8 @@ import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.ParticipantFile;
 import org.sagebionetworks.bridge.rest.model.ParticipantFileList;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import java.io.InputStream;
 import java.io.OutputStreamWriter;

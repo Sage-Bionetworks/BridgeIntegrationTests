@@ -29,8 +29,8 @@ import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentConfig;
 import org.sagebionetworks.bridge.rest.model.AssessmentList;
 import org.sagebionetworks.bridge.rest.model.PropertyInfo;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class AssessmentConfigTest {
     private static final String ORIGINAL = "original";

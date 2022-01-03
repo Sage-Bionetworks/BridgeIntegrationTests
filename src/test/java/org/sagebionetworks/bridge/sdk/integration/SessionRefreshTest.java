@@ -7,6 +7,7 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 import static org.junit.Assert.fail;
@@ -16,8 +17,8 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
 import org.joda.time.DateTime;
 
 public class SessionRefreshTest {
-    private static TestUserHelper.TestUser user;
-    private static TestUserHelper.TestUser app2Developer;
+    private static TestUser user;
+    private static TestUser app2Developer;
 
     @BeforeClass
     public static void createUser() throws Exception {

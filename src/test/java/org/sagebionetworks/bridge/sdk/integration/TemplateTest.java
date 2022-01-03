@@ -24,8 +24,8 @@ import org.sagebionetworks.bridge.rest.model.Template;
 import org.sagebionetworks.bridge.rest.model.TemplateList;
 import org.sagebionetworks.bridge.rest.model.TemplateRevision;
 import org.sagebionetworks.bridge.rest.model.TemplateRevisionList;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class TemplateTest {
     

@@ -18,14 +18,15 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.AppsApi;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Role;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 // This test makes raw HTTP requests, because we need to spoof the X-Forwarded-For header.
 public class IpLockingTest {
     private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper();
 
-    private static TestUserHelper.TestUser basicUser;
-    private static TestUserHelper.TestUser developer;
+    private static TestUser basicUser;
+    private static TestUser developer;
     private static String hostUrl;
     private static AppsApi appsApi;
 
@@ -82,7 +83,7 @@ public class IpLockingTest {
         }
     }
 
-    private static void test(TestUserHelper.TestUser user, boolean shouldLock) throws Exception {
+    private static void test(TestUser user, boolean shouldLock) throws Exception {
         // Sign in and extract session ID.
         String signInText = "{\n" +
                 "   \"appId\":\"" + user.getAppId() + "\",\n" +

@@ -44,8 +44,8 @@ import org.sagebionetworks.bridge.rest.model.ReportDataList;
 import org.sagebionetworks.bridge.rest.model.ReportIndex;
 import org.sagebionetworks.bridge.rest.model.ReportIndexList;
 import org.sagebionetworks.bridge.rest.model.ReportType;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 @SuppressWarnings("unchecked")
 public class ReportTest {

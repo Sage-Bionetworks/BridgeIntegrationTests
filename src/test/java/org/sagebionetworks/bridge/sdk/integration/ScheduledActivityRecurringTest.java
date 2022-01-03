@@ -35,8 +35,8 @@ import org.sagebionetworks.bridge.rest.model.ScheduledActivityListV4;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.TaskReference;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class ScheduledActivityRecurringTest {
     private static final String FILTERED_LABEL = "ScheduledActivityRecurringTest";
