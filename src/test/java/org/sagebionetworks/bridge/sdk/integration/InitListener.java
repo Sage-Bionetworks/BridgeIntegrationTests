@@ -161,7 +161,7 @@ public class InitListener extends RunListener {
         app.setInstallLinks(ImmutableMap.of("Universal", "http://example.com/"));
         adminApi.updateUsersApp(app).execute();
         
-        // The bootstrap user does not have access to the shared app, so skip this in production.
+        // The bootstrap user does not have access to the shared app in production, so skip this in that environment.
         if (admin.getSession().getEnvironment() != Environment.PRODUCTION) {
             admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
             try {
