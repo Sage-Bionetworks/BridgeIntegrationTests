@@ -154,6 +154,7 @@ public class WeeklyAdherenceReportTest {
         
         WeeklyAdherenceReport report = userApi.getUsersStudyParticipantWeeklyAdherenceReport(STUDY_ID_1).execute().body();
         
+        assertEquals(report.getRowLabels(), ImmutableList.of("Week 1 : Session #1", "Week 1 : Session #2"));
         assertEquals(report.getParticipant().getIdentifier(), participant.getUserId());
         assertEquals(report.getParticipant().getEmail(), participant.getEmail());
         assertEquals(report.getWeeklyAdherencePercent(), Integer.valueOf(0));
