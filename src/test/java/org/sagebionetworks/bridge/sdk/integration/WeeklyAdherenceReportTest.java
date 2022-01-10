@@ -18,6 +18,7 @@ import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Assessment;
@@ -145,6 +146,7 @@ public class WeeklyAdherenceReportTest {
         participant = TestUserHelper.createAndSignInUser(getClass(), true);
         
         ForConsentedUsersApi userApi = participant.getClient(ForConsentedUsersApi.class);
+        StudyParticipantsApi devApi = developer.getClient(StudyParticipantsApi.class);
         
         // let's do the first available thing in the report
         StudyActivityEventList events = userApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
@@ -152,7 +154,7 @@ public class WeeklyAdherenceReportTest {
                 .filter(event -> event.getEventId().equals("enrollment"))
                 .findFirst().get();
         
-        WeeklyAdherenceReport report = userApi.getUsersStudyParticipantWeeklyAdherenceReport(STUDY_ID_1).execute().body();
+        WeeklyAdherenceReport report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant.getUserId()).execute().body();
         
         assertEquals(report.getRowLabels(), ImmutableList.of("Week 1 : Session #1", "Week 1 : Session #2"));
         assertEquals(report.getParticipant().getIdentifier(), participant.getUserId());
@@ -180,7 +182,7 @@ public class WeeklyAdherenceReportTest {
         updates.setRecords(ImmutableList.of(rec));
         userApi.updateAdherenceRecords(STUDY_ID_1, updates).execute();
         
-        report = userApi.getUsersStudyParticipantWeeklyAdherenceReport(STUDY_ID_1).execute().body();
+        report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant.getUserId()).execute().body();
         assertEquals(report.getWeeklyAdherencePercent(), Integer.valueOf(100));
 
         win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
