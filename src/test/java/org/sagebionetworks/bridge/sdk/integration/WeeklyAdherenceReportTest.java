@@ -1,19 +1,14 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
-import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
-import static org.sagebionetworks.bridge.rest.model.SessionCompletionState.EXPIRED;
-import static org.sagebionetworks.bridge.rest.model.SessionCompletionState.NOT_APPLICABLE;
-import static org.sagebionetworks.bridge.rest.model.SessionCompletionState.NOT_YET_AVAILABLE;
-import static org.sagebionetworks.bridge.rest.model.SessionCompletionState.UNSTARTED;
 import static org.sagebionetworks.bridge.sdk.integration.InitListener.CLINIC_VISIT;
-import static org.sagebionetworks.bridge.sdk.integration.InitListener.FAKE_ENROLLMENT;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.joda.time.DateTime;
 import org.junit.After;
@@ -23,23 +18,29 @@ import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
-import org.sagebionetworks.bridge.rest.model.EventStreamAdherenceReport;
+import org.sagebionetworks.bridge.rest.model.EventStreamDay;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
 import org.sagebionetworks.bridge.rest.model.Study;
-import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
+import org.sagebionetworks.bridge.rest.model.WeeklyAdherenceReport;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
-public class EventStreamAdherenceReportTest {
-    
+public class WeeklyAdherenceReportTest {
+
     private TestUser participant;
     private TestUser developer;
     
@@ -48,10 +49,10 @@ public class EventStreamAdherenceReportTest {
     private Assessment assessmentB;
     private String asmtATag;
     private String asmtBTag;
-    
+
     @Before
     public void before() throws Exception {
-        developer = TestUserHelper.createAndSignInUser(getClass(), false, DEVELOPER);
+        developer = TestUserHelper.createAndSignInUser(EventStreamAdherenceReportTest.class, false, DEVELOPER);
         ForDevelopersApi developersApi = developer.getClient(ForDevelopersApi.class);
         AssessmentsApi asmtsApi = developer.getClient(AssessmentsApi.class);
         
@@ -82,7 +83,7 @@ public class EventStreamAdherenceReportTest {
         
         Session s1 = new Session()
                 .name("Session #1")
-                .addStartEventIdsItem(FAKE_ENROLLMENT)
+                .addStartEventIdsItem("enrollment")
                 .delay("P2D")
                 .interval("P3D")
                 .performanceOrder(SEQUENTIAL)
@@ -94,7 +95,7 @@ public class EventStreamAdherenceReportTest {
 
         Session s2 = new Session()
                 .name("Session #2")
-                .addStartEventIdsItem(CLINIC_VISIT)
+                .addStartEventIdsItem("enrollment")
                 .interval("P7D")
                 .performanceOrder(SEQUENTIAL)
                 .addAssessmentsItem(asmtToReference(assessmentA))
@@ -104,7 +105,7 @@ public class EventStreamAdherenceReportTest {
         
         Session s3 = new Session()
                 .name("Session #3")
-                .addStartEventIdsItem(FAKE_ENROLLMENT)
+                .addStartEventIdsItem(CLINIC_VISIT)
                 .performanceOrder(SEQUENTIAL)
                 .addAssessmentsItem(asmtToReference(assessmentB))
                 .addTimeWindowsItem(new TimeWindow().startTime("08:00").persistent(true));
@@ -139,56 +140,55 @@ public class EventStreamAdherenceReportTest {
             developer.signOutAndDeleteUser();
         }
     }
-    
+
     @Test
-    public void test() throws Exception { 
+    public void test() throws Exception {
         participant = TestUserHelper.createAndSignInUser(getClass(), true);
         
         ForConsentedUsersApi userApi = participant.getClient(ForConsentedUsersApi.class);
-        EventStreamAdherenceReport report = userApi.getUsersStudyParticipantEventStreamAdherenceReport(STUDY_ID_1, null, null).execute().body();
+        StudyParticipantsApi devApi = developer.getClient(StudyParticipantsApi.class);
         
-        // Everything is, at this point, in compliance
-        assertEquals(Integer.valueOf(100), report.getAdherencePercent());
-        assertEquals(ImmutableSet.of(NOT_APPLICABLE), getStates(report, null));
+        // let's do the first available thing in the report
+        StudyActivityEventList events = userApi.getStudyActivityEvents(STUDY_ID_1).execute().body();
+        StudyActivityEvent enrollmentEvent = events.getItems().stream()
+                .filter(event -> event.getEventId().equals("enrollment"))
+                .findFirst().get();
         
-        StudyActivityEventRequest request = new StudyActivityEventRequest()
-                .eventId(FAKE_ENROLLMENT).timestamp(DateTime.now());
-        userApi.createStudyActivityEvent(STUDY_ID_1, request, true, false).execute();
+        WeeklyAdherenceReport report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant.getUserId()).execute().body();
         
-        report = userApi.getUsersStudyParticipantEventStreamAdherenceReport(STUDY_ID_1, 
-                DateTime.now(), null).execute().body();
-        assertEquals(report.getStreams().size(), 2);
-        assertEquals(ImmutableSet.of("0", "7", "14", "21"), report.getStreams().get(0).getByDayEntries().keySet());
-        assertEquals(ImmutableSet.of("2", "5", "8", "11", "14", "17", "20"),
-                report.getStreams().get(1).getByDayEntries().keySet());
+        assertEquals(report.getRowLabels(), ImmutableList.of("Week 1 : Session #1", "Week 1 : Session #2"));
+        assertEquals(report.getParticipant().getIdentifier(), participant.getUserId());
+        assertEquals(report.getParticipant().getEmail(), participant.getEmail());
+        assertEquals(report.getWeeklyAdherencePercent(), Integer.valueOf(0));
         
-        assertEquals(Integer.valueOf(100), report.getAdherencePercent());
-        assertEquals(ImmutableSet.of(NOT_APPLICABLE), getStates(report, CLINIC_VISIT));
-        assertEquals(ImmutableSet.of(NOT_YET_AVAILABLE), getStates(report, FAKE_ENROLLMENT));
+        // There's no Session #3 because it's not applicable to this user (no event for it)
+        Set<String> sessionNames = report.getByDayEntries().values().stream()
+            .flatMap(list -> list.stream())
+            .map(EventStreamDay::getSessionName)
+            .collect(Collectors.toSet());
+        assertEquals(ImmutableSet.of("Session #1", "Session #2"), sessionNames);
+        
+        EventStreamWindow win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
+        assertEquals(win.getState(), SessionCompletionState.UNSTARTED);
+        String instanceGuid = win.getSessionInstanceGuid();
+        
+        AdherenceRecord rec = new AdherenceRecord();
+        rec.setInstanceGuid(instanceGuid);
+        rec.setEventTimestamp(enrollmentEvent.getTimestamp());
+        rec.setStartedOn(DateTime.now());
+        rec.setFinishedOn(DateTime.now());
+        
+        AdherenceRecordUpdates updates = new AdherenceRecordUpdates();
+        updates.setRecords(ImmutableList.of(rec));
+        userApi.updateAdherenceRecords(STUDY_ID_1, updates).execute();
+        
+        report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant.getUserId()).execute().body();
+        assertEquals(report.getWeeklyAdherencePercent(), Integer.valueOf(100));
 
-        // This is in the far future when everything will have been expired
-        report = userApi.getUsersStudyParticipantEventStreamAdherenceReport(STUDY_ID_1, 
-                DateTime.now().plusYears(2), null).execute().body();
-        assertEquals(Integer.valueOf(0), report.getAdherencePercent());
-        assertEquals(ImmutableSet.of(NOT_APPLICABLE), getStates(report, CLINIC_VISIT));
-        assertEquals(ImmutableSet.of(EXPIRED), getStates(report, FAKE_ENROLLMENT));
-        
-        // Now lets' step into the schedule...
-        report = userApi.getUsersStudyParticipantEventStreamAdherenceReport(STUDY_ID_1, 
-                DateTime.now().plusDays(11), null).execute().body();
-        assertEquals(ImmutableSet.of(EXPIRED, UNSTARTED, NOT_YET_AVAILABLE), getStates(report, FAKE_ENROLLMENT));
+        win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
+        assertEquals(win.getState(), SessionCompletionState.COMPLETED);
     }
     
-    private Set<SessionCompletionState> getStates(EventStreamAdherenceReport report, String eventId) {
-        return report.getStreams().stream()
-            .filter(stream -> eventId == null || stream.getStartEventId().equals("custom:"+eventId))
-            .flatMap(stream -> stream.getByDayEntries().values().stream())
-            .flatMap(list -> list.stream())
-            .flatMap(day -> day.getTimeWindows().stream())
-            .map(EventStreamWindow::getState)
-            .collect(toSet());
-    }
-
     private AssessmentReference2 asmtToReference(Assessment asmt) {
         return new AssessmentReference2()
                 .appId(TEST_APP_ID)
