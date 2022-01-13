@@ -18,6 +18,7 @@ import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.api.StudyAdherenceApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
@@ -31,8 +32,10 @@ import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
+import org.sagebionetworks.bridge.rest.model.TestFilter;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.WeeklyAdherenceReport;
+import org.sagebionetworks.bridge.rest.model.WeeklyAdherenceReportList;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
@@ -41,7 +44,8 @@ import com.google.common.collect.ImmutableSet;
 
 public class WeeklyAdherenceReportTest {
 
-    private TestUser participant;
+    private TestUser participant1;
+    private TestUser participant2;
     private TestUser developer;
     
     private Schedule2 schedule;
@@ -124,8 +128,11 @@ public class WeeklyAdherenceReportTest {
         TestUser admin = TestUserHelper.getSignedInAdmin();
         AssessmentsApi assessmentsApi = admin.getClient(AssessmentsApi.class);
         SchedulesV2Api schedulesApi = admin.getClient(SchedulesV2Api.class);
-        if (participant != null) {
-            participant.signOutAndDeleteUser();
+        if (participant1 != null) {
+            participant1.signOutAndDeleteUser();
+        }
+        if (participant2 != null) {
+            participant2.signOutAndDeleteUser();
         }
         if (schedule != null && schedule.getGuid() != null) {
             schedulesApi.deleteSchedule(schedule.getGuid()).execute();
@@ -143,9 +150,9 @@ public class WeeklyAdherenceReportTest {
 
     @Test
     public void test() throws Exception {
-        participant = TestUserHelper.createAndSignInUser(getClass(), true);
+        participant1 = TestUserHelper.createAndSignInUser(getClass(), true);
         
-        ForConsentedUsersApi userApi = participant.getClient(ForConsentedUsersApi.class);
+        ForConsentedUsersApi userApi = participant1.getClient(ForConsentedUsersApi.class);
         StudyParticipantsApi devApi = developer.getClient(StudyParticipantsApi.class);
         
         // let's do the first available thing in the report
@@ -154,12 +161,12 @@ public class WeeklyAdherenceReportTest {
                 .filter(event -> event.getEventId().equals("enrollment"))
                 .findFirst().get();
         
-        WeeklyAdherenceReport report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant.getUserId()).execute().body();
+        WeeklyAdherenceReport report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant1.getUserId()).execute().body();
         
-        assertEquals(report.getRowLabels(), ImmutableList.of("Week 1 : Session #1", "Week 1 : Session #2"));
-        assertEquals(report.getParticipant().getIdentifier(), participant.getUserId());
-        assertEquals(report.getParticipant().getEmail(), participant.getEmail());
-        assertEquals(report.getWeeklyAdherencePercent(), Integer.valueOf(0));
+        assertEquals(ImmutableList.of("Week 1 : Session #1", "Week 1 : Session #2"), report.getRowLabels());
+        assertEquals(participant1.getUserId(), report.getParticipant().getIdentifier());
+        assertEquals(participant1.getEmail(), report.getParticipant().getEmail());
+        assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
         
         // There's no Session #3 because it's not applicable to this user (no event for it)
         Set<String> sessionNames = report.getByDayEntries().values().stream()
@@ -169,7 +176,7 @@ public class WeeklyAdherenceReportTest {
         assertEquals(ImmutableSet.of("Session #1", "Session #2"), sessionNames);
         
         EventStreamWindow win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
-        assertEquals(win.getState(), SessionCompletionState.UNSTARTED);
+        assertEquals(SessionCompletionState.UNSTARTED, win.getState());
         String instanceGuid = win.getSessionInstanceGuid();
         
         AdherenceRecord rec = new AdherenceRecord();
@@ -182,11 +189,65 @@ public class WeeklyAdherenceReportTest {
         updates.setRecords(ImmutableList.of(rec));
         userApi.updateAdherenceRecords(STUDY_ID_1, updates).execute();
         
-        report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant.getUserId()).execute().body();
-        assertEquals(report.getWeeklyAdherencePercent(), Integer.valueOf(100));
+        report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant1.getUserId()).execute().body();
+        assertEquals(Integer.valueOf(100), report.getWeeklyAdherencePercent());
 
         win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
-        assertEquals(win.getState(), SessionCompletionState.COMPLETED);
+        assertEquals(SessionCompletionState.COMPLETED, win.getState());
+        
+        // Paginated APIs
+        participant2 = TestUserHelper.createAndSignInUser(getClass(), true);
+        // does not exist unless you force it by requesting it
+        devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant2.getUserId()).execute().body();
+        
+        // Now, we should have two reports
+        StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
+        
+        WeeklyAdherenceReportList allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
+                STUDY_ID_1, null, null, null, null, null).execute().body();
+        // defaults
+        assertEquals(Integer.valueOf(50), allReports.getRequestParams().getPageSize());
+        assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());
+        assertEquals(Integer.valueOf(2), allReports.getTotal()); // only one person
+        
+        Set<String> emails = allReports.getItems().stream()
+                .map(r -> r.getParticipant().getEmail()).collect(Collectors.toSet());
+        Set<String> ids = allReports.getItems().stream()
+                .map(r -> r.getParticipant().getIdentifier()).collect(Collectors.toSet());
+        assertEquals(ImmutableSet.of(participant1.getEmail(), participant2.getEmail()), emails);
+        assertEquals(ImmutableSet.of(participant1.getUserId(), participant2.getUserId()), ids);
+        
+        report = allReports.getItems().stream()
+                .filter(r -> r.getParticipant().getIdentifier().equals(participant1.getUserId()))
+                .findFirst()
+                .orElse(null);
+        assertEquals(Integer.valueOf(100), report.getWeeklyAdherencePercent());
+
+        report = allReports.getItems().stream()
+                .filter(r -> r.getParticipant().getIdentifier().equals(participant2.getUserId()))
+                .findFirst()
+                .orElse(null);
+        assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
+
+        // verify there are filters
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
+                STUDY_ID_1, null, ImmutableList.of("Belgium"), null, null, null).execute().body();
+        assertEquals(Integer.valueOf(0), allReports.getTotal());
+
+        // Only user #2 is under the 50% adherence bar
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
+                STUDY_ID_1, null, null, 50, null, null).execute().body();
+        assertEquals(Integer.valueOf(1), allReports.getTotal());
+        report = allReports.getItems().get(0);
+        assertEquals(participant2.getEmail(), report.getParticipant().getEmail());
+        
+        // even though this is set to production...it comes back test (caller is a dev).
+        // I would like for the argument to be of type TestFilter, but Swagger cannot do 
+        // this for query parameters.
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
+                STUDY_ID_1, "production", null, null, null, null).execute().body();
+        assertEquals(Integer.valueOf(2), allReports.getTotal());
+        assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());     
     }
     
     private AssessmentReference2 asmtToReference(Assessment asmt) {
