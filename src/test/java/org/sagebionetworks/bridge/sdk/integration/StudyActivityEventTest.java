@@ -34,12 +34,13 @@ import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventPagedList;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class StudyActivityEventTest {
     
-    private static TestUserHelper.TestUser researcher;
-    private static TestUserHelper.TestUser user;
+    private static TestUser researcher;
+    private static TestUser user;
     private static ForConsentedUsersApi usersApi;
     private static ForResearchersApi researchersApi;
     

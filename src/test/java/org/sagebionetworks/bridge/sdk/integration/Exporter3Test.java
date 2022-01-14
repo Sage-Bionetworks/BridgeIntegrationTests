@@ -22,12 +22,13 @@ import org.slf4j.LoggerFactory;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.Exporter3Configuration;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class Exporter3Test {
     private static final Logger LOG = LoggerFactory.getLogger(Exporter3Test.class);
 
-    private static TestUserHelper.TestUser admin;
+    private static TestUser admin;
     private static SynapseClient synapseClient;
 
     @BeforeClass

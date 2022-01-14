@@ -35,8 +35,8 @@ import org.sagebionetworks.bridge.rest.model.AssessmentList;
 import org.sagebionetworks.bridge.rest.model.ExternalResource;
 import org.sagebionetworks.bridge.rest.model.PagedExternalResourceList;
 import org.sagebionetworks.bridge.rest.model.RequestParams;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 public class AssessmentResourceTest {
 

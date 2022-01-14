@@ -2,6 +2,7 @@ package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.getClientInfoWithVersion;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,7 @@ import org.sagebionetworks.bridge.rest.model.UploadFieldDefinition;
 import org.sagebionetworks.bridge.rest.model.UploadFieldType;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class ScheduledActivityAutoResolutionTest {
@@ -61,8 +63,8 @@ public class ScheduledActivityAutoResolutionTest {
     private static SchedulesV1Api schedulePlanApi;
     private static SurveysApi adminSurveyApi;
     private static SurveysApi surveyApi;
-    private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser admin;
+    private static TestUser developer;
+    private static TestUser admin;
 
     private List<GuidCreatedOnVersionHolder> surveysToDelete;
     private String activityLabel;
@@ -70,7 +72,7 @@ public class ScheduledActivityAutoResolutionTest {
     private String compoundTaskIdToDelete;
     private String schedulePlanGuidToDelete;
     private String surveyId;
-    private TestUserHelper.TestUser user;
+    private TestUser user;
 
     @SuppressWarnings("deprecation")
     @BeforeClass
@@ -178,7 +180,7 @@ public class ScheduledActivityAutoResolutionTest {
         {
             // Note that we can't cache the scheduled activity API, because changing the client info requires us to get
             // a new client.
-            user.setClientInfo(Tests.getClientInfoWithVersion(INTEG_TEST_OS_NAME, 3));
+            user = Tests.withClientInfo(user, getClientInfoWithVersion(INTEG_TEST_OS_NAME, 3)); 
             List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 
@@ -192,7 +194,7 @@ public class ScheduledActivityAutoResolutionTest {
 
         // Now user has app v5. Should get schema rev2 back.
         {
-            user.setClientInfo(Tests.getClientInfoWithVersion(INTEG_TEST_OS_NAME, 5));
+            user = Tests.withClientInfo(user, getClientInfoWithVersion(INTEG_TEST_OS_NAME, 5));
             List<ScheduledActivity> scheduledActivityList = user.getClient(ActivitiesApi.class).getScheduledActivities(
                     "+0:00", 2, null).execute().body().getItems();
 

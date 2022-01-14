@@ -136,8 +136,8 @@ import org.sagebionetworks.bridge.rest.model.Unit;
 import org.sagebionetworks.bridge.rest.model.WeightConstraints;
 import org.sagebionetworks.bridge.rest.model.YearConstraints;
 import org.sagebionetworks.bridge.rest.model.YearMonthConstraints;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

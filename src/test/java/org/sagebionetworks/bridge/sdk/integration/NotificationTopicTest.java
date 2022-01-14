@@ -20,8 +20,8 @@ import org.sagebionetworks.bridge.rest.model.Criteria;
 import org.sagebionetworks.bridge.rest.model.GuidHolder;
 import org.sagebionetworks.bridge.rest.model.NotificationTopic;
 import org.sagebionetworks.bridge.rest.model.Role;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 @SuppressWarnings("ConstantConditions")
 public class NotificationTopicTest {

@@ -41,7 +41,6 @@ import org.sagebionetworks.bridge.rest.model.AndroidAppLink;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.AppleAppLink;
 import org.sagebionetworks.bridge.rest.model.ClientInfo;
-import org.sagebionetworks.bridge.rest.model.Environment;
 import org.sagebionetworks.bridge.rest.model.MasterSchedulerConfig;
 import org.sagebionetworks.bridge.rest.model.OAuthProvider;
 import org.sagebionetworks.bridge.rest.model.Phone;
@@ -52,6 +51,7 @@ import org.sagebionetworks.bridge.rest.model.ScheduledActivity;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SimpleScheduleStrategy;
 import org.sagebionetworks.bridge.rest.model.TaskReference;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 public class Tests {
@@ -409,5 +409,16 @@ public class Tests {
     
     public static String escapeJSON(String json) {
         return json.replaceAll("'", "\"");
+    }
+    
+    public static TestUser withClientInfo(TestUser user, ClientInfo clientInfo) {
+        ClientManager.Builder builder = new ClientManager.Builder();
+        builder.withClientInfo(clientInfo);
+        builder.withSignIn(user.getSignIn());
+        builder.withConfig(user.getClientManager().getConfig());
+        if (user.getSession() != null) {
+            builder.withAcceptLanguage(user.getSession().getLanguages()).build();    
+        }
+        return new TestUser(user.getSignIn(), builder.build(), user.getUserId());
     }
 }

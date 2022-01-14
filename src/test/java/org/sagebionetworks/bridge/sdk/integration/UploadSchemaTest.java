@@ -47,6 +47,7 @@ import org.sagebionetworks.bridge.rest.model.UploadFieldType;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaList;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 @SuppressWarnings("ConstantConditions")
@@ -54,10 +55,10 @@ public class UploadSchemaTest {
     // We put spaces in the schema ID to test URL encoding.
     private static final String TEST_SCHEMA_ID_PREFIX = "integration test schema ";
 
-    private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser user;
-    private static TestUserHelper.TestUser worker;
-    private static TestUserHelper.TestUser sharedDeveloper;
+    private static TestUser developer;
+    private static TestUser user;
+    private static TestUser worker;
+    private static TestUser sharedDeveloper;
     private static ForAdminsApi adminApi;
     private static AuthenticationApi authApi;
     private static UploadSchemasApi devUploadSchemasApi;
@@ -69,7 +70,7 @@ public class UploadSchemaTest {
 
     @BeforeClass
     public static void beforeClass() throws Exception {
-        TestUserHelper.TestUser admin = TestUserHelper.getSignedInAdmin();
+        TestUser admin = TestUserHelper.getSignedInAdmin();
         developer = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, false, DEVELOPER);
         user = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, true);
         worker = TestUserHelper.createAndSignInUser(UploadSchemaTest.class, false, WORKER);

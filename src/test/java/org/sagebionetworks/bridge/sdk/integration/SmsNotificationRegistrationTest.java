@@ -28,6 +28,7 @@ import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.SubscriptionRequest;
 import org.sagebionetworks.bridge.rest.model.SubscriptionStatus;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
@@ -36,10 +37,10 @@ public class SmsNotificationRegistrationTest {
     private static String autoTopicGuid1;
     private static String autoTopicGuid2;
     private static String manualTopicGuid;
-    private static TestUserHelper.TestUser developer;
-    private static TestUserHelper.TestUser researcher;
+    private static TestUser developer;
+    private static TestUser researcher;
 
-    private TestUserHelper.TestUser phoneUser;
+    private TestUser phoneUser;
 
     @BeforeClass
     public static void setup() throws Exception {

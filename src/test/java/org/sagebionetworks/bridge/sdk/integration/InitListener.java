@@ -34,11 +34,12 @@ import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.CustomEvent;
+import org.sagebionetworks.bridge.rest.model.Environment;
 import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Subpopulation;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 /**
  * We have some frequently used model classes that need specific relationships for
@@ -159,20 +160,21 @@ public class InitListener extends RunListener {
         App app = adminApi.getUsersApp().execute().body();
         app.setInstallLinks(ImmutableMap.of("Universal", "http://example.com/"));
         adminApi.updateUsersApp(app).execute();
-
-        admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
         
-        try {
-            orgsApi.getOrganization(SAGE_ID).execute();
-        } catch(EntityNotFoundException e) {
-            Organization org = new Organization().identifier(SAGE_ID).name(SAGE_NAME)
-                    .description("Sage sponsors study1 and study2");
-            orgsApi.createOrganization(org).execute();
-            LOG.info("  Creating organization “{}” in shared study", SAGE_ID);
-        } finally {
-            admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
+        // The bootstrap user does not have access to the shared app in production, so skip this in that environment.
+        if (admin.getSession().getEnvironment() != Environment.PRODUCTION) {
+            admin.getClient(AuthenticationApi.class).changeApp(SHARED_SIGNIN).execute();
+            try {
+                orgsApi.getOrganization(SAGE_ID).execute();
+            } catch(EntityNotFoundException e) {
+                Organization org = new Organization().identifier(SAGE_ID).name(SAGE_NAME)
+                        .description("Sage sponsors study1 and study2");
+                orgsApi.createOrganization(org).execute();
+                LOG.info("  Creating organization “{}” in shared study", SAGE_ID);
+            } finally {
+                admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
+            }
         }
-
         testRunInitialized = true;
     }
     @Override

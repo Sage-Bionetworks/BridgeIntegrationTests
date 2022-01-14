@@ -39,10 +39,11 @@ import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Withdrawal;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class ParticipantVersionTest {
-    private static TestUserHelper.TestUser admin;
+    private static TestUser admin;
     private static DateTime oneHourAgo;
     private static ForWorkersApi workersApi;
 
@@ -136,7 +137,7 @@ public class ParticipantVersionTest {
         assertEquals(studyMembershipMap, participantVersion2.getStudyMemberships());
 
         // Participant updates itself.
-        TestUserHelper.TestUser user = TestUserHelper.getSignedInUser(signIn);
+        TestUser user = TestUserHelper.getSignedInUser(signIn);
         ForConsentedUsersApi consentedUsersApi = user.getClient(ForConsentedUsersApi.class);
         participant = consentedUsersApi.getUsersParticipantRecord(false).execute().body();
         participant.setClientTimeZone("Asia/Tokyo");
@@ -265,8 +266,7 @@ public class ParticipantVersionTest {
     public void adminCreatedUser() throws Exception {
         // This is a simpler test than the previous test. Go ahead and create a user that's already consented. However,
         // createUser() API automatically initially sets user to no_sharing.
-        TestUserHelper.TestUser user = TestUserHelper.createAndSignInUser(ParticipantVersionTest.class,
-                true);
+        TestUser user = TestUserHelper.createAndSignInUser(ParticipantVersionTest.class, true);
         userId = user.getUserId();
 
         // Add test_user data group.
@@ -316,8 +316,7 @@ public class ParticipantVersionTest {
     @Test
     public void accountWithRoleHasNoVersions() throws Exception {
         // Create a developer w/ consent. This should never happen in real life, but we'll test it in case it happens.
-        TestUserHelper.TestUser developer = TestUserHelper.createAndSignInUser(ParticipantVersionTest.class,
-                true, Role.DEVELOPER);
+        TestUser developer = TestUserHelper.createAndSignInUser(ParticipantVersionTest.class, true, Role.DEVELOPER);
         userId = developer.getUserId();
 
         // Add test_user data group.

@@ -59,8 +59,8 @@ import org.sagebionetworks.bridge.rest.model.UploadFieldType;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
 import org.sagebionetworks.bridge.rest.model.VersionHolder;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -99,7 +99,7 @@ public class AppConfigTest {
         admin = TestUserHelper.getSignedInAdmin();
         
         developer = TestUserHelper.createAndSignInUser(AppConfigTest.class, false, Role.DEVELOPER);
-        user = TestUserHelper.createAndSignInUser(AppConfigTest.class, true);
+        // user = TestUserHelper.createAndSignInUser(AppConfigTest.class, true);
         
         admin.getClient(OrganizationsApi.class).addMember(ORG_ID_1, developer.getUserId()).execute();
 
@@ -291,6 +291,7 @@ public class AppConfigTest {
         configsToDelete.add(holder.getGuid());
         
         // Let's verify resolution of the identifiers...
+        user = TestUserHelper.createAndSignInUser(AppConfigTest.class, true);
         AppConfig resolvedAppConfig = user.getClient(ForConsentedUsersApi.class)
                 .getConfigForApp(user.getAppId()).execute().body();
         AssessmentReference retAssessmentRef = resolvedAppConfig.getAssessmentReferences().get(0);
@@ -449,10 +450,12 @@ public class AppConfigTest {
     
     @Test
     public void appConfigWithElements() throws Exception {
-        user.setClientInfo(new ClientInfo().appName(Tests.APP_NAME).appVersion(MIN_MAX_TEST_VALUE)
-                .deviceName("SomeAndroid").osName("Android").osVersion("2.0.0")
-                .sdkName(developer.getClientManager().getClientInfo().getSdkName())
-                .sdkVersion(developer.getClientManager().getClientInfo().getSdkVersion()));
+        ClientInfo clientInfo = new ClientInfo().appName(Tests.APP_NAME).appVersion(MIN_MAX_TEST_VALUE)
+            .deviceName("SomeAndroid").osName("Android").osVersion("2.0.0")
+            .sdkName(developer.getClientManager().getClientInfo().getSdkName())
+            .sdkVersion(developer.getClientManager().getClientInfo().getSdkVersion());
+        user = new TestUserHelper.Builder(AppConfigTest.class)
+                .withClientInfo(clientInfo).createAndSignInUser();
         
         String elementId = Tests.randomIdentifier(getClass());
         // Create an app config element

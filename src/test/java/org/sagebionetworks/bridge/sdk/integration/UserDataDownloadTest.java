@@ -11,12 +11,13 @@ import retrofit2.Response;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.model.DateRange;
 import org.sagebionetworks.bridge.rest.model.Message;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 // We don't currently have a way to hook into an email address to see the result. For now, just make sure that the call
 // to the API succeeds and doesn't throw.
 public class UserDataDownloadTest {
-    private static TestUserHelper.TestUser user;
+    private static TestUser user;
 
     @BeforeClass
     public static void setup() throws Exception {

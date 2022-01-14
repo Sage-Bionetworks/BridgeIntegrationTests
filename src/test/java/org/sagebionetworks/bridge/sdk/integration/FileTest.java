@@ -25,8 +25,8 @@ import org.sagebionetworks.bridge.rest.model.FileMetadataList;
 import org.sagebionetworks.bridge.rest.model.FileRevision;
 import org.sagebionetworks.bridge.rest.model.FileRevisionList;
 import org.sagebionetworks.bridge.rest.model.GuidVersionHolder;
+import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
-import org.sagebionetworks.bridge.user.TestUserHelper.TestUser;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
