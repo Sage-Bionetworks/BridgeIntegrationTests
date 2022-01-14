@@ -255,11 +255,6 @@ public class ParticipantVersionTest {
 
         result = workersApi.getParticipantVersion(TEST_APP_ID, userId, 5).execute().body();
         assertEquals(participantVersion5, result);
-
-        // getParticipantVersionByHealthcode is a helpful alias.
-        String healthCode = participantVersion5.getHealthCode();
-        result = workersApi.getParticipantVersionForHealthCode(TEST_APP_ID, healthCode, 5).execute().body();
-        assertEquals(participantVersion5, result);
     }
 
     @Test
