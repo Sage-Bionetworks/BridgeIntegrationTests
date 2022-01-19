@@ -15,6 +15,7 @@ import org.sagebionetworks.repo.model.Folder;
 import org.sagebionetworks.repo.model.Project;
 import org.sagebionetworks.repo.model.Team;
 import org.sagebionetworks.repo.model.project.StsStorageLocationSetting;
+import org.sagebionetworks.repo.model.table.TableEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,6 +109,11 @@ public class Exporter3Test {
         String projectId = ex3Config.getProjectId();
         Project project = synapseClient.getEntity(projectId, Project.class);
         assertNotNull(project);
+
+        String participantVersionTableId = ex3Config.getParticipantVersionTableId();;
+        TableEntity participantVersionTable = synapseClient.getEntity(participantVersionTableId, TableEntity.class);
+        assertNotNull(participantVersionTable);
+        assertEquals(projectId, participantVersionTable.getParentId());
 
         String rawFolderId = ex3Config.getRawDataFolderId();
         Folder rawFolder = synapseClient.getEntity(rawFolderId, Folder.class);
