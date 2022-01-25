@@ -24,7 +24,6 @@ import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
-import org.sagebionetworks.bridge.rest.model.EventStreamDay;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
@@ -36,6 +35,7 @@ import org.sagebionetworks.bridge.rest.model.TestFilter;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.WeeklyAdherenceReport;
 import org.sagebionetworks.bridge.rest.model.WeeklyAdherenceReportList;
+import org.sagebionetworks.bridge.rest.model.WeeklyAdherenceReportRow;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
@@ -162,17 +162,25 @@ public class WeeklyAdherenceReportTest {
                 .findFirst().get();
         
         WeeklyAdherenceReport report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant1.getUserId()).execute().body();
-        assertEquals(ImmutableList.of(":Week 1:Session #1:", ":Week 1:Session #2:"), report.getRowLabels());
+        
+        WeeklyAdherenceReportRow row1 = report.getRows().get(0);
+        assertEquals("Week 1 / Session #2", row1.getLabel());
+        assertEquals(":Week 1:Session #2:", row1.getSearchableLabel());
+        assertEquals("Session #2", row1.getSessionName());
+        assertEquals(Integer.valueOf(1), row1.getWeek());
+        
+        WeeklyAdherenceReportRow row2 = report.getRows().get(1);
+        assertEquals("Week 1 / Session #1", row2.getLabel());
+        assertEquals(":Week 1:Session #1:", row2.getSearchableLabel());
+        assertEquals("Session #1", row2.getSessionName());
+        assertEquals(Integer.valueOf(1), row2.getWeek());
+        
         assertEquals(participant1.getUserId(), report.getParticipant().getIdentifier());
         assertEquals(participant1.getEmail(), report.getParticipant().getEmail());
         assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
         
-        // There's no Session #3 because it's not applicable to this user (no event for it)
-        Set<String> sessionNames = report.getByDayEntries().values().stream()
-            .flatMap(list -> list.stream())
-            .map(EventStreamDay::getSessionName)
-            .collect(Collectors.toSet());
-        assertEquals(ImmutableSet.of("Session #1", "Session #2"), sessionNames);
+        // there is no Session #3, it does not apply to this user
+        assertEquals(2, report.getRows().size());
         
         EventStreamWindow win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
         assertEquals(SessionCompletionState.UNSTARTED, win.getState());
