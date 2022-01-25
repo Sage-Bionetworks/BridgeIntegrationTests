@@ -162,8 +162,7 @@ public class WeeklyAdherenceReportTest {
                 .findFirst().get();
         
         WeeklyAdherenceReport report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant1.getUserId()).execute().body();
-        
-        assertEquals(ImmutableList.of("Week 1 : Session #1", "Week 1 : Session #2"), report.getRowLabels());
+        assertEquals(ImmutableList.of(":Week 1:Session #1:", ":Week 1:Session #2:"), report.getRowLabels());
         assertEquals(participant1.getUserId(), report.getParticipant().getIdentifier());
         assertEquals(participant1.getEmail(), report.getParticipant().getEmail());
         assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
