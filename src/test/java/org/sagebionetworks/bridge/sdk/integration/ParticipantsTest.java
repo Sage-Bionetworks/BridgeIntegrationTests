@@ -148,7 +148,8 @@ public class ParticipantsTest {
     public void canGetParticipantRoster() throws Exception {
         ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
         
-        ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
+        ParticipantRosterRequest request = new ParticipantRosterRequest()
+                .studyId(STUDY_ID_1).password("Test1111");
         
         Message message = researchersApi.requestParticipantRoster(request).execute().body();
         assertEquals("Download initiated.", message.getMessage());
@@ -158,7 +159,8 @@ public class ParticipantsTest {
     public void canGetStudyParticipantRoster() throws Exception {
         StudyParticipantsApi participantsApi = studyCoordinator.getClient(StudyParticipantsApi.class);
         
-        ParticipantRosterRequest request = new ParticipantRosterRequest().password("Test1111");
+        ParticipantRosterRequest request = new ParticipantRosterRequest()
+                .studyId(STUDY_ID_1).password("Test1111");
         
         Message message = participantsApi.requestStudyParticipantRoster(STUDY_ID_1, request).execute().body();
         assertEquals("Preparing participant roster.", message.getMessage());
