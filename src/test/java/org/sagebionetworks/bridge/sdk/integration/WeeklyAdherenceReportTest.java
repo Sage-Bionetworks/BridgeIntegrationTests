@@ -56,7 +56,7 @@ public class WeeklyAdherenceReportTest {
 
     @Before
     public void before() throws Exception {
-        developer = TestUserHelper.createAndSignInUser(EventStreamAdherenceReportTest.class, false, DEVELOPER);
+        developer = TestUserHelper.createAndSignInUser(getClass(), false, DEVELOPER);
         ForDevelopersApi developersApi = developer.getClient(ForDevelopersApi.class);
         AssessmentsApi asmtsApi = developer.getClient(AssessmentsApi.class);
         
@@ -151,6 +151,10 @@ public class WeeklyAdherenceReportTest {
     @Test
     public void test() throws Exception {
         participant1 = TestUserHelper.createAndSignInUser(getClass(), true);
+        StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
+
+        int startingTotal = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
+                STUDY_ID_1, null, null, null, null, null).execute().body().getTotal();
         
         ForConsentedUsersApi userApi = participant1.getClient(ForConsentedUsersApi.class);
         StudyParticipantsApi devApi = developer.getClient(StudyParticipantsApi.class);
@@ -162,17 +166,16 @@ public class WeeklyAdherenceReportTest {
                 .findFirst().get();
         
         WeeklyAdherenceReport report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant1.getUserId()).execute().body();
-        
         WeeklyAdherenceReportRow row1 = report.getRows().get(0);
-        assertEquals("Week 1 / Session #2", row1.getLabel());
-        assertEquals(":Week 1:Session #2:", row1.getSearchableLabel());
-        assertEquals("Session #2", row1.getSessionName());
+        assertEquals("Session #1 / Week 1", row1.getLabel());
+        assertEquals(":Session #1:Week 1:", row1.getSearchableLabel());
+        assertEquals("Session #1", row1.getSessionName());
         assertEquals(Integer.valueOf(1), row1.getWeek());
         
         WeeklyAdherenceReportRow row2 = report.getRows().get(1);
-        assertEquals("Week 1 / Session #1", row2.getLabel());
-        assertEquals(":Week 1:Session #1:", row2.getSearchableLabel());
-        assertEquals("Session #1", row2.getSessionName());
+        assertEquals("Session #2 / Week 1", row2.getLabel());
+        assertEquals(":Session #2:Week 1:", row2.getSearchableLabel());
+        assertEquals("Session #2", row2.getSessionName());
         assertEquals(Integer.valueOf(1), row2.getWeek());
         
         assertEquals(participant1.getUserId(), report.getParticipant().getIdentifier());
@@ -182,7 +185,7 @@ public class WeeklyAdherenceReportTest {
         // there is no Session #3, it does not apply to this user
         assertEquals(2, report.getRows().size());
         
-        EventStreamWindow win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
+        EventStreamWindow win = report.getByDayEntries().get("0").get(1).getTimeWindows().get(0);
         assertEquals(SessionCompletionState.UNSTARTED, win.getState());
         String instanceGuid = win.getSessionInstanceGuid();
         
@@ -199,7 +202,7 @@ public class WeeklyAdherenceReportTest {
         report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant1.getUserId()).execute().body();
         assertEquals(Integer.valueOf(100), report.getWeeklyAdherencePercent());
 
-        win = report.getByDayEntries().get("0").get(0).getTimeWindows().get(0);
+        win = report.getByDayEntries().get("0").get(1).getTimeWindows().get(0);
         assertEquals(SessionCompletionState.COMPLETED, win.getState());
         
         // Paginated APIs
@@ -207,22 +210,19 @@ public class WeeklyAdherenceReportTest {
         // does not exist unless you force it by requesting it
         devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant2.getUserId()).execute().body();
         
-        // Now, we should have two reports
-        StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
-        
         WeeklyAdherenceReportList allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
                 STUDY_ID_1, null, null, null, null, null).execute().body();
         // defaults
         assertEquals(Integer.valueOf(50), allReports.getRequestParams().getPageSize());
         assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());
-        assertEquals(Integer.valueOf(2), allReports.getTotal()); // only one person
+        assertEquals(Integer.valueOf(startingTotal+2), allReports.getTotal()); // only one person
         
         Set<String> emails = allReports.getItems().stream()
                 .map(r -> r.getParticipant().getEmail()).collect(Collectors.toSet());
         Set<String> ids = allReports.getItems().stream()
                 .map(r -> r.getParticipant().getIdentifier()).collect(Collectors.toSet());
-        assertEquals(ImmutableSet.of(participant1.getEmail(), participant2.getEmail()), emails);
-        assertEquals(ImmutableSet.of(participant1.getUserId(), participant2.getUserId()), ids);
+        assertTrue(emails.containsAll(ImmutableSet.of(participant1.getEmail(), participant2.getEmail())));
+        assertTrue(ids.containsAll(ImmutableSet.of(participant1.getUserId(), participant2.getUserId())));
         
         report = allReports.getItems().stream()
                 .filter(r -> r.getParticipant().getIdentifier().equals(participant1.getUserId()))
@@ -253,7 +253,7 @@ public class WeeklyAdherenceReportTest {
         // this for query parameters.
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
                 STUDY_ID_1, "production", null, null, null, null).execute().body();
-        assertEquals(Integer.valueOf(2), allReports.getTotal());
+        assertEquals(Integer.valueOf(startingTotal+2), allReports.getTotal());
         assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());     
     }
     
