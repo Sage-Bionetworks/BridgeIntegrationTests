@@ -3,6 +3,7 @@ package org.sagebionetworks.bridge.sdk.integration;
 import static org.junit.Assert.*;
 import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
+import static org.sagebionetworks.bridge.rest.model.TestFilter.PRODUCTION;
 import static org.sagebionetworks.bridge.sdk.integration.InitListener.CLINIC_VISIT;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
@@ -22,9 +23,11 @@ import org.sagebionetworks.bridge.rest.api.StudyAdherenceApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
+import org.sagebionetworks.bridge.rest.model.AdherenceReportSearch;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
+import org.sagebionetworks.bridge.rest.model.ParticipantProgressionState;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
@@ -154,7 +157,7 @@ public class WeeklyAdherenceReportTest {
         StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
 
         int startingTotal = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, null, null, null, null).execute().body().getTotal();
+                STUDY_ID_1, new AdherenceReportSearch()).execute().body().getTotal();
         
         ForConsentedUsersApi userApi = participant1.getClient(ForConsentedUsersApi.class);
         StudyParticipantsApi devApi = developer.getClient(StudyParticipantsApi.class);
@@ -211,7 +214,7 @@ public class WeeklyAdherenceReportTest {
         devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant2.getUserId()).execute().body();
         
         WeeklyAdherenceReportList allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, null, null, null, null).execute().body();
+                STUDY_ID_1, new AdherenceReportSearch()).execute().body();
         // defaults
         assertEquals(Integer.valueOf(50), allReports.getRequestParams().getPageSize());
         assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());
@@ -237,24 +240,43 @@ public class WeeklyAdherenceReportTest {
         assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
 
         // verify there are filters
-        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, ImmutableList.of("Belgium"), null, null, null).execute().body();
+        
+        // label filter
+        AdherenceReportSearch search = new AdherenceReportSearch().addLabelFiltersItem("Belgium");
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(0), allReports.getTotal());
 
-        // Only user #2 is under the 50% adherence bar
-        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, null, 50, null, null).execute().body();
+        // adherenceUnder filter
+        search = new AdherenceReportSearch().complianceUnder(50);
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(1), allReports.getTotal());
         report = allReports.getItems().get(0);
         assertEquals(participant2.getEmail(), report.getParticipant().getEmail());
         
-        // even though this is set to production...it comes back test (caller is a dev).
-        // I would like for the argument to be of type TestFilter, but Swagger cannot do 
-        // this for query parameters.
-        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, "production", null, null, null, null).execute().body();
+        // test filter (it comes back test because the caller is a developer).
+        search = new AdherenceReportSearch().testFilter(PRODUCTION);
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(startingTotal+2), allReports.getTotal());
-        assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());     
+        assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());
+
+        // ID filter
+        search = new AdherenceReportSearch().idFilter(participant2.getEmail());
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
+        assertEquals(participant2.getUserId(), allReports.getItems().get(0).getParticipant().getIdentifier());
+        assertEquals(participant2.getEmail(), allReports.getRequestParams().getIdFilter());
+        
+        // Progressions state filter
+        search = new AdherenceReportSearch().progressionFilter(ParticipantProgressionState.IN_PROGRESS);
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
+        assertTrue(allReports.getTotal() >= 2); // our participants
+        for (WeeklyAdherenceReport oneReport : allReports.getItems()) {
+            assertTrue(oneReport.getProgression() == ParticipantProgressionState.IN_PROGRESS);
+        }
+        
+        search = new AdherenceReportSearch().offsetBy(1).pageSize(5);
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
+        assertEquals(Integer.valueOf(1), allReports.getRequestParams().getOffsetBy());
+        assertEquals(Integer.valueOf(5), allReports.getRequestParams().getPageSize());
     }
     
     private AssessmentReference2 asmtToReference(Assessment asmt) {
