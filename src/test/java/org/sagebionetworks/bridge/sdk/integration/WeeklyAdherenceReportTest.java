@@ -245,13 +245,22 @@ public class WeeklyAdherenceReportTest {
         AdherenceReportSearch search = new AdherenceReportSearch().addLabelFiltersItem("Belgium");
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(0), allReports.getTotal());
+        assertEquals(ImmutableList.of("Belgium"), allReports.getRequestParams().getLabelFilter());
 
-        // adherenceUnder filter
-        search = new AdherenceReportSearch().complianceUnder(50);
+        // adherence filter
+        search = new AdherenceReportSearch().adherenceMax(50);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(1), allReports.getTotal());
         report = allReports.getItems().get(0);
         assertEquals(participant2.getEmail(), report.getParticipant().getEmail());
+        assertEquals(Integer.valueOf(0), allReports.getRequestParams().getAdherenceMin());
+        assertEquals(Integer.valueOf(50), allReports.getRequestParams().getAdherenceMax());
+        
+        search = new AdherenceReportSearch().adherenceMin(20).adherenceMax(50);
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
+        assertEquals(Integer.valueOf(0), allReports.getTotal());
+        assertEquals(Integer.valueOf(20), allReports.getRequestParams().getAdherenceMin());
+        assertEquals(Integer.valueOf(50), allReports.getRequestParams().getAdherenceMax());
         
         // test filter (it comes back test because the caller is a developer).
         search = new AdherenceReportSearch().testFilter(PRODUCTION);
@@ -272,6 +281,7 @@ public class WeeklyAdherenceReportTest {
         for (WeeklyAdherenceReport oneReport : allReports.getItems()) {
             assertTrue(oneReport.getProgression() == ParticipantProgressionState.IN_PROGRESS);
         }
+        assertEquals(ParticipantProgressionState.IN_PROGRESS, allReports.getRequestParams().getProgressionFilter());
         
         search = new AdherenceReportSearch().offsetBy(1).pageSize(5);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
