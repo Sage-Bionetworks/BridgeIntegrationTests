@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.*;
+import static org.sagebionetworks.bridge.rest.model.ParticipantStudyProgress.IN_PROGRESS;
 import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.TestFilter.PRODUCTION;
@@ -27,7 +28,7 @@ import org.sagebionetworks.bridge.rest.model.AdherenceReportSearch;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
-import org.sagebionetworks.bridge.rest.model.ParticipantProgressionState;
+import org.sagebionetworks.bridge.rest.model.ParticipantStudyProgress;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
@@ -275,13 +276,13 @@ public class WeeklyAdherenceReportTest {
         assertEquals(participant2.getEmail(), allReports.getRequestParams().getIdFilter());
         
         // Progressions state filter
-        search = new AdherenceReportSearch().progressionFilter(ParticipantProgressionState.IN_PROGRESS);
+        search = new AdherenceReportSearch().addProgressionFiltersItem(IN_PROGRESS);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertTrue(allReports.getTotal() >= 2); // our participants
         for (WeeklyAdherenceReport oneReport : allReports.getItems()) {
-            assertTrue(oneReport.getProgression() == ParticipantProgressionState.IN_PROGRESS);
+            assertTrue(oneReport.getProgression() == IN_PROGRESS);
         }
-        assertEquals(ParticipantProgressionState.IN_PROGRESS, allReports.getRequestParams().getProgressionFilter());
+        assertEquals(ImmutableList.of(IN_PROGRESS), allReports.getRequestParams().getProgressionFilters());
         
         search = new AdherenceReportSearch().offsetBy(1).pageSize(5);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
