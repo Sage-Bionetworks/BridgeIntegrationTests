@@ -22,6 +22,7 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.After;
@@ -30,6 +31,7 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
+import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -54,6 +56,7 @@ import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
+import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
@@ -304,8 +307,30 @@ public class Schedule2Test {
         assertEquals(sessionInstanceGuids, sessionInstanceGuids2);
         assertEquals(asmtInstanceGuids, asmtInstanceGuids2);
         
-        // physically delete it
+        // A worker can retrieve timeline data
         TestUser admin = TestUserHelper.getSignedInAdmin();
+        ForWorkersApi workerApi = admin.getClient(ForWorkersApi.class);
+        ScheduledSession schSession = timeline.getSchedule().get(0);
+        sessionInfo = timeline.getSessions().stream()
+                .filter(s -> s.getGuid().equals(schSession.getRefGuid())).findFirst().get();
+        
+        String instanceGuid = schSession.getInstanceGuid();
+        TimelineMetadata metadata = workerApi.getTimelineMetadata(admin.getAppId(), instanceGuid).execute().body();
+        Map<String,String> map = metadata.getMetadata();
+        assertEquals(admin.getAppId(), map.get("appId"));
+        assertEquals(schSession.getStartDay().toString(), map.get("sessionInstanceStartDay"));
+        assertEquals(schSession.getEndDay().toString(), map.get("sessionInstanceEndDay"));
+        assertEquals(schSession.getStartEventId(), map.get("sessionStartEventId"));
+        assertEquals(schSession.getTimeWindowGuid(), map.get("timeWindowGuid"));
+        assertEquals("false", map.get("timeWindowPersistent"));
+        assertEquals("false", map.get("schedulePublished"));
+        assertEquals(schedule.getGuid(), map.get("scheduleGuid"));
+        assertEquals(schedule.getModifiedOn().toString(), map.get("scheduleModifiedOn"));
+        assertEquals(schSession.getInstanceGuid(), map.get("sessionInstanceGuid"));
+        assertEquals(schSession.getInstanceGuid(), map.get("guid"));
+        assertEquals(sessionInfo.getGuid(), map.get("sessionGuid"));
+        
+        // physically delete it
         admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
         
         try {

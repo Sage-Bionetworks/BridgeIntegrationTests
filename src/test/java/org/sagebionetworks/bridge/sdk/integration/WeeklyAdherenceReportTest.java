@@ -22,6 +22,7 @@ import org.sagebionetworks.bridge.rest.api.StudyAdherenceApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
+import org.sagebionetworks.bridge.rest.model.AdherenceReportSearch;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
@@ -153,8 +154,9 @@ public class WeeklyAdherenceReportTest {
         participant1 = TestUserHelper.createAndSignInUser(getClass(), true);
         StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
 
+        AdherenceReportSearch search = new AdherenceReportSearch();
         int startingTotal = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, null, null, null, null).execute().body().getTotal();
+                STUDY_ID_1, search).execute().body().getTotal();
         
         ForConsentedUsersApi userApi = participant1.getClient(ForConsentedUsersApi.class);
         StudyParticipantsApi devApi = developer.getClient(StudyParticipantsApi.class);
@@ -209,9 +211,10 @@ public class WeeklyAdherenceReportTest {
         participant2 = TestUserHelper.createAndSignInUser(getClass(), true);
         // does not exist unless you force it by requesting it
         devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant2.getUserId()).execute().body();
-        
+
+        search = new AdherenceReportSearch();
         WeeklyAdherenceReportList allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, null, null, null, null).execute().body();
+                STUDY_ID_1, search).execute().body();
         // defaults
         assertEquals(Integer.valueOf(50), allReports.getRequestParams().getPageSize());
         assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());
@@ -237,13 +240,15 @@ public class WeeklyAdherenceReportTest {
         assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
 
         // verify there are filters
+        search = new AdherenceReportSearch().addLabelFiltersItem("Belgium");
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, ImmutableList.of("Belgium"), null, null, null).execute().body();
+                STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(0), allReports.getTotal());
 
         // Only user #2 is under the 50% adherence bar
+        search = new AdherenceReportSearch();
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, null, null, 50, null, null).execute().body();
+                STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(1), allReports.getTotal());
         report = allReports.getItems().get(0);
         assertEquals(participant2.getEmail(), report.getParticipant().getEmail());
@@ -251,8 +256,9 @@ public class WeeklyAdherenceReportTest {
         // even though this is set to production...it comes back test (caller is a dev).
         // I would like for the argument to be of type TestFilter, but Swagger cannot do 
         // this for query parameters.
+        search = new AdherenceReportSearch().testFilter(TestFilter.PRODUCTION);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, "production", null, null, null, null).execute().body();
+                STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(startingTotal+2), allReports.getTotal());
         assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());     
     }
