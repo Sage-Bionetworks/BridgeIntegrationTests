@@ -437,13 +437,25 @@ public class Schedule2Test {
         Response<Timeline> res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getModifiedOn().plusHours(1)).execute();
         assertEquals(304, res.code());
         assertNull(res.body());
-
+        
         res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getModifiedOn().minusHours(1)).execute();
         assertEquals(200, res.code());
         assertNotNull(res.body());
         
+        // Now, try retrieving the TimelineMetadata for a worker.
         TestUser admin = TestUserHelper.getSignedInAdmin();
+        ForWorkersApi workersApi = admin.getClient(ForWorkersApi.class);
+        String instanceGuid = timeline.getSchedule().get(0).getInstanceGuid();
+        TimelineMetadata metadata = workersApi.getTimelineMetadata(admin.getAppId(), instanceGuid)
+                .execute().body();
+        assertEquals(instanceGuid, metadata.getMetadata().get("guid"));
+        
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        
+        // Now there is no metadata
+        metadata = workersApi.getTimelineMetadata(admin.getAppId(), instanceGuid)
+                .execute().body();
+        assertTrue(metadata.getMetadata().isEmpty());
         
         // and this is just a flat-out error
         try {
