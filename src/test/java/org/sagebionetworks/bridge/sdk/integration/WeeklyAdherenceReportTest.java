@@ -265,7 +265,7 @@ public class WeeklyAdherenceReportTest {
         assertEquals(Integer.valueOf(20), allReports.getRequestParams().getAdherenceMin());
         assertEquals(Integer.valueOf(50), allReports.getRequestParams().getAdherenceMax());
         
-       // test filter (it comes back test because the caller is a developer).
+        // test filter (it comes back test because the caller is a developer).
         search = new AdherenceReportSearch().testFilter(PRODUCTION);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(startingTotal+2), allReports.getTotal());
