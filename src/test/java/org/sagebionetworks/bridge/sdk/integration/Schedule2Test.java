@@ -317,17 +317,15 @@ public class Schedule2Test {
         String instanceGuid = schSession.getInstanceGuid();
         TimelineMetadata metadata = workerApi.getTimelineMetadata(admin.getAppId(), instanceGuid).execute().body();
         Map<String,String> map = metadata.getMetadata();
-        assertEquals(admin.getAppId(), map.get("appId"));
         assertEquals(schSession.getStartDay().toString(), map.get("sessionInstanceStartDay"));
         assertEquals(schSession.getEndDay().toString(), map.get("sessionInstanceEndDay"));
         assertEquals(schSession.getStartEventId(), map.get("sessionStartEventId"));
         assertEquals(schSession.getTimeWindowGuid(), map.get("timeWindowGuid"));
-        assertEquals("false", map.get("timeWindowPersistent"));
-        assertEquals("false", map.get("schedulePublished"));
+        assertNull(map.get("timeWindowPersistent"));
+        assertNull(map.get("schedulePublished"));
         assertEquals(schedule.getGuid(), map.get("scheduleGuid"));
         assertEquals(schedule.getModifiedOn().toString(), map.get("scheduleModifiedOn"));
         assertEquals(schSession.getInstanceGuid(), map.get("sessionInstanceGuid"));
-        assertEquals(schSession.getInstanceGuid(), map.get("guid"));
         assertEquals(sessionInfo.getGuid(), map.get("sessionGuid"));
         
         // physically delete it
