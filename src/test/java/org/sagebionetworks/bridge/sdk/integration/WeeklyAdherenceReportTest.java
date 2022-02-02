@@ -28,7 +28,6 @@ import org.sagebionetworks.bridge.rest.model.AdherenceReportSearch;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
-import org.sagebionetworks.bridge.rest.model.ParticipantStudyProgress;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
