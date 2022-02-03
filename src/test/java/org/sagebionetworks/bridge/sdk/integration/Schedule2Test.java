@@ -22,6 +22,7 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.After;
@@ -30,6 +31,7 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
+import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -54,6 +56,7 @@ import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
+import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
@@ -304,10 +307,37 @@ public class Schedule2Test {
         assertEquals(sessionInstanceGuids, sessionInstanceGuids2);
         assertEquals(asmtInstanceGuids, asmtInstanceGuids2);
         
-        // physically delete it
+        // A worker can retrieve timeline data
         TestUser admin = TestUserHelper.getSignedInAdmin();
-        admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
+        ForWorkersApi workerApi = admin.getClient(ForWorkersApi.class);
+        ScheduledSession schSession = timeline.getSchedule().get(0);
+        sessionInfo = timeline.getSessions().stream()
+                .filter(s -> s.getGuid().equals(schSession.getRefGuid())).findFirst().get();
         
+        String instanceGuid = schSession.getInstanceGuid();
+        TimelineMetadata metadata = workerApi.getTimelineMetadata(admin.getAppId(), instanceGuid).execute().body();
+        Map<String,String> map = metadata.getMetadata();
+        assertEquals(schSession.getStartDay().toString(), map.get("sessionInstanceStartDay"));
+        assertEquals(schSession.getEndDay().toString(), map.get("sessionInstanceEndDay"));
+        assertEquals(schSession.getStartEventId(), map.get("sessionStartEventId"));
+        assertEquals(schSession.getTimeWindowGuid(), map.get("timeWindowGuid"));
+        assertNull(map.get("timeWindowPersistent"));
+        assertNull(map.get("schedulePublished"));
+        assertEquals(schedule.getGuid(), map.get("scheduleGuid"));
+        assertEquals(schedule.getModifiedOn().toString(), map.get("scheduleModifiedOn"));
+        assertEquals(schSession.getInstanceGuid(), map.get("sessionInstanceGuid"));
+        assertEquals(sessionInfo.getGuid(), map.get("sessionGuid"));
+        
+        // physically delete it
+        admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
+
+        // Now there is no metadata (retrieval of timeline metadata is
+        ForWorkersApi workersApi = admin.getClient(ForWorkersApi.class);
+        String anInstanceGuid = timeline.getSchedule().get(0).getInstanceGuid();
+        metadata = workersApi.getTimelineMetadata(admin.getAppId(), anInstanceGuid)
+                .execute().body();
+        assertTrue(metadata.getMetadata().isEmpty());
+
         try {
             schedulesApi.getScheduleForStudy(STUDY_ID_1).execute();
             fail("Should have thrown exception");
@@ -412,11 +442,11 @@ public class Schedule2Test {
         Response<Timeline> res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getModifiedOn().plusHours(1)).execute();
         assertEquals(304, res.code());
         assertNull(res.body());
-
+        
         res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getModifiedOn().minusHours(1)).execute();
         assertEquals(200, res.code());
         assertNotNull(res.body());
-        
+
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
         

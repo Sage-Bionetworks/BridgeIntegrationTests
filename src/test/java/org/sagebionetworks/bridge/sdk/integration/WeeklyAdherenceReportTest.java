@@ -28,7 +28,6 @@ import org.sagebionetworks.bridge.rest.model.AdherenceReportSearch;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
-import org.sagebionetworks.bridge.rest.model.ParticipantStudyProgress;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
@@ -157,8 +156,9 @@ public class WeeklyAdherenceReportTest {
         participant1 = TestUserHelper.createAndSignInUser(getClass(), true);
         StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
 
+        AdherenceReportSearch search = new AdherenceReportSearch();
         int startingTotal = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, new AdherenceReportSearch()).execute().body().getTotal();
+                STUDY_ID_1, search).execute().body().getTotal();
         
         ForConsentedUsersApi userApi = participant1.getClient(ForConsentedUsersApi.class);
         StudyParticipantsApi devApi = developer.getClient(StudyParticipantsApi.class);
@@ -213,9 +213,10 @@ public class WeeklyAdherenceReportTest {
         participant2 = TestUserHelper.createAndSignInUser(getClass(), true);
         // does not exist unless you force it by requesting it
         devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant2.getUserId()).execute().body();
-        
+
+        search = new AdherenceReportSearch();
         WeeklyAdherenceReportList allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
-                STUDY_ID_1, new AdherenceReportSearch()).execute().body();
+                STUDY_ID_1, search).execute().body();
         // defaults
         assertEquals(Integer.valueOf(50), allReports.getRequestParams().getPageSize());
         assertEquals(TestFilter.TEST, allReports.getRequestParams().getTestFilter());
@@ -241,16 +242,17 @@ public class WeeklyAdherenceReportTest {
         assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
 
         // verify there are filters
+        search = new AdherenceReportSearch().addLabelFiltersItem("Belgium");
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
+                STUDY_ID_1, search).execute().body();
         
-        // label filter
-        AdherenceReportSearch search = new AdherenceReportSearch().addLabelFiltersItem("Belgium");
-        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(0), allReports.getTotal());
         assertEquals(ImmutableList.of("Belgium"), allReports.getRequestParams().getLabelFilter());
 
-        // adherence filter
+        // Only user #2 is under the 50% adherence bar
         search = new AdherenceReportSearch().adherenceMax(50);
-        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
+        allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
+                STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(1), allReports.getTotal());
         report = allReports.getItems().get(0);
         assertEquals(participant2.getEmail(), report.getParticipant().getEmail());
