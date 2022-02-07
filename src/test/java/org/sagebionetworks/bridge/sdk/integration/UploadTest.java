@@ -379,7 +379,7 @@ public class UploadTest {
         // Other study admin cannot retrieve this record.
         ForAdminsApi otherStudyAdminApi = otherAppAdmin.getClient(ForAdminsApi.class);
         try {
-            Upload retValue = otherStudyAdminApi.getUploadById(status.getId()).execute().body();
+            otherStudyAdminApi.getUploadById(status.getId()).execute().body();
             fail("exception expected");
         } catch (UnauthorizedException ex) {
             // expected exception
