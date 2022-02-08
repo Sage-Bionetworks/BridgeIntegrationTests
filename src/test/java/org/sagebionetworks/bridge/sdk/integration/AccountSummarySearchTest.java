@@ -1,5 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -274,6 +276,21 @@ public class AccountSummarySearchTest {
         assertFalse(userIds.contains(frenchUser.getUserId()));
         listsMatch(FRENCH_USER_GROUPS, list.getRequestParams().getNoneOfGroups());
         
+        // None of these accounts have been used, so the inUse flag will hide them
+        search = makeAccountSummarySearch().inUse(TRUE);
+        list = supplier.apply(search);
+        userIds = mapUserIds(list);
+        assertFalse(userIds.contains(testUser.getUserId()));
+        assertFalse(userIds.contains(taggedUser.getUserId()));
+        assertFalse(userIds.contains(frenchUser.getUserId()));
+        
+        search = makeAccountSummarySearch().inUse(FALSE);
+        list = supplier.apply(search);
+        userIds = mapUserIds(list);
+        assertTrue(userIds.contains(testUser.getUserId()));
+        assertTrue(userIds.contains(taggedUser.getUserId()));
+        assertTrue(userIds.contains(frenchUser.getUserId()));
+
         // This pulls up everything we're looking for
         search = makeAccountSummarySearch().noneOfGroups(Lists.newArrayList("sdk-int-2")).pageSize(100);
         list = supplier.apply(search);
