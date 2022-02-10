@@ -247,7 +247,7 @@ public class WeeklyAdherenceReportTest {
                 STUDY_ID_1, search).execute().body();
         
         assertEquals(Integer.valueOf(0), allReports.getTotal());
-        assertEquals(ImmutableList.of("Belgium"), allReports.getRequestParams().getLabelFilter());
+        assertEquals(ImmutableList.of("Belgium"), allReports.getRequestParams().getLabelFilters());
 
         // Only user #2 is under the 50% adherence bar
         search = new AdherenceReportSearch().adherenceMax(50);

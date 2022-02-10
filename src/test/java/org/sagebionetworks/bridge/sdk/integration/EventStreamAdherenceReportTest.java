@@ -27,6 +27,7 @@ import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.EventStreamAdherenceReport;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
+import org.sagebionetworks.bridge.rest.model.ParticipantStudyProgress;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
@@ -147,6 +148,9 @@ public class EventStreamAdherenceReportTest {
         ForConsentedUsersApi userApi = participant.getClient(ForConsentedUsersApi.class);
         EventStreamAdherenceReport report = userApi.getUsersStudyParticipantEventStreamAdherenceReport(STUDY_ID_1, null, null).execute().body();
         
+        // The user hasn't done anything...
+        assertEquals(ParticipantStudyProgress.UNSTARTED, report.getProgression());
+        
         // Everything is, at this point, in compliance
         assertEquals(Integer.valueOf(100), report.getAdherencePercent());
         assertEquals(ImmutableSet.of(NOT_APPLICABLE), getStates(report, null));
@@ -157,6 +161,7 @@ public class EventStreamAdherenceReportTest {
         
         report = userApi.getUsersStudyParticipantEventStreamAdherenceReport(STUDY_ID_1, 
                 DateTime.now(), null).execute().body();
+        assertEquals(ParticipantStudyProgress.IN_PROGRESS, report.getProgression());
         assertEquals(report.getStreams().size(), 2);
         assertEquals(ImmutableSet.of("0", "7", "14", "21"), report.getStreams().get(0).getByDayEntries().keySet());
         assertEquals(ImmutableSet.of("2", "5", "8", "11", "14", "17", "20"),
