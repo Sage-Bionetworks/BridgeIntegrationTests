@@ -46,6 +46,7 @@ import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.Notification;
 import org.sagebionetworks.bridge.rest.model.NotificationInfo;
 import org.sagebionetworks.bridge.rest.model.NotificationMessage;
+import org.sagebionetworks.bridge.rest.model.ParticipantSchedule;
 import org.sagebionetworks.bridge.rest.model.PerformanceOrder;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.ScheduledAssessment;
@@ -458,6 +459,80 @@ public class Schedule2Test {
         }
         try {
             coordsApi.getStudyParticipantTimeline(STUDY_ID_2, user.getUserId()).execute();
+        } catch(EntityNotFoundException e) {
+            assertEquals("Account not found.", e.getMessage());
+        }
+    }
+    
+    @Test
+    public void getParticipantScheduleForStudyParticipant() throws Exception {
+        studyCoordinator = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_COORDINATOR);
+        
+        SchedulesV2Api schedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+        StudiesApi studiesApi = studyDesigner.getClient(StudiesApi.class);
+        
+        AssessmentReference2 ref = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier(assessment.getIdentifier());
+
+        schedule = new Schedule2();
+        schedule.setName("Test Schedule [Schedule2Test]");
+        schedule.setDuration("P1W");
+        Session session = new Session();
+        session.setName("Simple repeating assessment");
+        session.setInterval("P1D");
+        session.setAssessments(null);
+        session.addStartEventIdsItem("enrollment");
+        session.setPerformanceOrder(SEQUENTIAL);
+        session.addAssessmentsItem(ref);
+        session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT1H"));
+        schedule.addSessionsItem(session);
+        
+        // create schedule.
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+        
+        // Add it to study 1
+        Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
+        user = TestUserHelper.createAndSignInUser(Schedule2Test.class, true);
+
+        // This user should now have a timeline via study1:
+        ForStudyCoordinatorsApi coordsApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
+        ParticipantSchedule schedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId()).execute().body();
+        
+        // it's there
+        assertEquals(7, schedule.getSchedule().size());
+        
+        ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
+        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, null, null).execute().body();
+
+        // it's there
+        assertEquals(7, schedule.getSchedule().size());
+
+        // NOT CURRENTLY IMPLEMENTED, however we will add it shortly, so keeping this here for reference.
+        // We'll need to verify that updating events, or adherence records, invalidates this cache.
+        /*
+        // Let's add the cache header and see what happens.
+        Response<Timeline> res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getCreatedOn().plusHours(1)).execute();
+        assertEquals(304, res.code());
+        assertNull(res.body());
+        
+        res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getCreatedOn().minusHours(1)).execute();
+        assertEquals(200, res.code());
+        assertNotNull(res.body());
+        */
+
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        
+        // and this is just a flat-out error
+        try {
+            userApi.getParticipantScheduleForSelf(STUDY_ID_2, null, null).execute();
+        } catch(UnauthorizedException e) {
+            assertEquals("Caller is not enrolled in study 'study2'", e.getMessage());
+        }
+        try {
+            coordsApi.getParticipantSchedule(STUDY_ID_2, user.getUserId()).execute();
         } catch(EntityNotFoundException e) {
             assertEquals("Account not found.", e.getMessage());
         }
