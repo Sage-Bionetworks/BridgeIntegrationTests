@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,6 +57,7 @@ import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionInfo;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
@@ -67,6 +70,7 @@ import retrofit2.Response;
 
 public class Schedule2Test {
 
+    private static final String EUROPE_PARIS_TZ = "Europe/Paris";
     TestUser developer;
     TestUser studyDesigner;
     TestUser studyCoordinator;
@@ -508,6 +512,15 @@ public class Schedule2Test {
 
         // it's there
         assertEquals(7, schedule.getSchedule().size());
+        
+        // Let's try and change the time zone and see what happens
+        DateTime now = DateTime.now();
+        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, EUROPE_PARIS_TZ, null).execute().body();
+        assertEquals(EUROPE_PARIS_TZ, schedule.getClientTimeZone());
+        assertEquals(DateTimeZone.forID(EUROPE_PARIS_TZ).getOffset(now), schedule.getCreatedOn().getZone().getOffset(now));
+        
+        StudyParticipant participant = userApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals(EUROPE_PARIS_TZ, participant.getClientTimeZone());
 
         // NOT CURRENTLY IMPLEMENTED, however we will add it shortly, so keeping this here for reference.
         // We'll need to verify that updating events, or adherence records, invalidates this cache.
