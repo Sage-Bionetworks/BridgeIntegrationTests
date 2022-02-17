@@ -415,7 +415,7 @@ public class AdherenceRecordsTest {
         Map<String,String> retValue = (Map<String,String>)RestUtils.toType(record.getClientData(), Map.class); 
         assertEquals("B", retValue.get("A"));
         
-        // Verify these are references back to the schedule/timeline are all set
+        // Verify that there are references back to the schedule/timeline for each record
         list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch()).execute().body();
         Set<String> sessionGuids = schedule.getSessions().stream().map(Session::getGuid).collect(Collectors.toSet());
         Set<String> assessmentGuids = schedule.getSessions().stream().flatMap(s -> s.getAssessments().stream())
