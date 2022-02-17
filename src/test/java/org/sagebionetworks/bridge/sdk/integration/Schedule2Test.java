@@ -522,19 +522,6 @@ public class Schedule2Test {
         StudyParticipant participant = userApi.getUsersParticipantRecord(false).execute().body();
         assertEquals(EUROPE_PARIS_TZ, participant.getClientTimeZone());
 
-        // NOT CURRENTLY IMPLEMENTED, however we will add it shortly, so keeping this here for reference.
-        // We'll need to verify that updating events, or adherence records, invalidates this cache.
-        /*
-        // Let's add the cache header and see what happens.
-        Response<Timeline> res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getCreatedOn().plusHours(1)).execute();
-        assertEquals(304, res.code());
-        assertNull(res.body());
-        
-        res = userApi.getTimelineForSelf(STUDY_ID_1, schedule.getCreatedOn().minusHours(1)).execute();
-        assertEquals(200, res.code());
-        assertNotNull(res.body());
-        */
-
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
         
