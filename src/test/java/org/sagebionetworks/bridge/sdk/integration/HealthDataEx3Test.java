@@ -84,7 +84,7 @@ public class HealthDataEx3Test {
     public void test() throws Exception {
         ForSuperadminsApi superadminsApi = admin.getClient(ForSuperadminsApi.class);
         ForWorkersApi workersApi = worker.getClient(ForWorkersApi.class);
-        ForDevelopersApi developersApi = user.getClient(ForDevelopersApi.class);
+        ForConsentedUsersApi consentedUsersApi = user.getClient(ForConsentedUsersApi.class);
 
         // Create. App ID is set automatically by Bridge. Set the remaining values for test.
         HealthDataRecordEx3 record = new HealthDataRecordEx3();
@@ -145,16 +145,15 @@ public class HealthDataEx3Test {
                 .filter(r -> r.getId().equals(recordId)).collect(Collectors.toList()),
                 recordList -> recordList.size() == 1 && expectedRecord.equals(recordList.get(0)));
 
-        // Test get api for developer test account.
-        HealthDataRecordEx3 retrievedRecordForDeveloperTest = developersApi.getRecordEx3ForDeveloperTest(recordId).execute().body();
-        assertEquals(record, retrievedRecord);
+        // Test get api for self.
+        HealthDataRecordEx3 expectedRecordForSelf = record;
+        HealthDataRecordEx3 retrievedRecordForSelf = consentedUsersApi.getRecordEx3ById(recordId).execute().body();
+        assertEquals(expectedRecordForSelf, retrievedRecordForSelf);
 
-        // List by user for developer test account.
-        HealthDataRecordEx3 expectedRecordForDeveloperTest = record;
-        Tests.retryHelper(() -> developersApi.getRecordsEx3ForUserForDeveloperTest(createdOnStart, createdOnEnd,
+        // Test List by user for self.
+        Tests.retryHelper(() -> consentedUsersApi.getAllRecordsEx3ForSelf(createdOnStart, createdOnEnd,
                         null, null).execute().body().getItems(),
-                recordList -> recordList.size() == 1 && expectedRecordForDeveloperTest.equals(recordList.get(0)));
-
+                recordList -> recordList.size() == 1 && expectedRecordForSelf.equals(recordList.get(0)));
 
         // Delete record.
         superadminsApi.deleteRecordsEx3ForUser(IntegTestUtils.TEST_APP_ID, user.getUserId()).execute();
