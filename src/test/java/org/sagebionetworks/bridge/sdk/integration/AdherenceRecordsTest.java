@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
@@ -413,6 +414,21 @@ public class AdherenceRecordsTest {
         @SuppressWarnings("unchecked")
         Map<String,String> retValue = (Map<String,String>)RestUtils.toType(record.getClientData(), Map.class); 
         assertEquals("B", retValue.get("A"));
+        
+        // Verify that there are references back to the schedule/timeline for each record
+        list = usersApi.searchForAdherenceRecords(STUDY_ID_1, new AdherenceRecordsSearch()).execute().body();
+        Set<String> sessionGuids = schedule.getSessions().stream().map(Session::getGuid).collect(Collectors.toSet());
+        Set<String> assessmentGuids = schedule.getSessions().stream().flatMap(s -> s.getAssessments().stream())
+                .map(AssessmentReference2::getGuid).collect(Collectors.toSet());
+        for (AdherenceRecord oneRecord : list.getItems()) {
+            if (oneRecord.getAssessmentGuid() != null) {
+                assertTrue(assessmentGuids.contains(oneRecord.getAssessmentGuid()));
+                assertNull(oneRecord.getSessionGuid());
+            } else {
+                assertTrue(sessionGuids.contains(oneRecord.getSessionGuid()));
+                assertNull(oneRecord.getAssessmentGuid());
+            }
+        }
 
         // Deleting an adherence record from a non-persistent time window (tag: S1D02W1)
         researcher = TestUserHelper.createAndSignInUser(AdherenceRecordsTest.class, false, RESEARCHER);
