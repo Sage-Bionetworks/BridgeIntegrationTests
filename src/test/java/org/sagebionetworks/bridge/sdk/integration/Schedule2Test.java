@@ -508,14 +508,14 @@ public class Schedule2Test {
         assertEquals(7, schedule.getSchedule().size());
         
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
-        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, null, null).execute().body();
+        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, null).execute().body();
 
         // it's there
         assertEquals(7, schedule.getSchedule().size());
         
         // Let's try and change the time zone and see what happens
         DateTime now = DateTime.now();
-        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, EUROPE_PARIS_TZ, null).execute().body();
+        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, EUROPE_PARIS_TZ).execute().body();
         assertEquals(EUROPE_PARIS_TZ, schedule.getClientTimeZone());
         assertEquals(DateTimeZone.forID(EUROPE_PARIS_TZ).getOffset(now), schedule.getCreatedOn().getZone().getOffset(now));
         
@@ -527,7 +527,7 @@ public class Schedule2Test {
         
         // and this is just a flat-out error
         try {
-            userApi.getParticipantScheduleForSelf(STUDY_ID_2, null, null).execute();
+            userApi.getParticipantScheduleForSelf(STUDY_ID_2, null).execute();
         } catch(UnauthorizedException e) {
             assertEquals("Caller is not enrolled in study 'study2'", e.getMessage());
         }
