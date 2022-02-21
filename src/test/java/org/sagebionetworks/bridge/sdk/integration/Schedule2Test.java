@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,6 +48,7 @@ import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.Notification;
 import org.sagebionetworks.bridge.rest.model.NotificationInfo;
 import org.sagebionetworks.bridge.rest.model.NotificationMessage;
+import org.sagebionetworks.bridge.rest.model.ParticipantSchedule;
 import org.sagebionetworks.bridge.rest.model.PerformanceOrder;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.ScheduledAssessment;
@@ -54,6 +57,7 @@ import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionInfo;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
@@ -66,6 +70,7 @@ import retrofit2.Response;
 
 public class Schedule2Test {
 
+    private static final String EUROPE_PARIS_TZ = "Europe/Paris";
     TestUser developer;
     TestUser studyDesigner;
     TestUser studyCoordinator;
@@ -458,6 +463,76 @@ public class Schedule2Test {
         }
         try {
             coordsApi.getStudyParticipantTimeline(STUDY_ID_2, user.getUserId()).execute();
+        } catch(EntityNotFoundException e) {
+            assertEquals("Account not found.", e.getMessage());
+        }
+    }
+    
+    @Test
+    public void getParticipantScheduleForStudyParticipant() throws Exception {
+        studyCoordinator = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_COORDINATOR);
+        
+        SchedulesV2Api schedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+        StudiesApi studiesApi = studyDesigner.getClient(StudiesApi.class);
+        
+        AssessmentReference2 ref = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier(assessment.getIdentifier());
+
+        schedule = new Schedule2();
+        schedule.setName("Test Schedule [Schedule2Test]");
+        schedule.setDuration("P1W");
+        Session session = new Session();
+        session.setName("Simple repeating assessment");
+        session.setInterval("P1D");
+        session.setAssessments(null);
+        session.addStartEventIdsItem("enrollment");
+        session.setPerformanceOrder(SEQUENTIAL);
+        session.addAssessmentsItem(ref);
+        session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT1H"));
+        schedule.addSessionsItem(session);
+        
+        // create schedule.
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+        
+        // Add it to study 1
+        Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
+        user = TestUserHelper.createAndSignInUser(Schedule2Test.class, true);
+
+        // This user should now have a timeline via study1:
+        ForStudyCoordinatorsApi coordsApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
+        ParticipantSchedule schedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId()).execute().body();
+        
+        // it's there
+        assertEquals(7, schedule.getSchedule().size());
+        
+        ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
+        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, null).execute().body();
+
+        // it's there
+        assertEquals(7, schedule.getSchedule().size());
+        
+        // Let's try and change the time zone and see what happens
+        DateTime now = DateTime.now();
+        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, EUROPE_PARIS_TZ).execute().body();
+        assertEquals(EUROPE_PARIS_TZ, schedule.getClientTimeZone());
+        assertEquals(DateTimeZone.forID(EUROPE_PARIS_TZ).getOffset(now), schedule.getCreatedOn().getZone().getOffset(now));
+        
+        StudyParticipant participant = userApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals(EUROPE_PARIS_TZ, participant.getClientTimeZone());
+
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        
+        // and this is just a flat-out error
+        try {
+            userApi.getParticipantScheduleForSelf(STUDY_ID_2, null).execute();
+        } catch(UnauthorizedException e) {
+            assertEquals("Caller is not enrolled in study 'study2'", e.getMessage());
+        }
+        try {
+            coordsApi.getParticipantSchedule(STUDY_ID_2, user.getUserId()).execute();
         } catch(EntityNotFoundException e) {
             assertEquals("Account not found.", e.getMessage());
         }
