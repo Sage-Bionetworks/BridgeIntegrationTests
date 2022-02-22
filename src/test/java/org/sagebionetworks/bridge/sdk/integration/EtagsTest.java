@@ -91,6 +91,20 @@ public class EtagsTest {
         assertStatus("/v5/studies/"+STUDY_ID_1+"/timeline", etag, 200);
         assertStatus("/v5/studies/"+STUDY_ID_1+"/participants/"+user.getUserId()+"/timeline", etag, 200);
         assertUserStatus("/v5/studies/"+STUDY_ID_1+"/participants/self/timeline", etag, 200);
+        
+        Response<Schedule2> res2 = designApi.getScheduleForStudy(STUDY_ID_1).execute();
+        etag = res2.headers().get("ETag");
+        
+        // Deleting the schedule clears the cache too (which was just set) so we see 404 despite sending the
+        // etag.
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
+        schedule = null;
+
+        assertStatus("/v5/studies/"+STUDY_ID_1+"/schedule", etag, 404);
+        assertStatus("/v5/studies/"+STUDY_ID_1+"/timeline", etag, 404);
+        assertStatus("/v5/studies/"+STUDY_ID_1+"/participants/"+user.getUserId()+"/timeline", etag, 404);
+        assertUserStatus("/v5/studies/"+STUDY_ID_1+"/participants/self/timeline", etag, 404);
     }
     
     private void assertStatus(String url, String etag, int statusCode) throws IOException { 
