@@ -57,7 +57,7 @@ public class EtagsTest {
         TestUser admin = TestUserHelper.getSignedInAdmin();
         SchedulesV2Api adminSchedulesApi = admin.getClient(SchedulesV2Api.class);
         
-        if (schedule != null) {
+        if (schedule != null && schedule.getGuid() != null) {
             adminSchedulesApi.deleteSchedule(schedule.getGuid()).execute();    
         }
         if (user != null) {
