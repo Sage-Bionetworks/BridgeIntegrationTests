@@ -18,6 +18,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
@@ -87,6 +88,7 @@ public class HealthDataEx3Test {
     public void test() throws Exception {
         ForSuperadminsApi superadminsApi = admin.getClient(ForSuperadminsApi.class);
         ForWorkersApi workersApi = worker.getClient(ForWorkersApi.class);
+        ForConsentedUsersApi consentedUsersApi = user.getClient(ForConsentedUsersApi.class);
 
         // Create. App ID is set automatically by Bridge. Set the remaining values for test.
         HealthDataRecordEx3 record = new HealthDataRecordEx3();
@@ -146,6 +148,16 @@ public class HealthDataEx3Test {
                 null, null).execute().body().getItems().stream()
                 .filter(r -> r.getId().equals(recordId)).collect(Collectors.toList()),
                 recordList -> recordList.size() == 1 && expectedRecord.equals(recordList.get(0)));
+
+        // Test get api for self.
+        HealthDataRecordEx3 expectedRecordForSelf = record;
+        HealthDataRecordEx3 retrievedRecordForSelf = consentedUsersApi.getRecordEx3ById(recordId).execute().body();
+        assertEquals(expectedRecordForSelf, retrievedRecordForSelf);
+
+        // Test List by user for self.
+        Tests.retryHelper(() -> consentedUsersApi.getAllRecordsEx3ForSelf(createdOnStart, createdOnEnd,
+                        null, null).execute().body().getItems(),
+                recordList -> recordList.size() == 1 && expectedRecordForSelf.equals(recordList.get(0)));
 
         // Delete record.
         superadminsApi.deleteRecordsEx3ForUser(IntegTestUtils.TEST_APP_ID, user.getUserId()).execute();
