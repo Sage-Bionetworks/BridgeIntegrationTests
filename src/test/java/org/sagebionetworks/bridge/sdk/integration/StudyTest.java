@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.FUTURE_ONLY;
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.IMMUTABLE;
 import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
 import static org.sagebionetworks.bridge.rest.model.ContactRole.PRINCIPAL_INVESTIGATOR;
@@ -174,6 +175,7 @@ public class StudyTest {
         assertEquals(DESIGN, retrieved.getPhase());
         assertTrue(retrieved.getCreatedOn().isAfter(DateTime.now().minusHours(1)));
         assertTrue(retrieved.getModifiedOn().isAfter(DateTime.now().minusHours(1)));
+        assertEquals(retrieved.getStudyStartEventId(), "timeline_retrieved");
         
         assertEquals("IRB Name", retrieved.getIrbName());
         assertEquals("IRB Protocol Name", retrieved.getIrbProtocolName());
@@ -219,12 +221,14 @@ public class StudyTest {
         
         study.name("New test name " + id);
         study.phase(IN_FLIGHT); // this cannot be changed
+        study.setStudyStartEventId("event1");
         VersionHolder holder2 = studiesApi.updateStudy(id, study).execute().body();
         assertNotEquals(holder.getVersion(), holder2.getVersion());
         
         Study retrieved2 = studiesApi.getStudy(id).execute().body();
         assertEquals("New test name " + id, retrieved2.getName());
         assertEquals(DESIGN, retrieved2.getPhase());
+        assertEquals("event1", retrieved2.getStudyStartEventId());
         assertNotEquals(lastModified1, retrieved2.getModifiedOn());
         
         StudyList studyList = studiesApi.getStudies(null, null, false).execute().body();
@@ -394,7 +398,7 @@ public class StudyTest {
     }
     
     @Test
-    public void canphysicallyDeleteStudyInDesign() throws Exception {
+    public void canPhysicallyDeleteStudyInDesign() throws Exception {
         StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
         
         String tempStudyId = Tests.randomIdentifier(getClass());
@@ -430,5 +434,41 @@ public class StudyTest {
         }
         
         admin.getClient(StudiesApi.class).deleteStudy(tempStudyId, true).execute();
+    }
+
+    @Test
+    public void cannotChangeSchedulingPrimitivesInWrongPhase() throws Exception {
+        String studyId = Tests.randomIdentifier(getClass());
+        try {
+            StudiesApi desStudiesApi = studyDesigner.getClient(StudiesApi.class);
+            CustomEvent event1 = new CustomEvent().eventId("studyTest1").updateType(FUTURE_ONLY);
+            CustomEvent event2 = new CustomEvent().eventId("studyTest2").updateType(FUTURE_ONLY);
+            
+            Study study = new Study().identifier(studyId).name(studyId);
+            study.setCustomEvents(ImmutableList.of(event1));
+            study.setStudyStartEventId("enrollment");
+            
+            VersionHolder keys = desStudiesApi.createStudy(study).execute().body();
+            study.setVersion(keys.getVersion());
+            
+            study = testResearcher.getClient(StudiesApi.class)
+                .transitionStudyToRecruitment(studyId).execute().body();
+            
+            // Try and change some things about this study now that it is in recruitment,
+            // that should not be changeable because it is used for scheduling.
+            study.setStudyStartEventId("studyTest1");
+            study.setCustomEvents(ImmutableList.of(event1, event2));
+            
+            keys = desStudiesApi.updateStudy(study.getIdentifier(), study).execute().body();
+            study.setVersion(keys.getVersion());
+            
+            Study retValue = desStudiesApi.getStudy(studyId).execute().body();
+            assertEquals("enrollment", retValue.getStudyStartEventId());
+            assertEquals(1, retValue.getCustomEvents().size());
+            assertEquals("studyTest1", retValue.getCustomEvents().get(0).getEventId());
+            
+        } finally {
+            admin.getClient(StudiesApi.class).deleteStudy(studyId, true).execute();
+        }
     }
 }
