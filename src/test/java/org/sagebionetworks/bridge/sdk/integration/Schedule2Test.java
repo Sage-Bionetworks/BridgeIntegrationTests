@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.fluent.Request;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,12 +65,12 @@ import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.net.HttpHeaders;
 
 import retrofit2.Response;
 
 public class Schedule2Test {
 
-    private static final String EUROPE_PARIS_TZ = "Europe/Paris";
     TestUser developer;
     TestUser studyDesigner;
     TestUser studyCoordinator;
@@ -507,27 +507,30 @@ public class Schedule2Test {
         // it's there
         assertEquals(7, schedule.getSchedule().size());
         
+        // This has to be requested twice, happen twice, because the first time, it's setting the timestamp for 
+        // the timeline_retrieved event and that changes the etag when it is returned. It's only the second time 
+        // that the etag will be stable (assuming no other event has happend). It's just a limitation of the 
+        // caching at this point.
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
-        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, null).execute().body();
-
-        // it's there
-        assertEquals(7, schedule.getSchedule().size());
+        Response<ParticipantSchedule> response = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute();
+        schedule = response.body();
         
-        // Let's try and change the time zone and see what happens
-        DateTime now = DateTime.now();
-        schedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1, EUROPE_PARIS_TZ).execute().body();
-        assertEquals(EUROPE_PARIS_TZ, schedule.getClientTimeZone());
-        assertEquals(DateTimeZone.forID(EUROPE_PARIS_TZ).getOffset(now), schedule.getCreatedOn().getZone().getOffset(now));
+        userApi = user.getClient(ForConsentedUsersApi.class);
+        response = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute();
+        schedule = response.body();
         
-        StudyParticipant participant = userApi.getUsersParticipantRecord(false).execute().body();
-        assertEquals(EUROPE_PARIS_TZ, participant.getClientTimeZone());
+        HttpResponse noModResponse = Request.Get(user.getClientManager().getHostUrl() + "/v5/studies/study1/participants/self/schedule")
+                .setHeader("Bridge-Session", user.getSession().getSessionToken())
+                .setHeader(HttpHeaders.IF_NONE_MATCH, response.headers().get(HttpHeaders.ETAG))
+                .execute().returnResponse();
+        assertEquals(304, noModResponse.getStatusLine().getStatusCode());        
 
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
         
         // and this is just a flat-out error
         try {
-            userApi.getParticipantScheduleForSelf(STUDY_ID_2, null).execute();
+            userApi.getParticipantScheduleForSelf(STUDY_ID_2).execute();
         } catch(UnauthorizedException e) {
             assertEquals("Caller is not enrolled in study 'study2'", e.getMessage());
         }
