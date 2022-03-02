@@ -24,9 +24,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.fluent.Request;
+import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,8 +58,8 @@ import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SessionInfo;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
-import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
@@ -507,9 +509,19 @@ public class Schedule2Test {
         // it's there
         assertEquals(7, schedule.getSchedule().size());
         
+        // Check the events (only enrollment is in the schedule)
+        Map<String, DateTime> eventTimestamps = coordsApi.getStudyParticipantStudyActivityEvents(STUDY_ID_1, user.getUserId())
+                .execute().body().getItems().stream()
+                .collect(Collectors.toMap(StudyActivityEvent::getEventId, StudyActivityEvent::getTimestamp));
+        
+        assertEquals(1, schedule.getEventTimestamps().size());
+        for (Map.Entry<String, DateTime> entry : schedule.getEventTimestamps().entrySet()) {
+            assertEquals(entry.getValue(), eventTimestamps.get(entry.getKey()));
+        }
+        
         // This has to be requested twice, happen twice, because the first time, it's setting the timestamp for 
         // the timeline_retrieved event and that changes the etag when it is returned. It's only the second time 
-        // that the etag will be stable (assuming no other event has happend). It's just a limitation of the 
+        // that the etag will be stable (assuming no other event has happened). It's just a limitation of the 
         // caching at this point.
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
         Response<ParticipantSchedule> response = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute();
