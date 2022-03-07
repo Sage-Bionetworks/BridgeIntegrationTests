@@ -436,101 +436,82 @@ public class AppTest {
         UploadFieldDefinition modifiedField = new UploadFieldDefinition().name(fieldName).type(
                 UploadFieldType.INT);
 
-        TestUser developer = TestUserHelper.createAndSignInUser(AppTest.class, false, DEVELOPER);
+        // Create an app. Once we start adding upload metadata fields, we can't remove them.
+        appId = Tests.randomIdentifier(getClass());
+        App app = Tests.getApp(appId, null);
+        superadminApi.createApp(app).execute();
+        app = superadminApi.getApp(appId).execute().body();
+
+        // Append the field to the app's metadata.
+        appendToApp(app, originalField);
+        superadminApi.updateApp(appId, app).execute();
+
+        app = superadminApi.getApp(appId).execute().body();
+        UploadFieldDefinition returnedFieldDef = getFieldDefByName(fieldName, app);
+        assertEqualFieldDefs(originalField, returnedFieldDef);
+
+        // One large text exceeds the metadata byte limit.
+        String largeFieldName = "large-" + fieldName;
+        UploadFieldDefinition largeTextField = new UploadFieldDefinition().name(largeFieldName).type(
+                UploadFieldType.LARGE_TEXT_ATTACHMENT);
         try {
-            AppsApi appsApi = developer.getClient(AppsApi.class);
-            App app = appsApi.getUsersApp().execute().body();
+            appendToApp(app, largeTextField);
+            superadminApi.updateApp(appId, app).execute();
+            fail("expected exception");
+        } catch (InvalidEntityException ex) {
+            assertTrue(ex.getMessage().contains("cannot be greater than 2500 bytes combined"));
+        }
+        app = superadminApi.getApp(appId).execute().body();
+        assertNotNull(app);
+        returnedFieldDef = getFieldDefByName(largeFieldName, app);
+        assertNull(returnedFieldDef);
 
-            // Append the field to the app's metadata.
-            appendToApp(app, originalField);
-            appsApi.updateUsersApp(app).execute();
+        // One multi-choice field with 21 answers exceeds the column limit.
+        List<String> answerList = new ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            answerList.add("answer-" + i);
+        }
+        String multiChoiceFieldName = "multi-choice-" + fieldName;
+        UploadFieldDefinition multiChoiceField = new UploadFieldDefinition().name(multiChoiceFieldName)
+                .type(UploadFieldType.MULTI_CHOICE).multiChoiceAnswerList(answerList);
+        try {
+            appendToApp(app, multiChoiceField);
+            superadminApi.updateApp(appId, app).execute();
+            fail("expected exception");
+        } catch (InvalidEntityException ex) {
+            assertTrue(ex.getMessage().contains("cannot be greater than 20 columns combined"));
+        }
+        app = superadminApi.getApp(appId).execute().body();
+        assertNotNull(app);
+        returnedFieldDef = getFieldDefByName(multiChoiceFieldName, app);
+        assertNull(returnedFieldDef);
 
-            app = appsApi.getUsersApp().execute().body();
-            UploadFieldDefinition returnedFieldDef = getFieldDefByName(fieldName, app);
-            assertEqualFieldDefs(originalField, returnedFieldDef);
-
-            // One large text exceeds the metadata byte limit.
-            String largeFieldName = "large-" + fieldName;
-            UploadFieldDefinition largeTextField = new UploadFieldDefinition().name(largeFieldName).type(
-                    UploadFieldType.LARGE_TEXT_ATTACHMENT);
-            try {
-                appendToApp(app, largeTextField);
-                appsApi.updateUsersApp(app).execute();
-                fail("expected exception");
-            } catch (InvalidEntityException ex) {
-                assertTrue(ex.getMessage().contains("cannot be greater than 2500 bytes combined"));
-            }
-            app = appsApi.getUsersApp().execute().body();
-            assertNotNull(app);
-            returnedFieldDef = getFieldDefByName(largeFieldName, app);
-            assertNull(returnedFieldDef);
-
-            // One multi-choice field with 21 answers exceeds the column limit.
-            List<String> answerList = new ArrayList<>();
-            for (int i = 0; i < 21; i++) {
-                answerList.add("answer-" + i);
-            }
-            String multiChoiceFieldName = "multi-choice-" + fieldName;
-            UploadFieldDefinition multiChoiceField = new UploadFieldDefinition().name(multiChoiceFieldName)
-                    .type(UploadFieldType.MULTI_CHOICE).multiChoiceAnswerList(answerList);
-            try {
-                appendToApp(app, multiChoiceField);
-                appsApi.updateUsersApp(app).execute();
-                fail("expected exception");
-            } catch (InvalidEntityException ex) {
-                assertTrue(ex.getMessage().contains("cannot be greater than 20 columns combined"));
-            }
-            app = appsApi.getUsersApp().execute().body();
-            assertNotNull(app);
-            returnedFieldDef = getFieldDefByName(multiChoiceFieldName, app);
-            assertNull(returnedFieldDef);
-
-            // Non-admin can't modify the field.
-            try {
-                removeFieldDefByName(fieldName, app);
-                appendToApp(app, modifiedField);
-                appsApi.updateUsersApp(app).execute();
-                fail("expected exception");
-            } catch (UnauthorizedException ex) {
-                // Verify that the error message tells us about the field we can't modify.
-                assertTrue(ex.getMessage().contains(fieldName));
-            }
-            app = appsApi.getUsersApp().execute().body();
-            returnedFieldDef = getFieldDefByName(fieldName, app);
-            assertEqualFieldDefs(originalField, returnedFieldDef);
-
-            // Non-admin can't remove the field.
-            try {
-                removeFieldDefByName(fieldName, app);
-                appsApi.updateUsersApp(app).execute();
-                fail("expected exception");
-            } catch (UnauthorizedException ex) {
-                // Verify that the error message tells us about the field we can't modify.
-                assertTrue(ex.getMessage().contains(fieldName));
-            }
-            app = appsApi.getUsersApp().execute().body();
-            returnedFieldDef = getFieldDefByName(fieldName, app);
-            assertEqualFieldDefs(originalField, returnedFieldDef);
-
-            // Admin can modify field.
+        // Not even admin can modify the field.
+        try {
             removeFieldDefByName(fieldName, app);
             appendToApp(app, modifiedField);
-            superadminApi.updateApp(TEST_APP_ID, app).execute();
-
-            app = appsApi.getUsersApp().execute().body();
-            returnedFieldDef = getFieldDefByName(fieldName, app);
-            assertEqualFieldDefs(modifiedField, returnedFieldDef);
-
-            // Admin can delete field.
-            removeFieldDefByName(fieldName, app);
-            superadminApi.updateApp(TEST_APP_ID, app).execute();
-
-            app = appsApi.getUsersApp().execute().body();
-            returnedFieldDef = getFieldDefByName(fieldName, app);
-            assertNull(returnedFieldDef);
-        } finally {
-            developer.signOutAndDeleteUser();
+            superadminApi.updateApp(appId, app).execute();
+            fail("expected exception");
+        } catch (UnauthorizedException ex) {
+            // Verify that the error message tells us about the field we can't modify.
+            assertTrue(ex.getMessage().contains(fieldName));
         }
+        app = superadminApi.getApp(appId).execute().body();
+        returnedFieldDef = getFieldDefByName(fieldName, app);
+        assertEqualFieldDefs(originalField, returnedFieldDef);
+
+        // Not even admin can remove the field.
+        try {
+            removeFieldDefByName(fieldName, app);
+            superadminApi.updateApp(appId, app).execute();
+            fail("expected exception");
+        } catch (UnauthorizedException ex) {
+            // Verify that the error message tells us about the field we can't modify.
+            assertTrue(ex.getMessage().contains(fieldName));
+        }
+        app = superadminApi.getApp(appId).execute().body();
+        returnedFieldDef = getFieldDefByName(fieldName, app);
+        assertEqualFieldDefs(originalField, returnedFieldDef);
     }
 
     // Helper method to append a field def to a app. Encapsulates null checks and creating the initial list.
