@@ -104,6 +104,9 @@ public class StudyAdherenceReportTest {
         if (assessmentB != null && assessmentB.getGuid() != null) {
             assessmentsApi.deleteAssessment(assessmentB.getGuid(), true).execute();
         }
+        if (assessmentC != null && assessmentC.getGuid() != null) {
+            assessmentsApi.deleteAssessment(assessmentC.getGuid(), true).execute();
+        }
         if (user != null) {
             user.signOutAndDeleteUser();
         }
