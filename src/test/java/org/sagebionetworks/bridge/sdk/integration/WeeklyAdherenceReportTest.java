@@ -174,13 +174,13 @@ public class WeeklyAdherenceReportTest {
         assertEquals("Session #1 / Week 1", row1.getLabel());
         assertEquals(":Session #1:Week 1:", row1.getSearchableLabel());
         assertEquals("Session #1", row1.getSessionName());
-        assertEquals(Integer.valueOf(1), row1.getWeek());
+        assertEquals(Integer.valueOf(1), row1.getWeekInStudy());
         
         WeeklyAdherenceReportRow row2 = report.getRows().get(1);
         assertEquals("Session #2 / Week 1", row2.getLabel());
         assertEquals(":Session #2:Week 1:", row2.getSearchableLabel());
         assertEquals("Session #2", row2.getSessionName());
-        assertEquals(Integer.valueOf(1), row2.getWeek());
+        assertEquals(Integer.valueOf(1), row2.getWeekInStudy());
         
         assertEquals(participant1.getUserId(), report.getParticipant().getIdentifier());
         assertEquals(participant1.getEmail(), report.getParticipant().getEmail());
