@@ -151,7 +151,7 @@ public class EventStreamAdherenceReportTest {
         // The user hasn't done anything...
         assertEquals(ParticipantStudyProgress.UNSTARTED, report.getProgression());
         
-        // Everything is, at this point, in compliance
+        // Everything is, at this point, in compliance, as there are no events.
         assertEquals(Integer.valueOf(100), report.getAdherencePercent());
         assertEquals(ImmutableSet.of(NOT_APPLICABLE), getStates(report, null));
         
@@ -167,7 +167,8 @@ public class EventStreamAdherenceReportTest {
         assertEquals(ImmutableSet.of("2", "5", "8", "11", "14", "17", "20"),
                 report.getStreams().get(1).getByDayEntries().keySet());
         
-        assertEquals(Integer.valueOf(100), report.getAdherencePercent());
+        // Now they are out of compliance because there are things to do in the future.
+        assertEquals(Integer.valueOf(0), report.getAdherencePercent());
         assertEquals(ImmutableSet.of(NOT_APPLICABLE), getStates(report, CLINIC_VISIT));
         assertEquals(ImmutableSet.of(NOT_YET_AVAILABLE), getStates(report, FAKE_ENROLLMENT));
 
