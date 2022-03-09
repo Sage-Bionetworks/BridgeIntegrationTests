@@ -185,6 +185,7 @@ public class WeeklyAdherenceReportTest {
         assertEquals(participant1.getUserId(), report.getParticipant().getIdentifier());
         assertEquals(participant1.getEmail(), report.getParticipant().getEmail());
         assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
+        assertEquals(DateTime.now().toLocalDate(), report.getStartDate());
         
         // there is no Session #3, it does not apply to this user
         assertEquals(2, report.getRows().size());
