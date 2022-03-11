@@ -174,17 +174,18 @@ public class WeeklyAdherenceReportTest {
         assertEquals("Session #1 / Week 1", row1.getLabel());
         assertEquals(":Session #1:Week 1:", row1.getSearchableLabel());
         assertEquals("Session #1", row1.getSessionName());
-        assertEquals(Integer.valueOf(1), row1.getWeek());
+        assertEquals(Integer.valueOf(1), row1.getWeekInStudy());
         
         WeeklyAdherenceReportRow row2 = report.getRows().get(1);
         assertEquals("Session #2 / Week 1", row2.getLabel());
         assertEquals(":Session #2:Week 1:", row2.getSearchableLabel());
         assertEquals("Session #2", row2.getSessionName());
-        assertEquals(Integer.valueOf(1), row2.getWeek());
+        assertEquals(Integer.valueOf(1), row2.getWeekInStudy());
         
         assertEquals(participant1.getUserId(), report.getParticipant().getIdentifier());
         assertEquals(participant1.getEmail(), report.getParticipant().getEmail());
         assertEquals(Integer.valueOf(0), report.getWeeklyAdherencePercent());
+        assertEquals(DateTime.now().toLocalDate(), report.getStartDate());
         
         // there is no Session #3, it does not apply to this user
         assertEquals(2, report.getRows().size());
@@ -204,7 +205,7 @@ public class WeeklyAdherenceReportTest {
         userApi.updateAdherenceRecords(STUDY_ID_1, updates).execute();
         
         report = devApi.getStudyParticipantWeeklyAdherenceReport(STUDY_ID_1, participant1.getUserId()).execute().body();
-        assertEquals(Integer.valueOf(100), report.getWeeklyAdherencePercent());
+        assertEquals(Integer.valueOf(33), report.getWeeklyAdherencePercent());
 
         win = report.getByDayEntries().get("0").get(1).getTimeWindows().get(0);
         assertEquals(SessionCompletionState.COMPLETED, win.getState());
@@ -233,7 +234,7 @@ public class WeeklyAdherenceReportTest {
                 .filter(r -> r.getParticipant().getIdentifier().equals(participant1.getUserId()))
                 .findFirst()
                 .orElse(null);
-        assertEquals(Integer.valueOf(100), report.getWeeklyAdherencePercent());
+        assertEquals(Integer.valueOf(33), report.getWeeklyAdherencePercent());
 
         report = allReports.getItems().stream()
                 .filter(r -> r.getParticipant().getIdentifier().equals(participant2.getUserId()))
@@ -249,21 +250,21 @@ public class WeeklyAdherenceReportTest {
         assertEquals(Integer.valueOf(0), allReports.getTotal());
         assertEquals(ImmutableList.of("Belgium"), allReports.getRequestParams().getLabelFilters());
 
-        // Only user #2 is under the 50% adherence bar
-        search = new AdherenceReportSearch().adherenceMax(50);
+        // Only user #2 is under the 30% adherence bar
+        search = new AdherenceReportSearch().adherenceMax(30);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(
                 STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(1), allReports.getTotal());
         report = allReports.getItems().get(0);
         assertEquals(participant2.getEmail(), report.getParticipant().getEmail());
-        assertEquals(Integer.valueOf(0), allReports.getRequestParams().getAdherenceMin());
-        assertEquals(Integer.valueOf(50), allReports.getRequestParams().getAdherenceMax());
+        assertNull(allReports.getRequestParams().getAdherenceMin());
+        assertEquals(Integer.valueOf(30), allReports.getRequestParams().getAdherenceMax());
         
-        search = new AdherenceReportSearch().adherenceMin(20).adherenceMax(50);
+        search = new AdherenceReportSearch().adherenceMin(50).adherenceMax(100);
         allReports = adherenceApi.getStudyParticipantWeeklyAdherenceReports(STUDY_ID_1, search).execute().body();
         assertEquals(Integer.valueOf(0), allReports.getTotal());
-        assertEquals(Integer.valueOf(20), allReports.getRequestParams().getAdherenceMin());
-        assertEquals(Integer.valueOf(50), allReports.getRequestParams().getAdherenceMax());
+        assertEquals(Integer.valueOf(50), allReports.getRequestParams().getAdherenceMin());
+        assertEquals(Integer.valueOf(100), allReports.getRequestParams().getAdherenceMax());
         
         // test filter (it comes back test because the caller is a developer).
         search = new AdherenceReportSearch().testFilter(PRODUCTION);
