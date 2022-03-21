@@ -7,6 +7,7 @@ import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.PermissionsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.AccessLevel;
 import org.sagebionetworks.bridge.rest.model.Assessment;
@@ -24,6 +25,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.AccessLevel.ADMIN;
 import static org.sagebionetworks.bridge.rest.model.AccessLevel.DELETE;
 import static org.sagebionetworks.bridge.rest.model.AccessLevel.EDIT;
@@ -96,8 +98,6 @@ public class PermissionsTest {
     @Test
     public void test() throws Exception {
         
-        // TODO: create a study, assessment, org, and 2 users
-        
         // Creating an Org
         orgId = Tests.randomIdentifier(getClass());
         org = new Organization();
@@ -123,10 +123,6 @@ public class PermissionsTest {
         assessment = assessmentsApi.createAssessment(assessment).execute().body();
         assessmentId = assessment.getGuid();
         
-        // TODO: create permissions for study, assessment, and org
-        //       must include at least two users,
-        //       they must both have permissions to at least one entity
-        
         // Creating a permission
         Permission permitUser1Assessment = createNewPermission(user1.getUserId(), LIST, ASSESSMENT, assessmentId);
         
@@ -141,7 +137,55 @@ public class PermissionsTest {
         assertNotNull(permDetUser1Assessment.getUserAccountRef());
         assertEquals(user1.getUserId(), permDetUser1Assessment.getUserAccountRef().getIdentifier());
         
-        // TODO: update a permission
+        // Failing to create a permission due to existing exact permission
+        try {
+            permissionsApi.createPermission(permitUser1Assessment).execute();
+            fail("Should not have allowed a duplicate permission to be created.");
+        } catch (ConstraintViolationException exception) {
+            assertEquals("Cannot update this permission because it has duplicate permission records", exception.getMessage());
+        }
+        
+        // Failing to create a permission due to foreign key failing
+        // Non-existent userId:
+        try {
+            permissionsApi.createPermission(createNewPermission("fake-user-id", LIST, ASSESSMENT, assessmentId))
+                    .execute();
+            fail("Should not have allowed a permission to be created with a fake user ID");
+        } catch (ConstraintViolationException exception) {
+            assertEquals("This permission cannot be created or updated because the referenced user account does not exist.", 
+                    exception.getMessage());
+        }
+        
+        // Non-existent orgId:
+        try {
+            permissionsApi.createPermission(createNewPermission(user1.getUserId(), LIST, ORGANIZATION, "fake-org-id"))
+                    .execute();
+            fail("Should not have allowed a permission to be created with a fake org ID");
+        } catch (ConstraintViolationException exception) {
+            assertEquals("This permission cannot be created or updated because the referenced organization does not exist.",
+                    exception.getMessage());
+        }
+        
+        // Non-existent studyId:
+        try {
+            permissionsApi.createPermission(createNewPermission(user1.getUserId(), LIST, STUDY, "fake-study-id"))
+                    .execute();
+            fail("Should not have allowed a permission to be created with a fake study ID");
+        } catch (ConstraintViolationException exception) {
+            assertEquals("This permission cannot be created or updated because the referenced study does not exist.",
+                    exception.getMessage());
+        }
+        
+        // Non-existent assessmentId:
+        try {
+            permissionsApi.createPermission(createNewPermission(user1.getUserId(), LIST, ASSESSMENT, "fake-assessment-id"))
+                    .execute().body();
+            fail("Should not have allowed a permission to be created with a fake assessment ID");
+        } catch (ConstraintViolationException exception) {
+            assertEquals("This permission cannot be created or updated because the referenced assessment does not exist.",
+                    exception.getMessage());
+        }
+        
         
         // Updating a permission
         permitUser1Assessment.setAccessLevel(EDIT);
@@ -158,10 +202,29 @@ public class PermissionsTest {
         assertNotNull(permDetUser1AssessmentUpdated.getUserAccountRef());
         assertEquals(user1.getUserId(), permDetUser1AssessmentUpdated.getUserAccountRef().getIdentifier());
         
-        // TODO: consider making it only possible to update a permission's access level
-        //      so a guid doesn't suddenly describe a different user's access to a different entity.
+        // Failing to update due to existing exact permission
+        Permission permitUser1AssessmentAdmin = createNewPermission(
+                permitUser1Assessment.getUserId(),
+                ADMIN,
+                permitUser1Assessment.getEntityType(),
+                permitUser1Assessment.getEntityId());
+        permissionsApi.createPermission(permitUser1AssessmentAdmin).execute();
         
-        // TODO: get permissions for a user
+        try {
+            permissionsApi.updatePermission(permDetUser1Assessment.getGuid(), permitUser1AssessmentAdmin).execute();
+            fail("Should have failed to updated due to existing duplicate permission.");
+        } catch (ConstraintViolationException exception) {
+            assertEquals("Cannot update this permission because it has duplicate permission records",
+                    exception.getMessage());
+        }
+        
+        // Failing to update due to incorrect permission guid
+        try {
+            permissionsApi.updatePermission("fake-guid", permitUser1AssessmentAdmin).execute();
+            fail("Should have failed due to GUID not matching an existing permission.");
+        } catch (EntityNotFoundException exception) {
+            assertEquals("Permission not found.", exception.getMessage());
+        }
         
         // Getting permissions for a user
         Permission permitUser1Org = createNewPermission(user1.getUserId(), DELETE, ORGANIZATION, orgId);
@@ -176,7 +239,7 @@ public class PermissionsTest {
         
         List<Permission> permissionsForUser1 = permissionsApi.getPermissionsForUser(user1.getUserId()).execute().body();
         assertNotNull(permissionsForUser1);
-        assertEquals(3, permissionsForUser1.size());
+        assertEquals(4, permissionsForUser1.size());
         assertTrue(getElement(permissionsForUser1, Permission::getEntityId, assessmentId).isPresent());
         assertTrue(getElement(permissionsForUser1, Permission::getEntityId, orgId).isPresent());
         assertTrue(getElement(permissionsForUser1, Permission::getEntityId, studyId).isPresent());
@@ -185,8 +248,6 @@ public class PermissionsTest {
         assertNotNull(permissionsForUser2);
         assertEquals(2, permissionsForUser2.size());
         
-        // TODO: get permissions for an entity
-    
         // Getting permissions for an entity
         List<PermissionDetail> permissionsForEntity = permissionsApi.getPermissionsForEntity("PARTICIPANTS", studyId).execute().body();
         assertNotNull(permissionsForEntity);
@@ -210,17 +271,12 @@ public class PermissionsTest {
         assertNotNull(permUser2Participants.getUserAccountRef());
         assertEquals(user2.getUserId(), permUser2Participants.getUserAccountRef().getIdentifier());
         
-        // TODO: delete a permission
-        
         // Deleting a permission
         permissionsApi.deletePermission(permDetUser2Study.getGuid()).execute();
     
         permissionsForUser2 = permissionsApi.getPermissionsForUser(user2.getUserId()).execute().body();
         assertNotNull(permissionsForUser2);
         assertEquals(1, permissionsForUser2.size());
-        
-        // TODO: delete study, assessment, and org
-        //       check that all assessments are deleted
         
         // Deleting a user causes user's permissions to be deleted
         user2.signOutAndDeleteUser();
