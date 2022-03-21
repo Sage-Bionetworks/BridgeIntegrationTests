@@ -237,14 +237,14 @@ public class PermissionsTest {
         PermissionDetail permDetUser2Participants = permissionsApi.createPermission(permitUser2Participants).execute().body();
         PermissionDetail permDetUser2Study = permissionsApi.createPermission(permitUser2Study).execute().body();
         
-        List<Permission> permissionsForUser1 = permissionsApi.getPermissionsForUser(user1.getUserId()).execute().body();
+        List<PermissionDetail> permissionsForUser1 = permissionsApi.getPermissionsForUser(user1.getUserId()).execute().body();
         assertNotNull(permissionsForUser1);
         assertEquals(4, permissionsForUser1.size());
-        assertTrue(getElement(permissionsForUser1, Permission::getEntityId, assessmentId).isPresent());
-        assertTrue(getElement(permissionsForUser1, Permission::getEntityId, orgId).isPresent());
-        assertTrue(getElement(permissionsForUser1, Permission::getEntityId, studyId).isPresent());
+        assertTrue(getElement(permissionsForUser1, PermissionDetail::getEntityId, assessmentId).isPresent());
+        assertTrue(getElement(permissionsForUser1, PermissionDetail::getEntityId, orgId).isPresent());
+        assertTrue(getElement(permissionsForUser1, PermissionDetail::getEntityId, studyId).isPresent());
         
-        List<Permission> permissionsForUser2 = permissionsApi.getPermissionsForUser(user2.getUserId()).execute().body();
+        List<PermissionDetail> permissionsForUser2 = permissionsApi.getPermissionsForUser(user2.getUserId()).execute().body();
         assertNotNull(permissionsForUser2);
         assertEquals(2, permissionsForUser2.size());
         
