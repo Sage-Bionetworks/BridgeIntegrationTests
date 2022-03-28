@@ -150,7 +150,7 @@ public class PermissionsTest {
             permissionsApi.createPermission(permitUser1Assessment).execute();
             fail("Should not have allowed a duplicate permission to be created.");
         } catch (ConstraintViolationException exception) {
-            assertEquals("Cannot update this permission because it has duplicate permission records", exception.getMessage());
+            assertEquals("Cannot update this permission because it has duplicate access level permission", exception.getMessage());
         }
         
         // Failing to create a permission due to foreign key failing
@@ -260,7 +260,7 @@ public class PermissionsTest {
             permissionsApi.updatePermission(permDetUser1Assessment.getGuid(), permitUser1AssessmentAdmin).execute();
             fail("Should have failed to update due to existing duplicate permission.");
         } catch (ConstraintViolationException exception) {
-            assertEquals("Cannot update this permission because it has duplicate permission records",
+            assertEquals("Cannot update this permission because it has duplicate access level permission",
                     exception.getMessage());
         }
         
