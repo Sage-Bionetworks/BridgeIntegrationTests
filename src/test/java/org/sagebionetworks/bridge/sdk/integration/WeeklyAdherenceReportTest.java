@@ -293,7 +293,7 @@ public class WeeklyAdherenceReportTest {
         assertEquals(Integer.valueOf(1), allReports.getRequestParams().getOffsetBy());
         assertEquals(Integer.valueOf(5), allReports.getRequestParams().getPageSize());
         
-        AdherenceStatistics stats = adherenceApi.getWeeklyAdherenceStatistics(STUDY_ID_1, 30).execute().body();
+        AdherenceStatistics stats = adherenceApi.getAdherenceStatistics(STUDY_ID_1, 30).execute().body();
         assertEquals(Integer.valueOf(1), stats.getCompliant());
         assertEquals(Integer.valueOf(1), stats.getNoncompliant());
         assertEquals(Integer.valueOf(2), stats.getTotalActive());
@@ -303,33 +303,33 @@ public class WeeklyAdherenceReportTest {
         assertEquals("Session #2 / Week 1", stats.getEntries().get(1).getLabel());
         assertEquals(Integer.valueOf(2), stats.getEntries().get(1).getTotalActive());
         
-        stats = adherenceApi.getWeeklyAdherenceStatistics(STUDY_ID_1, 70).execute().body();
+        stats = adherenceApi.getAdherenceStatistics(STUDY_ID_1, 70).execute().body();
         assertEquals(Integer.valueOf(0), stats.getCompliant());
         assertEquals(Integer.valueOf(2), stats.getNoncompliant());
         assertEquals(Integer.valueOf(2), stats.getTotalActive());
         
         try {
-            adherenceApi.getWeeklyAdherenceStatistics(STUDY_ID_1, null).execute().body();    
+            adherenceApi.getAdherenceStatistics(STUDY_ID_1, null).execute().body();    
         } catch(BadRequestException e) {
             assertEquals("An adherence threshold value must be supplied in the request or set as a study default.", e.getMessage());
         }
         try {
-            adherenceApi.getWeeklyAdherenceStatistics(STUDY_ID_1, 0).execute().body();    
+            adherenceApi.getAdherenceStatistics(STUDY_ID_1, 0).execute().body();    
         } catch(BadRequestException e) {
             assertEquals("Adherence threshold must be from 1-100.", e.getMessage());
         }
         try {
-            adherenceApi.getWeeklyAdherenceStatistics(STUDY_ID_1, 101).execute().body();    
+            adherenceApi.getAdherenceStatistics(STUDY_ID_1, 101).execute().body();    
         } catch(BadRequestException e) {
             assertEquals("Adherence threshold must be from 1-100.", e.getMessage());
         }
         try {
-            adherenceApi.getWeeklyAdherenceStatistics("nonexistent-study", null).execute();    
+            adherenceApi.getAdherenceStatistics("nonexistent-study", null).execute();    
         } catch(EntityNotFoundException e) {
             assertEquals("Study not found.", e.getMessage());
         }
         try {
-            adherenceApi.getWeeklyAdherenceStatistics(Tests.STUDY_ID_2, null).execute();    
+            adherenceApi.getAdherenceStatistics(Tests.STUDY_ID_2, null).execute();    
         } catch(EntityNotFoundException e) {
             assertEquals("Schedule not found.", e.getMessage());
         }
