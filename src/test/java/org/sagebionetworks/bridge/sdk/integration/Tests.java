@@ -363,7 +363,7 @@ public class Tests {
         // Create Synapse Client.
         SynapseClient synapseClient = new SynapseClientImpl();
         synapseClient.setUsername(CONFIG.get("synapse.test.user"));
-        synapseClient.setApiKey(CONFIG.get("synapse.test.user.api.key"));
+        synapseClient.setBearerAuthorizationToken(CONFIG.get("synapse.test.user.access.token"));
 
         // SDK Config does not pick up environment-prefixed property, we must do so here
         String synapseEndpoint = CONFIG.get("synapse.endpoint");
