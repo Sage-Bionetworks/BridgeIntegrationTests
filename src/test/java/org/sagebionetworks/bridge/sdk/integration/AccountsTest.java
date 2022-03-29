@@ -64,7 +64,6 @@ public class AccountsTest {
     private String emailUserId;
     private String studyId;
     private ForOrgAdminsApi orgAdminApi;
-    
 
     @Before
     public void before() throws Exception {
