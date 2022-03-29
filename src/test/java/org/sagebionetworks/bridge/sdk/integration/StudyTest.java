@@ -12,6 +12,7 @@ import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTA
 import static org.sagebionetworks.bridge.rest.model.ContactRole.PRINCIPAL_INVESTIGATOR;
 import static org.sagebionetworks.bridge.rest.model.ContactRole.TECHNICAL_SUPPORT;
 import static org.sagebionetworks.bridge.rest.model.IrbDecisionType.EXEMPT;
+import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.RESEARCHER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
@@ -46,6 +47,7 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.HostedFilesApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
@@ -53,6 +55,7 @@ import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Contact;
 import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.OrganizationList;
+import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.SignInType;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -72,6 +75,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+@SuppressWarnings("ConstantConditions")
 public class StudyTest {
     
     private static final ImmutableList<SignInType> SIGN_IN_TYPES = ImmutableList.of(EMAIL_MESSAGE, PHONE_PASSWORD);
@@ -469,6 +473,59 @@ public class StudyTest {
             
         } finally {
             admin.getClient(StudiesApi.class).deleteStudy(studyId, true).execute();
+        }
+    }
+
+    // https://sagebionetworks.jira.com/browse/BRIDGE-3276
+    // There was a bug where an app developer (which would normally be allowed to update a study) fails to do so if the
+    // study has a scheduleGuid associated with it. This is because updateStudy() checks that the schedule's owner
+    // matches the caller's org, and the app developer may be in a different org, since app developer's are app-scoped.
+    //
+    // This was changed so that updateStudy() checks that the schedule's owner sponsors the study instead of matching
+    // the caller's org. There is a separate check to check that study designers cannot update studies outside of their
+    // org, which is also checked here.
+    @Test
+    public void nonOrgDeveloperCanUpdateStudyWithScheduleGuid() throws Exception {
+        OrganizationsApi orgApi = admin.getClient(OrganizationsApi.class);
+        SchedulesV2Api schedulesApi = admin.getClient(SchedulesV2Api.class);
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+
+        // Create developer and study designer and remove them from the org. (Note: Study designer is created in
+        // before() because it is used in several different tests.)
+        TestUser developer = TestUserHelper.createAndSignInUser(StudyTest.class, false, DEVELOPER);
+        userIdsToDelete.add(developer.getUserId());
+        orgApi.removeMember(SAGE_ID, developer.getUserId()).execute();
+        orgApi.removeMember(SAGE_ID, studyDesigner.getUserId()).execute();
+
+        // Create study and schedule, and assign a schedule to the study.
+        String studyId = Tests.randomIdentifier(getClass());
+        Study study = new Study().identifier(studyId).name(studyId);
+        studiesApi.createStudy(study).execute();
+        studyIdsToDelete.add(studyId);
+
+        Schedule2 schedule = new Schedule2().name(studyId + " schedule").duration("P30D");
+        String scheduleGuid = schedulesApi.saveScheduleForStudy(studyId, schedule).execute().body().getGuid();
+        try {
+            // Sanity check: Study has a schedule associated with it.
+            study = studiesApi.getStudy(studyId).execute().body();
+            assertEquals(scheduleGuid, study.getScheduleGuid());
+
+            // Developer can update the study.
+            study.setName(studyId + "2");
+            StudiesApi developerStudiesApi = developer.getClient(StudiesApi.class);
+            developerStudiesApi.updateStudy(studyId, study).execute();
+            study = developerStudiesApi.getStudy(studyId).execute().body();
+            assertEquals(studyId + "2", study.getName());
+
+            // Study designer cannot update the study.
+            try {
+                studyDesigner.getClient(StudiesApi.class).updateStudy(studyId, study).execute();
+                fail("Study designer should not be able to update study");
+            } catch (UnauthorizedException ex) {
+                // expected exception
+            }
+        } finally {
+            schedulesApi.deleteSchedule(scheduleGuid).execute();
         }
     }
 }
