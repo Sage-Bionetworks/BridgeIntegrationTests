@@ -129,7 +129,7 @@ public class StudyAdherenceReportTest {
         StudyAdherenceReport report = coordApi.getStudyParticipantAdherenceReport(
                 STUDY_ID_1, user.getUserId()).execute().body();
         assertEquals(UNSTARTED, report.getProgression());
-        assertEquals(Integer.valueOf(100), report.getAdherencePercent());
+        assertNull(report.getAdherencePercent());
         
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
         
