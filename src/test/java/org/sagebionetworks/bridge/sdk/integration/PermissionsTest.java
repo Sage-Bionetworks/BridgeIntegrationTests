@@ -16,7 +16,6 @@ import org.sagebionetworks.bridge.rest.model.EntityType;
 import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.Permission;
 import org.sagebionetworks.bridge.rest.model.PermissionDetail;
-import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
