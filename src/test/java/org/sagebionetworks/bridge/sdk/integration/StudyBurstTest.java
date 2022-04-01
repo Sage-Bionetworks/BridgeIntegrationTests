@@ -274,17 +274,18 @@ public class StudyBurstTest {
         createOrUpdateEvent(IMMUTABLE_EVENT, timestamp1, null);
         // Verify the follow-on events were created
         verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
-        // Try changing one of these events, it works
-        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10), null);
-        assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(10));
-        // Try deleting one of these study burst events, it works
-        assertEventTimestampDelete("study_burst:burst1:02", true);
         
         // Update the original immutable event
         DateTime timestamp2 = DateTime.now(UTC).plusDays(1);
         failToCreateOrUpdateEvent(IMMUTABLE_EVENT, timestamp2);
         // All the study burst events should be unchanged, because they are immutable
-        verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp2);
+        verifyTimestampsStartFrom(IMMUTABLE_EVENT, timestamp1, timestamp1);
+
+        // Try changing one of these events, it works
+        createOrUpdateEvent("study_burst:burst1:02", timestamp1.plusDays(10), null);
+        assertEventTimestamp("study_burst:burst1:02", timestamp1.plusDays(10));
+        // Try deleting one of these study burst events, it works
+        assertEventTimestampDelete("study_burst:burst1:02", true);
     }
     
     @Test
