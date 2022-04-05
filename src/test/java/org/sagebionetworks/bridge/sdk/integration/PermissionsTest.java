@@ -251,7 +251,7 @@ public class PermissionsTest {
                 ADMIN,
                 permitUser1Assessment.getEntityType(),
                 permitUser1Assessment.getEntityId());
-        permitUser1AssessmentAdmin.setVersion(3L);
+        permitUser1AssessmentAdmin.setVersion(permDetUser1AssessmentUpdated.getVersion());
         PermissionDetail permDetUser1AssessmentAdmin = permissionsApi.createPermission(permitUser1AssessmentAdmin)
                 .execute().body();
         
