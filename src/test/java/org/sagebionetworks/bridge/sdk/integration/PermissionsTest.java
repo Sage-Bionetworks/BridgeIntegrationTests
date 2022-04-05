@@ -142,7 +142,7 @@ public class PermissionsTest {
         assertEquals(user1.getUserId(), permDetUser1Assessment.getAccount().getIdentifier());
         assertNotNull(permDetUser1Assessment.getCreatedOn());
         assertEquals(permDetUser1Assessment.getCreatedOn(), permDetUser1Assessment.getModifiedOn());
-        assertEquals(Long.valueOf(1L), permDetUser1Assessment.getVersion());
+        assertNotNull(permDetUser1Assessment.getVersion());
         
         // Failing to create a permission due to existing exact permission
         try {
@@ -193,9 +193,9 @@ public class PermissionsTest {
                     exception.getMessage());
         }
         
-        
         // Updating a permission fails with incorrect version
         permitUser1Assessment.setAccessLevel(EDIT);
+        permitUser1Assessment.setVersion(5L);
         
         try {
             permissionsApi.updatePermission(permDetUser1Assessment.getGuid(), permitUser1Assessment).execute();
@@ -206,7 +206,7 @@ public class PermissionsTest {
         }
         
         // Successfully updating a permission
-        permitUser1Assessment.setVersion(1L);
+        permitUser1Assessment.setVersion(permDetUser1Assessment.getVersion());
         
         PermissionDetail permDetUser1AssessmentUpdated = permissionsApi.updatePermission(
                 permDetUser1Assessment.getGuid(), permitUser1Assessment).execute().body();
@@ -221,14 +221,14 @@ public class PermissionsTest {
         assertEquals(user1.getUserId(), permDetUser1AssessmentUpdated.getAccount().getIdentifier());
         assertEquals(permDetUser1Assessment.getCreatedOn(), permDetUser1AssessmentUpdated.getCreatedOn());
         assertNotEquals(permDetUser1AssessmentUpdated.getCreatedOn(), permDetUser1AssessmentUpdated.getModifiedOn());
-        assertEquals(Long.valueOf(2L), permDetUser1AssessmentUpdated.getVersion());
+        assertNotEquals(permDetUser1Assessment.getVersion(), permDetUser1AssessmentUpdated.getVersion());
         
         // Updating ignores all fields other than guid, accessLevel, and version
         Permission permitUser1AssessmentFake = createNewPermission("fake-user-id",
                 DELETE,
                 STUDY_PI,
                 "fake-entity-id");
-        permitUser1AssessmentFake.setVersion(2L);
+        permitUser1AssessmentFake.setVersion(permDetUser1AssessmentUpdated.getVersion());
         
         permDetUser1AssessmentUpdated = permissionsApi.updatePermission(
                 permDetUser1Assessment.getGuid(), permitUser1AssessmentFake).execute().body();
@@ -243,7 +243,7 @@ public class PermissionsTest {
         assertEquals(user1.getUserId(), permDetUser1AssessmentUpdated.getAccount().getIdentifier());
         assertEquals(permDetUser1Assessment.getCreatedOn(), permDetUser1AssessmentUpdated.getCreatedOn());
         assertNotEquals(permDetUser1AssessmentUpdated.getCreatedOn(), permDetUser1AssessmentUpdated.getModifiedOn());
-        assertEquals(Long.valueOf(3L), permDetUser1AssessmentUpdated.getVersion());
+        assertNotEquals(permitUser1AssessmentFake.getVersion(), permDetUser1AssessmentUpdated.getVersion());
         
         // Failing to update due to existing exact permission
         Permission permitUser1AssessmentAdmin = createNewPermission(
