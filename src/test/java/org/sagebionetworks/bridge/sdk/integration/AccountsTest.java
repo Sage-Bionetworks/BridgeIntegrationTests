@@ -358,6 +358,8 @@ public class AccountsTest {
         Account devAccount = accountsApi.getAccount(developer.getUserId()).execute().body();
         assertTrue(devAccount.isAdmin());
         
+        String email = devAccount.getEmail();
+        
         // Removing the orgMembership and roles, and it is still marked as an admin.
         devAccount.setRoles(ImmutableList.of());
         accountsApi.updateAccount(devAccount.getId(), devAccount).execute();
@@ -368,17 +370,19 @@ public class AccountsTest {
         assertNull(devAccount.getOrgMembership());
         assertTrue(devAccount.getRoles().isEmpty());
         
+        AccountSummarySearch search = new AccountSummarySearch().emailFilter(email);
+        
         // This record will be returned from several APIs that exist for admin accounts
-        AccountSummaryList list = orgApi.getUnassignedAdminAccounts(new AccountSummarySearch()).execute().body();
+        AccountSummaryList list = orgApi.getUnassignedAdminAccounts(search).execute().body();
         assertTrue(findAccount(list, devAccount.getId()));
         
         // this will pretty shortly not be allowed, but for now it's true that the account is still found this way
         list = admin.getClient(ParticipantsApi.class).searchAccountSummaries(
-                new AccountSummarySearch().adminOnly(true)).execute().body();
+                search.adminOnly(true)).execute().body();
         assertTrue(findAccount(list, devAccount.getId()));
         
         list = admin.getClient(ParticipantsApi.class).searchAccountSummaries(
-                new AccountSummarySearch().adminOnly(false)).execute().body();
+                search.adminOnly(false)).execute().body();
         assertFalse(findAccount(list, devAccount.getId()));
     }
     
