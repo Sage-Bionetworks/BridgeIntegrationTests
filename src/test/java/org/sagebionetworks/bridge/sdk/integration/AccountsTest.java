@@ -1,8 +1,10 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.AccountStatus.ENABLED;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
@@ -14,6 +16,8 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.SYNAPSE_USER_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
+
+import java.io.IOException;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -29,6 +33,7 @@ import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
@@ -36,6 +41,7 @@ import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Account;
+import org.sagebionetworks.bridge.rest.model.AccountSummary;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
 import org.sagebionetworks.bridge.rest.model.App;
@@ -342,5 +348,50 @@ public class AccountsTest {
         }
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(AccountsApi.class).deleteAccount(idHolder.getIdentifier()).execute();
+    }
+    
+    @Test
+    public void adminIsTainted() throws IOException {
+        AccountsApi accountsApi = admin.getClient(AccountsApi.class);
+        OrganizationsApi orgApi = admin.getClient(OrganizationsApi.class);
+        
+        Account devAccount = accountsApi.getAccount(developer.getUserId()).execute().body();
+        assertTrue(devAccount.isAdmin());
+        
+        String email = devAccount.getEmail();
+        
+        // Removing the orgMembership and roles, and it is still marked as an admin.
+        devAccount.setRoles(ImmutableList.of());
+        accountsApi.updateAccount(devAccount.getId(), devAccount).execute();
+        orgApi.removeMember(devAccount.getOrgMembership(), devAccount.getId()).execute();
+
+        devAccount = accountsApi.getAccount(developer.getUserId()).execute().body();
+        assertTrue(devAccount.isAdmin());
+        assertNull(devAccount.getOrgMembership());
+        assertTrue(devAccount.getRoles().isEmpty());
+        
+        AccountSummarySearch search = new AccountSummarySearch().emailFilter(email);
+        
+        // This record will be returned from several APIs that exist for admin accounts
+        AccountSummaryList list = orgApi.getUnassignedAdminAccounts(search).execute().body();
+        assertTrue(findAccount(list, devAccount.getId()));
+        
+        // this will pretty shortly not be allowed, but for now it's true that the account is still found this way
+        list = admin.getClient(ParticipantsApi.class).searchAccountSummaries(
+                search.adminOnly(true)).execute().body();
+        assertTrue(findAccount(list, devAccount.getId()));
+        
+        list = admin.getClient(ParticipantsApi.class).searchAccountSummaries(
+                search.adminOnly(false)).execute().body();
+        assertFalse(findAccount(list, devAccount.getId()));
+    }
+    
+    private boolean findAccount(AccountSummaryList list, String userId) {
+        for (AccountSummary summary : list.getItems()) {
+            if (summary.getId().equals(userId)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
