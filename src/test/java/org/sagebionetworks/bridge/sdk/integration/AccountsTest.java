@@ -130,7 +130,8 @@ public class AccountsTest {
                 .languages(ImmutableList.of("en", "fr"))
                 .password(PASSWORD)
                 .note("test note 1")
-                .clientTimeZone("America/Los_Angeles");
+                .clientTimeZone("America/Los_Angeles")
+                .orgMembership(orgAdmin.getSession().getOrgMembership());
         
         emailUserId = orgAdminApi.createAccount(account).execute().body().getIdentifier();
         

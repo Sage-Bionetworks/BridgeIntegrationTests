@@ -32,7 +32,6 @@ import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
-import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
@@ -291,18 +290,9 @@ public class ForStudyCoordinatorsTest {
         user = TestUserHelper.createAndSignInUser(ForStudyCoordinatorsTest.class, false);
         coordApi.enrollParticipant(studyId, new Enrollment().userId(user.getUserId())).execute();
         
-        // User is not a test user so this fails
-        try {
-            coordApi.deleteStudyParticipant(studyId, user.getUserId()).execute();
-            fail("Should have thrown an exception");
-        } catch(UnauthorizedException e) {
-        }
+        // We can no longer test that non-test accounts won't be deleted, because all accounts
+        // created through the admin API must be test accounts for security reasons.
         
-        StudyParticipant participant = coordApi.getStudyParticipantById(studyId, user.getUserId(), false).execute().body();
-        participant.setDataGroups(ImmutableList.of("test_user"));
-        coordApi.updateStudyParticipant(studyId, user.getUserId(), participant).execute();
-        
-        // this now succeeds
         coordApi.deleteStudyParticipant(studyId, user.getUserId()).execute();
         
         try {
