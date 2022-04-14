@@ -60,6 +60,7 @@ import org.sagebionetworks.bridge.rest.model.SessionInfo;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
@@ -73,6 +74,7 @@ import retrofit2.Response;
 
 public class Schedule2Test {
 
+    private static final String TIME_ZONE = "America/Chicago";
     TestUser developer;
     TestUser studyDesigner;
     TestUser studyCoordinator;
@@ -501,6 +503,10 @@ public class Schedule2Test {
         // Add it to study 1
         Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
         user = TestUserHelper.createAndSignInUser(Schedule2Test.class, true);
+        
+        StudyParticipant participant = user.getClient(ForConsentedUsersApi.class).getUsersParticipantRecord(false).execute().body();
+        participant.setClientTimeZone(TIME_ZONE);
+        user.getClient(ForConsentedUsersApi.class).updateUsersParticipantRecord(participant).execute();
 
         // This user should now have a timeline via study1:
         ForStudyCoordinatorsApi coordsApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
@@ -524,14 +530,15 @@ public class Schedule2Test {
         // that the etag will be stable (assuming no other event has happened). It's just a limitation of the 
         // caching at this point.
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
-        Response<ParticipantSchedule> response = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute();
+        Response<ParticipantSchedule> response = userApi.getParticipantScheduleForSelf(
+                STUDY_ID_1, TIME_ZONE).execute();
         schedule = response.body();
         
         userApi = user.getClient(ForConsentedUsersApi.class);
-        response = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute();
+        response = userApi.getParticipantScheduleForSelf(STUDY_ID_1, TIME_ZONE).execute();
         schedule = response.body();
         
-        HttpResponse noModResponse = Request.Get(user.getClientManager().getHostUrl() + "/v5/studies/study1/participants/self/schedule")
+        HttpResponse noModResponse = Request.Get(user.getClientManager().getHostUrl() + "/v5/studies/study1/participants/self/schedule?clientTimeZone=America/Chicago")
                 .setHeader("Bridge-Session", user.getSession().getSessionToken())
                 .setHeader(HttpHeaders.IF_NONE_MATCH, response.headers().get(HttpHeaders.ETAG))
                 .execute().returnResponse();
@@ -542,7 +549,7 @@ public class Schedule2Test {
         
         // and this is just a flat-out error
         try {
-            userApi.getParticipantScheduleForSelf(STUDY_ID_2).execute();
+            userApi.getParticipantScheduleForSelf(STUDY_ID_2, TIME_ZONE).execute();
         } catch(UnauthorizedException e) {
             assertEquals("Caller is not enrolled in study 'study2'", e.getMessage());
         }
