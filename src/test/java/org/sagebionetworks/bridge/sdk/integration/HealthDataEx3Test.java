@@ -151,7 +151,7 @@ public class HealthDataEx3Test {
 
         // Test get api for self.
         HealthDataRecordEx3 expectedRecordForSelf = record;
-        HealthDataRecordEx3 retrievedRecordForSelf = consentedUsersApi.getRecordEx3ById(recordId).execute().body();
+        HealthDataRecordEx3 retrievedRecordForSelf = consentedUsersApi.getRecordEx3ById(recordId, null).execute().body();
         assertEquals(expectedRecordForSelf, retrievedRecordForSelf);
 
         // Test List by user for self.
@@ -175,7 +175,7 @@ public class HealthDataEx3Test {
                 null, null).execute().body().getItems(),
                 List::isEmpty);
     }
-
+    
     @Test
     public void testPagination() throws Exception {
         ForWorkersApi workersApi = worker.getClient(ForWorkersApi.class);
