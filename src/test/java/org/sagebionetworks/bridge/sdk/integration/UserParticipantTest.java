@@ -10,7 +10,6 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.assertListsEqualI
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 
 import org.junit.After;
 import org.junit.Before;
