@@ -123,7 +123,7 @@ public class Schedule2Test {
         if (org2ScheduleGuid != null) {
             adminSchedulesApi.deleteSchedule(org2ScheduleGuid).execute();
         }
-        if (schedule != null) {
+        if (schedule != null && schedule.getGuid() != null) {
             admin.getClient(ForAdminsApi.class).deleteSchedule(schedule.getGuid()).execute();
         }
         if (assessment != null && assessment.getGuid() != null) {
@@ -346,6 +346,7 @@ public class Schedule2Test {
         
         // physically delete it
         admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
+        schedule = null;
 
         // Now there is no metadata (retrieval of timeline metadata is
         ForWorkersApi workersApi = admin.getClient(ForWorkersApi.class);
@@ -389,8 +390,8 @@ public class Schedule2Test {
             fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
         }
-        Schedule2 schedule = schedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
-        assertEquals(ORG_ID_2, schedule.getOwnerId());
+        Schedule2 newSchedule = schedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
+        assertEquals(ORG_ID_2, newSchedule.getOwnerId());
         
         adminOrgApi.removeMember(ORG_ID_2, studyDesigner.getUserId()).execute();
         adminOrgApi.addMember(Tests.ORG_ID_1, studyDesigner.getUserId()).execute();
@@ -400,8 +401,8 @@ public class Schedule2Test {
             fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
         }
-        schedule = schedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
-        assertEquals(ORG_ID_1, schedule.getOwnerId());
+        newSchedule = schedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
+        assertEquals(ORG_ID_1, newSchedule.getOwnerId());
         
         // Developers see everything
         SchedulesV2Api devSchedulesApi = developer.getClient(SchedulesV2Api.class);
@@ -465,6 +466,7 @@ public class Schedule2Test {
 
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        schedule = null;
         
         // and this is just a flat-out error
         try {
@@ -587,18 +589,18 @@ public class Schedule2Test {
 
         // This user should now have a timeline via study1:
         ForStudyCoordinatorsApi coordsApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
-        ParticipantSchedule schedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId()).execute().body();
+        ParticipantSchedule participantSchedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId()).execute().body();
         
         // it's there
-        assertEquals(7, schedule.getSchedule().size());
+        assertEquals(7, participantSchedule.getSchedule().size());
         
         // Check the events (only enrollment is in the schedule)
         Map<String, DateTime> eventTimestamps = coordsApi.getStudyParticipantStudyActivityEvents(STUDY_ID_1, user.getUserId())
                 .execute().body().getItems().stream()
                 .collect(Collectors.toMap(StudyActivityEvent::getEventId, StudyActivityEvent::getTimestamp));
         
-        assertEquals(1, schedule.getEventTimestamps().size());
-        for (Map.Entry<String, DateTime> entry : schedule.getEventTimestamps().entrySet()) {
+        assertEquals(1, participantSchedule.getEventTimestamps().size());
+        for (Map.Entry<String, DateTime> entry : participantSchedule.getEventTimestamps().entrySet()) {
             assertEquals(entry.getValue(), eventTimestamps.get(entry.getKey()));
         }
         
@@ -609,11 +611,11 @@ public class Schedule2Test {
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
         Response<ParticipantSchedule> response = userApi.getParticipantScheduleForSelf(
                 STUDY_ID_1, TIME_ZONE).execute();
-        schedule = response.body();
+        participantSchedule = response.body();
         
         userApi = user.getClient(ForConsentedUsersApi.class);
         response = userApi.getParticipantScheduleForSelf(STUDY_ID_1, TIME_ZONE).execute();
-        schedule = response.body();
+        participantSchedule = response.body();
         
         HttpResponse noModResponse = Request.Get(user.getClientManager().getHostUrl() + PARTICIPANT_API + "America/Chicago")
                 .setHeader("Bridge-Session", user.getSession().getSessionToken())
@@ -623,6 +625,7 @@ public class Schedule2Test {
 
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        schedule = null;
         
         // and this is just a flat-out error
         try {
