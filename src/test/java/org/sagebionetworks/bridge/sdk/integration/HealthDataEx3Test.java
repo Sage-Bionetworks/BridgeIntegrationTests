@@ -175,7 +175,7 @@ public class HealthDataEx3Test {
                 null, null).execute().body().getItems(),
                 List::isEmpty);
     }
-
+    
     @Test
     public void testPagination() throws Exception {
         ForWorkersApi workersApi = worker.getClient(ForWorkersApi.class);

@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.sagebionetworks.bridge.rest.ApiClientProvider;
+import org.sagebionetworks.bridge.rest.api.AccountsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ConsentsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
@@ -41,6 +42,7 @@ import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
+import org.sagebionetworks.bridge.rest.model.Account;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
 import org.sagebionetworks.bridge.rest.model.Exporter3Configuration;
@@ -419,10 +421,10 @@ public class Exporter3Test {
         userId = developer.getUserId();
 
         // Add test_user data group.
-        ParticipantsApi participantsApi = admin.getClient(ParticipantsApi.class);
-        StudyParticipant participant = participantsApi.getParticipantById(userId, false).execute().body();
-        participant.addDataGroupsItem("test_user");
-        participantsApi.updateParticipant(userId, participant).execute();
+        AccountsApi accountsApi = admin.getClient(AccountsApi.class);
+        Account account = accountsApi.getAccount(userId).execute().body();
+        account.addDataGroupsItem("test_user");
+        accountsApi.updateAccount(userId, account).execute();
 
         // Give it a sharing scope.
         developer.getClient(ForConsentedUsersApi.class).changeSharingScope(new SharingScopeForm()

@@ -20,6 +20,7 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_2;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,12 +34,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
@@ -60,6 +63,7 @@ import org.sagebionetworks.bridge.rest.model.SessionInfo;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
@@ -73,6 +77,8 @@ import retrofit2.Response;
 
 public class Schedule2Test {
 
+    private static final String TIME_ZONE = "America/Chicago";
+    private static final String PARTICIPANT_API = "/v5/studies/study1/participants/self/schedule?clientTimeZone=";
     TestUser developer;
     TestUser studyDesigner;
     TestUser studyCoordinator;
@@ -116,6 +122,9 @@ public class Schedule2Test {
         }
         if (org2ScheduleGuid != null) {
             adminSchedulesApi.deleteSchedule(org2ScheduleGuid).execute();
+        }
+        if (schedule != null && schedule.getGuid() != null) {
+            admin.getClient(ForAdminsApi.class).deleteSchedule(schedule.getGuid()).execute();
         }
         if (assessment != null && assessment.getGuid() != null) {
             admin.getClient(AssessmentsApi.class).deleteAssessment(assessment.getGuid(), true).execute();
@@ -337,6 +346,7 @@ public class Schedule2Test {
         
         // physically delete it
         admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
+        schedule = null;
 
         // Now there is no metadata (retrieval of timeline metadata is
         ForWorkersApi workersApi = admin.getClient(ForWorkersApi.class);
@@ -380,8 +390,8 @@ public class Schedule2Test {
             fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
         }
-        Schedule2 schedule = schedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
-        assertEquals(ORG_ID_2, schedule.getOwnerId());
+        Schedule2 newSchedule = schedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
+        assertEquals(ORG_ID_2, newSchedule.getOwnerId());
         
         adminOrgApi.removeMember(ORG_ID_2, studyDesigner.getUserId()).execute();
         adminOrgApi.addMember(Tests.ORG_ID_1, studyDesigner.getUserId()).execute();
@@ -391,8 +401,8 @@ public class Schedule2Test {
             fail("Should have thrown exception");
         } catch(UnauthorizedException e) {
         }
-        schedule = schedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
-        assertEquals(ORG_ID_1, schedule.getOwnerId());
+        newSchedule = schedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
+        assertEquals(ORG_ID_1, newSchedule.getOwnerId());
         
         // Developers see everything
         SchedulesV2Api devSchedulesApi = developer.getClient(SchedulesV2Api.class);
@@ -456,6 +466,7 @@ public class Schedule2Test {
 
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        schedule = null;
         
         // and this is just a flat-out error
         try {
@@ -468,6 +479,76 @@ public class Schedule2Test {
         } catch(EntityNotFoundException e) {
             assertEquals("Account not found.", e.getMessage());
         }
+    }
+    
+    @Test
+    public void getParticipantScheduleCachesTimeZoneAppropriately() throws IOException {
+        studyCoordinator = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_COORDINATOR);
+        SchedulesV2Api schedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+        AssessmentReference2 ref = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier(assessment.getIdentifier());
+
+        schedule = new Schedule2();
+        schedule.setName("Test Schedule [Schedule2Test]");
+        schedule.setDuration("P1W");
+        Session session = new Session();
+        session.setName("Simple repeating assessment");
+        session.setInterval("P1D");
+        session.setAssessments(null);
+        session.addStartEventIdsItem("enrollment");
+        session.setPerformanceOrder(SEQUENTIAL);
+        session.addAssessmentsItem(ref);
+        session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT1H"));
+        schedule.addSessionsItem(session);
+        
+        // create schedule.
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+        
+        user = TestUserHelper.createAndSignInUser(Schedule2Test.class, true);
+        
+        // set timezone, get back 200
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        Response<ParticipantSchedule> res = usersApi.getParticipantScheduleForSelf(STUDY_ID_1, "America/Chicago").execute();
+        String etag = res.headers().get(HttpHeaders.ETAG);
+        assertNotNull(etag);
+        
+        // request again, get 304
+        HttpResponse noModResponse = Request.Get(user.getClientManager().getHostUrl() + PARTICIPANT_API + "America/Chicago")
+                .setHeader("Bridge-Session", user.getSession().getSessionToken())
+                .setHeader(HttpHeaders.IF_NONE_MATCH, etag).execute().returnResponse();
+        assertEquals(304, noModResponse.getStatusLine().getStatusCode());
+
+        // change timezone get 200
+        HttpResponse modResponse = Request.Get(user.getClientManager().getHostUrl() + PARTICIPANT_API + "America/Los_Angeles")
+                .setHeader("Bridge-Session", user.getSession().getSessionToken())
+                .setHeader(HttpHeaders.IF_NONE_MATCH, etag).execute().returnResponse();
+        assertEquals(200, modResponse.getStatusLine().getStatusCode());
+        String newEtag = modResponse.getFirstHeader(HttpHeaders.ETAG).getValue();
+        
+        // request again, get 304
+        noModResponse = Request.Get(user.getClientManager().getHostUrl() + PARTICIPANT_API  + "America/Los_Angeles")
+                .setHeader("Bridge-Session", user.getSession().getSessionToken())
+                .setHeader(HttpHeaders.IF_NONE_MATCH, newEtag).execute().returnResponse();
+        assertEquals(304, noModResponse.getStatusLine().getStatusCode());        
+        
+        // delete timezone
+        StudyParticipantsApi participantsApi = studyCoordinator.getClient(StudyParticipantsApi.class);
+        StudyParticipant participant = participantsApi.getStudyParticipantById(
+                STUDY_ID_1, user.getUserId(), false).execute().body();
+        assertEquals("America/Los_Angeles", participant.getClientTimeZone());
+        participant.setClientTimeZone(null);
+        participantsApi.updateStudyParticipant(STUDY_ID_1, user.getUserId(), participant).execute().body();
+        
+        participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertNull(participant.getClientTimeZone());
+        
+        // request again, get 200
+        noModResponse = Request.Get(user.getClientManager().getHostUrl() + PARTICIPANT_API  + "America/Los_Angeles")
+                .setHeader("Bridge-Session", user.getSession().getSessionToken())
+                .setHeader(HttpHeaders.IF_NONE_MATCH, newEtag).execute().returnResponse();
+        assertEquals(200, noModResponse.getStatusLine().getStatusCode());
     }
     
     @Test
@@ -501,21 +582,25 @@ public class Schedule2Test {
         // Add it to study 1
         Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
         user = TestUserHelper.createAndSignInUser(Schedule2Test.class, true);
+        
+        StudyParticipant participant = user.getClient(ForConsentedUsersApi.class).getUsersParticipantRecord(false).execute().body();
+        participant.setClientTimeZone(TIME_ZONE);
+        user.getClient(ForConsentedUsersApi.class).updateUsersParticipantRecord(participant).execute();
 
         // This user should now have a timeline via study1:
         ForStudyCoordinatorsApi coordsApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
-        ParticipantSchedule schedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId()).execute().body();
+        ParticipantSchedule participantSchedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId()).execute().body();
         
         // it's there
-        assertEquals(7, schedule.getSchedule().size());
+        assertEquals(7, participantSchedule.getSchedule().size());
         
         // Check the events (only enrollment is in the schedule)
         Map<String, DateTime> eventTimestamps = coordsApi.getStudyParticipantStudyActivityEvents(STUDY_ID_1, user.getUserId())
                 .execute().body().getItems().stream()
                 .collect(Collectors.toMap(StudyActivityEvent::getEventId, StudyActivityEvent::getTimestamp));
         
-        assertEquals(1, schedule.getEventTimestamps().size());
-        for (Map.Entry<String, DateTime> entry : schedule.getEventTimestamps().entrySet()) {
+        assertEquals(1, participantSchedule.getEventTimestamps().size());
+        for (Map.Entry<String, DateTime> entry : participantSchedule.getEventTimestamps().entrySet()) {
             assertEquals(entry.getValue(), eventTimestamps.get(entry.getKey()));
         }
         
@@ -524,14 +609,15 @@ public class Schedule2Test {
         // that the etag will be stable (assuming no other event has happened). It's just a limitation of the 
         // caching at this point.
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
-        Response<ParticipantSchedule> response = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute();
-        schedule = response.body();
+        Response<ParticipantSchedule> response = userApi.getParticipantScheduleForSelf(
+                STUDY_ID_1, TIME_ZONE).execute();
+        participantSchedule = response.body();
         
         userApi = user.getClient(ForConsentedUsersApi.class);
-        response = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute();
-        schedule = response.body();
+        response = userApi.getParticipantScheduleForSelf(STUDY_ID_1, TIME_ZONE).execute();
+        participantSchedule = response.body();
         
-        HttpResponse noModResponse = Request.Get(user.getClientManager().getHostUrl() + "/v5/studies/study1/participants/self/schedule")
+        HttpResponse noModResponse = Request.Get(user.getClientManager().getHostUrl() + PARTICIPANT_API + "America/Chicago")
                 .setHeader("Bridge-Session", user.getSession().getSessionToken())
                 .setHeader(HttpHeaders.IF_NONE_MATCH, response.headers().get(HttpHeaders.ETAG))
                 .execute().returnResponse();
@@ -539,10 +625,11 @@ public class Schedule2Test {
 
         TestUser admin = TestUserHelper.getSignedInAdmin();
         admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        schedule = null;
         
         // and this is just a flat-out error
         try {
-            userApi.getParticipantScheduleForSelf(STUDY_ID_2).execute();
+            userApi.getParticipantScheduleForSelf(STUDY_ID_2, TIME_ZONE).execute();
         } catch(UnauthorizedException e) {
             assertEquals("Caller is not enrolled in study 'study2'", e.getMessage());
         }

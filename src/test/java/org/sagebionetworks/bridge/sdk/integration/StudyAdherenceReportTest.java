@@ -43,6 +43,7 @@ import com.google.common.collect.ImmutableList;
 
 public class StudyAdherenceReportTest {
     
+    private static final String TIME_ZONE = "America/Chicago";
     private TestUser studyDesigner;
     private TestUser user;
     
@@ -134,13 +135,14 @@ public class StudyAdherenceReportTest {
         ForConsentedUsersApi userApi = user.getClient(ForConsentedUsersApi.class);
         
         // generate timeline_retrieved event
-        userApi.getParticipantScheduleForSelf(Tests.STUDY_ID_1).execute();
+        userApi.getParticipantScheduleForSelf(STUDY_ID_1, TIME_ZONE).execute();
         
         report = coordApi.getStudyParticipantAdherenceReport(STUDY_ID_1, user.getUserId()).execute().body();
         assertEquals(IN_PROGRESS, report.getProgression());
         assertEquals(Integer.valueOf(0), report.getAdherencePercent());
         
-        ParticipantSchedule participantSchedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute().body();
+        ParticipantSchedule participantSchedule = userApi.getParticipantScheduleForSelf(
+                STUDY_ID_1, TIME_ZONE).execute().body();
         completeAssessments(userApi, participantSchedule);
 
         // The supplemental survey has not been done. If we add it, adherence goes down.
@@ -153,7 +155,8 @@ public class StudyAdherenceReportTest {
         assertEquals(Integer.valueOf(85), report.getAdherencePercent());
         
         // do those activities
-        participantSchedule = userApi.getParticipantScheduleForSelf(STUDY_ID_1).execute().body();
+        participantSchedule = userApi.getParticipantScheduleForSelf(
+                STUDY_ID_1, TIME_ZONE).execute().body();
         completeAssessments(userApi, participantSchedule);
         
         report = coordApi.getStudyParticipantAdherenceReport(STUDY_ID_1, user.getUserId()).execute().body();

@@ -133,17 +133,19 @@ public class UserParticipantTest {
     
     @Test
     public void canUpdateDataGroups() throws Exception {
+        user = TestUserHelper.createAndSignInUser(getClass(), true);
+                
         // Developer in this test is not a test user.
         List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2");
 
-        ForConsentedUsersApi usersApi = developer.getClient(ForConsentedUsersApi.class);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
 
         StudyParticipant participant = new StudyParticipant();
         participant.setDataGroups(dataGroups);
         usersApi.updateUsersParticipantRecord(participant).execute();
 
-        developer.signOut();
-        developer.signInAgain();
+        user.signOut();
+        user.signInAgain();
         
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
         assertListsEqualIgnoringOrder(ImmutableList.of("test_user", "sdk-int-1", "sdk-int-2"), 
@@ -153,8 +155,8 @@ public class UserParticipantTest {
         participant.setDataGroups(ImmutableList.of());
         usersApi.updateUsersParticipantRecord(participant).execute();
         
-        developer.signOut();
-        developer.signInAgain();
+        user.signOut();
+        user.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
         assertListsEqualIgnoringOrder(ImmutableList.of("test_user"), participant.getDataGroups());
