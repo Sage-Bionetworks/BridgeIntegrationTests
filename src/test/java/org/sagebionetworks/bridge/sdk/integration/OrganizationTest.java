@@ -21,14 +21,14 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
+import org.sagebionetworks.bridge.rest.api.AccountsApi;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
-import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.SharedAssessmentsApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.Account;
 import org.sagebionetworks.bridge.rest.model.AccountSummary;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
@@ -37,7 +37,6 @@ import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.OrganizationList;
 import org.sagebionetworks.bridge.rest.model.StudyList;
-import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
@@ -188,7 +187,7 @@ public class OrganizationTest {
         
         // create a user. TestUserHelper puts admins in the Sage Bionetworks organization, so for this
         // test, remove the user first.
-        user = TestUserHelper.createAndSignInUser(OrganizationTest.class, true, DEVELOPER);
+        user = TestUserHelper.createAndSignInUser(OrganizationTest.class, false, DEVELOPER);
         admin.getClient(OrganizationsApi.class).removeMember(SAGE_ID, user.getUserId()).execute();
         
         // the user is unassigned and should appear in the unassigned API
@@ -197,20 +196,30 @@ public class OrganizationTest {
                 .getUnassignedAdminAccounts(search).execute().body();
         assertTrue(list.getItems().stream().anyMatch((summary) -> summary.getId().equals(user.getUserId())));
         
-        // cannot change organizational affiliation on an update
-        ParticipantsApi participantsApi = orgAdmin.getClient(ParticipantsApi.class);
-        StudyParticipant participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
-        participant.setOrgMembership(orgId2);
-        participantsApi.updateParticipant(user.getUserId(), participant).execute();
+        // cannot change organizational affiliation on an update. We need an admin to retrieve the account because
+        // it's moving between organizations
+        AccountsApi adminAccountsApi = admin.getClient(AccountsApi.class);
+        Account account = adminAccountsApi.getAccount(user.getUserId()).execute().body();
         
-        // Membership has not changed. It didn't throw an error, it did nothing.
-        participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
-        assertNull(participant.getOrgMembership());
+        account.setOrgMembership(orgId2);
+        adminAccountsApi.updateAccount(user.getUserId(), account).execute();
+        
+        // Membership was not assigned. It didn't throw an error, it did nothing.
+        account = adminAccountsApi.getAccount(user.getUserId()).execute().body();
+        assertNull(account.getOrgMembership());
+        
+        // Still in the unassigned list
+        list = orgAdmin.getClient(OrganizationsApi.class)
+                .getUnassignedAdminAccounts(search).execute().body();
+        assertTrue(list.getItems().stream().anyMatch((summary) -> summary.getId().equals(user.getUserId())));
+        for (AccountSummary summary : list.getItems()) {
+            assertNull(summary.getOrgMembership());
+        }
 
-        // add someone to the organization
+        // add the person to another organization
         appAdminOrgApi.addMember(orgId1, user.getUserId()).execute();
-        participant = participantsApi.getParticipantById(user.getUserId(), false).execute().body();
-        assertEquals(orgId1, participant.getOrgMembership());
+        account = adminAccountsApi.getAccount(user.getUserId()).execute().body();
+        assertEquals(orgId1, account.getOrgMembership());
         
         // The account should now be listed as a member
         list = appAdminOrgApi.getMembers(orgId1, new AccountSummarySearch()).execute().body();
@@ -221,7 +230,7 @@ public class OrganizationTest {
             assertEquals(orgId1, summary.getOrgMembership());
         }
         
-        // This user is no longer in the unassigned users list
+        // The user is no longer in the unassigned users list
         list = orgAdmin.getClient(OrganizationsApi.class)
                 .getUnassignedAdminAccounts(search).execute().body();
         assertFalse(list.getItems().stream().anyMatch((summary) -> summary.getId().equals(user.getUserId())));
