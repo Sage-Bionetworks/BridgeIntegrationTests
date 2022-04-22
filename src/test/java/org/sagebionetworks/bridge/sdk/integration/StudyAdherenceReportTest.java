@@ -139,7 +139,7 @@ public class StudyAdherenceReportTest {
         
         report = coordApi.getStudyParticipantAdherenceReport(STUDY_ID_1, user.getUserId()).execute().body();
         assertEquals(IN_PROGRESS, report.getProgression());
-        assertEquals(Integer.valueOf(0), report.getAdherencePercent());
+        assertEquals(Integer.valueOf(100), report.getAdherencePercent());
         
         ParticipantSchedule participantSchedule = userApi.getParticipantScheduleForSelf(
                 STUDY_ID_1, TIME_ZONE).execute().body();
