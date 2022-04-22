@@ -168,7 +168,7 @@ public class EventStreamAdherenceReportTest {
                 report.getStreams().get(1).getByDayEntries().keySet());
         
         // Now they are out of compliance because there are things to do in the future.
-        assertEquals(Integer.valueOf(0), report.getAdherencePercent());
+        assertEquals(Integer.valueOf(100), report.getAdherencePercent());
         assertEquals(ImmutableSet.of(NOT_APPLICABLE), getStates(report, CLINIC_VISIT));
         assertEquals(ImmutableSet.of(NOT_YET_AVAILABLE), getStates(report, FAKE_ENROLLMENT));
 

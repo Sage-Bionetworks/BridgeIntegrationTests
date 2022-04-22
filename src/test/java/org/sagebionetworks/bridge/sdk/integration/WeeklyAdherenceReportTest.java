@@ -239,7 +239,7 @@ public class WeeklyAdherenceReportTest {
         userApi.updateAdherenceRecords(studyId, updates).execute();
         
         report = devApi.getWeeklyAdherenceReport(studyId, participant1.getUserId()).execute().body();
-        assertEquals(Integer.valueOf(33), report.getWeeklyAdherencePercent());
+        assertEquals(Integer.valueOf(100), report.getWeeklyAdherencePercent());
 
         win = report.getByDayEntries().get("0").get(1).getTimeWindows().get(0);
         assertEquals(SessionCompletionState.COMPLETED, win.getState());
@@ -270,7 +270,7 @@ public class WeeklyAdherenceReportTest {
                 .filter(r -> r.getParticipant().getIdentifier().equals(participant1.getUserId()))
                 .findFirst()
                 .orElse(null);
-        assertEquals(Integer.valueOf(33), report.getWeeklyAdherencePercent());
+        assertEquals(Integer.valueOf(100), report.getWeeklyAdherencePercent());
 
         report = allReports.getItems().stream()
                 .filter(r -> r.getParticipant().getIdentifier().equals(participant2.getUserId()))
@@ -296,7 +296,7 @@ public class WeeklyAdherenceReportTest {
         
         search = new AdherenceReportSearch().adherenceMin(50).adherenceMax(100);
         allReports = adherenceApi.getWeeklyAdherenceReports(studyId, search).execute().body();
-        assertEquals(Integer.valueOf(0), allReports.getTotal());
+        assertEquals(Integer.valueOf(1), allReports.getTotal());
         assertEquals(Integer.valueOf(50), allReports.getRequestParams().getAdherenceMin());
         assertEquals(Integer.valueOf(100), allReports.getRequestParams().getAdherenceMax());
         
@@ -337,8 +337,8 @@ public class WeeklyAdherenceReportTest {
         assertEquals(Integer.valueOf(2), stats.getEntries().get(1).getTotalActive());
         
         stats = adherenceApi.getAdherenceStatistics(studyId, 70).execute().body();
-        assertEquals(Integer.valueOf(0), stats.getCompliant());
-        assertEquals(Integer.valueOf(2), stats.getNoncompliant());
+        assertEquals(Integer.valueOf(1), stats.getCompliant());
+        assertEquals(Integer.valueOf(1), stats.getNoncompliant());
         assertEquals(Integer.valueOf(2), stats.getTotalActive());
         
         try {
