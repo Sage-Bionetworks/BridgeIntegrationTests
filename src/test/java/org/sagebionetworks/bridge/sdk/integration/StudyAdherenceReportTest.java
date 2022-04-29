@@ -18,7 +18,10 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
+import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.api.StudyAdherenceApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
@@ -26,12 +29,14 @@ import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.ParticipantSchedule;
+import org.sagebionetworks.bridge.rest.model.ParticipantStudyProgress;
 import org.sagebionetworks.bridge.rest.model.PerformanceOrder;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.ScheduledAssessment;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.StudyAdherenceReport;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
@@ -51,6 +56,7 @@ public class StudyAdherenceReportTest {
     private Assessment assessmentA;
     private Assessment assessmentB;
     private Assessment assessmentC;
+    private Study study;
     
     SchedulesV2Api scheduleApi;
     ForStudyCoordinatorsApi coordApi;
@@ -114,6 +120,43 @@ public class StudyAdherenceReportTest {
         if (studyDesigner != null) {
             studyDesigner.signOutAndDeleteUser();
         }
+        if (study != null && study.getIdentifier() != null) {
+            admin.getClient(StudiesApi.class).deleteStudy(study.getIdentifier(), true).execute();
+        }
+    }
+    
+    @Test
+    public void noSchedules() throws Exception {
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        
+        String id = Tests.randomIdentifier(getClass());
+        study = new Study().identifier(id).name(getClass().getSimpleName());
+        admin.getClient(ForStudyCoordinatorsApi.class).createStudy(study).execute();
+        
+        try {
+            admin.getClient(StudyAdherenceApi.class)
+                .getStudyParticipantAdherenceReport(id, user.getUserId()).execute().body();
+            fail("Should have thrown exception.");
+        } catch(EntityNotFoundException e) {
+            assertEquals(e.getMessage(), "Schedule not found.");
+        }
+        
+        // Create an empty schedule, you should get an empty report back
+        
+        Schedule2 schedule = new Schedule2().name(getClass().getSimpleName()).duration("P2D");
+        schedule = admin.getClient(ForStudyDesignersApi.class).saveScheduleForStudy(id, schedule).execute().body();
+        
+        StudyAdherenceReport report = admin.getClient(StudyAdherenceApi.class)
+            .getStudyParticipantAdherenceReport(id, user.getUserId()).execute().body();
+        
+        assertTrue(report.isTestAccount());
+        assertEquals(report.getProgression(), ParticipantStudyProgress.UNSTARTED);
+        assertNull(report.getAdherencePercent());
+        assertTrue(report.getWeeks().isEmpty());
+        assertTrue(report.getUnsetEventIds().isEmpty());
+        assertTrue(report.getUnscheduledSessions().isEmpty());
+        assertTrue(report.getEventTimestamps().isEmpty());
+        assertNull(report.getNextActivity());
     }
     
     @Test
