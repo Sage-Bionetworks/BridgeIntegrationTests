@@ -56,7 +56,6 @@ import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 @SuppressWarnings({ "ConstantConditions", "Guava", "unchecked" })
 public class WorkerApiTest {
-    private static final String SYNAPSE_USER_ID = "00000";
     private static final DateTimeZone TEST_USER_TIME_ZONE = DateTimeZone.forOffsetHours(-8);
     private static final String TEST_USER_TIME_ZONE_STRING = "-08:00";
     
@@ -130,7 +129,7 @@ public class WorkerApiTest {
         String externalId = Tests.randomIdentifier(getClass());
         
         user = new TestUserHelper.Builder(WorkerApiTest.class).withConsentUser(true)
-                .withExternalIds(ImmutableMap.of(STUDY_ID_1, externalId)).withSynapseUserId(SYNAPSE_USER_ID).createAndSignInUser();
+                .withExternalIds(ImmutableMap.of(STUDY_ID_1, externalId)).createAndSignInUser();
 
         // Have the user get activities, to bootstrap timezone.
         user.getClient(ActivitiesApi.class).getScheduledActivitiesByDateRange(DateTime.now(TEST_USER_TIME_ZONE),
@@ -165,11 +164,6 @@ public class WorkerApiTest {
                 .getParticipantByExternalIdForApp(TEST_APP_ID, externalId, false).execute().body();
         assertEquals(participant.getId(), participant3.getId());
         assertNull(participant3.getConsentHistories().get(TEST_APP_ID));
-        
-        // get by synapse user id
-        StudyParticipant participant4 = workersApi
-                .getParticipantBySynapseUserIdForApp(TEST_APP_ID, SYNAPSE_USER_ID, false).execute().body();
-        assertEquals(participant.getId(), participant4.getId());
     }
     
     @Test
