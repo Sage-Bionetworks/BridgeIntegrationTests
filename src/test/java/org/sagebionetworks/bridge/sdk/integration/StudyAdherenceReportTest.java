@@ -156,7 +156,6 @@ public class StudyAdherenceReportTest {
         assertTrue(report.getUnsetEventIds().isEmpty());
         assertTrue(report.getUnscheduledSessions().isEmpty());
         assertTrue(report.getEventTimestamps().isEmpty());
-        assertNull(report.getNextActivity());
     }
     
     @Test
