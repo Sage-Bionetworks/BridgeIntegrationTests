@@ -6,14 +6,19 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType.MUTABLE;
+import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
+import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableList;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.junit.After;
@@ -24,10 +29,14 @@ import org.junit.Test;
 import org.sagebionetworks.client.SynapseClient;
 import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.repo.model.Folder;
+import org.sagebionetworks.repo.model.ObjectType;
 import org.sagebionetworks.repo.model.Project;
 import org.sagebionetworks.repo.model.Team;
+import org.sagebionetworks.repo.model.dao.WikiPageKey;
+import org.sagebionetworks.repo.model.dao.WikiPageKeyHelper;
 import org.sagebionetworks.repo.model.project.StsStorageLocationSetting;
 import org.sagebionetworks.repo.model.table.TableEntity;
+import org.sagebionetworks.repo.model.v2.wiki.V2WikiPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,33 +45,51 @@ import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ConsentsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.App;
+import org.sagebionetworks.bridge.rest.model.Assessment;
+import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
 import org.sagebionetworks.bridge.rest.model.Exporter3Configuration;
+import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.ParticipantVersion;
 import org.sagebionetworks.bridge.rest.model.Role;
+import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SharingScopeForm;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
+import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.rest.model.TimeWindow;
+import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.Withdrawal;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
 public class Exporter3Test {
     private static final Logger LOG = LoggerFactory.getLogger(Exporter3Test.class);
+    private static final String MUTABLE_EVENT = "custom:event1";
 
     private static TestUser admin;
     private static ForAdminsApi adminsApi;
     private static DateTime oneHourAgo;
     private static SynapseClient synapseClient;
     private static ForWorkersApi workersApi;
+
+    private static Schedule2 schedule;
+    private static ForStudyDesignersApi studyDesignersApi;
+    private static TestUser studyDesigner;
+    private static Assessment assessment;
 
     private String extId;
     private String userId;
@@ -445,5 +472,81 @@ public class Exporter3Test {
 
         assertEquals(1, participantVersion.getDataGroups().size());
         assertEquals("test_user", participantVersion.getDataGroups().get(0));
+    }
+
+    @Test
+    public void exportTimelineForStudy() throws Exception {
+        // Init Exporter 3.
+        adminsApi.initExporter3ForStudy(STUDY_ID_1).execute().body();
+
+        studyDesigner = TestUserHelper.createAndSignInUser(StudyBurstTest.class, false, STUDY_DESIGNER);
+        assessment = new Assessment().title(StudyBurstTest.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
+                .identifier(Tests.randomIdentifier(Exporter3Test.class));
+
+        assessment = studyDesigner.getClient(ForStudyDesignersApi.class)
+                .createAssessment(assessment).execute().body();
+
+        setupSchedule(MUTABLE_EVENT, MUTABLE, "P2D");
+
+        studyDesignersApi = studyDesigner.getClient(ForStudyDesignersApi.class);
+        adminsApi = admin.getClient(ForAdminsApi.class);
+
+        Timeline timeline = studyDesignersApi.getTimelineForStudy(STUDY_ID_1).execute().body();
+
+        Exporter3Configuration exporter3Config = adminsApi.exportTimelineForStudy(STUDY_ID_1).execute().body();
+        WikiPageKey key = WikiPageKeyHelper.createWikiPageKey(exporter3Config.getProjectId(), ObjectType.ENTITY, exporter3Config.getWikiPageId());
+        V2WikiPage getWiki = synapseClient.getV2WikiPage(key);
+
+        assertEquals(getWiki.getTitle(), "wikiFor" + STUDY_ID_1);
+        assertEquals(getWiki.getMarkdownFileHandleId(), "exportedTimelinefor" + STUDY_ID_1);
+
+
+    }
+
+    private void setupSchedule(String originEventId, ActivityEventUpdateType burstUpdateType, String delayPeriod)
+            throws Exception {
+        // clean up any schedule that is there
+        try {
+            TestUser admin = TestUserHelper.getSignedInAdmin();
+            schedule = admin.getClient(SchedulesV2Api.class).getScheduleForStudy(STUDY_ID_1).execute().body();
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
+        } catch(EntityNotFoundException e) {
+
+        }
+
+        studyDesignersApi = studyDesigner.getClient(ForStudyDesignersApi.class);
+        schedule = new Schedule2();
+        schedule.setName("Test Schedule [StudyBurstTest]");
+        schedule.setDuration("P10D");
+
+        StudyBurst burst = new StudyBurst()
+                .identifier("burst1")
+                .originEventId(originEventId)
+                .delay(delayPeriod)
+                .interval("P1D")
+                .occurrences(4)
+                .updateType(burstUpdateType);
+        schedule.setStudyBursts(ImmutableList.of(burst));
+
+        Session session = new Session();
+        session.setName("Simple assessment");
+        session.addLabelsItem(new Label().lang("en").value("Take the assessment"));
+        session.addStartEventIdsItem("timeline_retrieved");
+        session.addStudyBurstIdsItem("burst1");
+        session.setPerformanceOrder(SEQUENTIAL);
+
+        AssessmentReference2 ref = new AssessmentReference2()
+                .guid(assessment.getGuid())
+                .appId(TEST_APP_ID)
+                .revision(5)
+                .addLabelsItem(new Label().lang("en").value("Test Value"))
+                .minutesToComplete(10)
+                .title("A title")
+                .identifier(assessment.getIdentifier());
+        session.addAssessmentsItem(ref);
+        session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT3H"));
+        schedule.addSessionsItem(session);
+
+        schedule = studyDesignersApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
     }
 }
