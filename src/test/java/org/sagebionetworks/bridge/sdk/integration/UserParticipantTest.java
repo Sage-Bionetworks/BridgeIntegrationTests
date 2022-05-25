@@ -15,10 +15,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
+import org.sagebionetworks.bridge.rest.api.AccountsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.model.Account;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
@@ -36,19 +37,23 @@ import java.util.List;
 @Category(IntegrationSmokeTest.class)
 public class UserParticipantTest {
 
+    private static TestUser user;
     private static TestUser developer;
     private static TestUser researcher;
     private static TestUser consentedUser;
 
     @Before
     public void before() throws Exception {
-        developer = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true, Role.DEVELOPER);
-        researcher = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true, Role.RESEARCHER);
+        developer = TestUserHelper.createAndSignInUser(UserParticipantTest.class, false, Role.DEVELOPER);
+        researcher = TestUserHelper.createAndSignInUser(UserParticipantTest.class, false, Role.RESEARCHER);
         consentedUser = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true);
     }
 
     @After
     public void after() throws Exception {
+        if (user != null) {
+            user.signOutAndDeleteUser();
+        }
         if (developer != null) {
             developer.signOutAndDeleteUser();    
         }
@@ -62,43 +67,40 @@ public class UserParticipantTest {
 
     @Test
     public void canUpdateProfile() throws Exception {
-        TestUser user = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true);
-        try {
-            ParticipantsApi participantsApi = user.getClient(ParticipantsApi.class);
+        user = TestUserHelper.createAndSignInUser(UserParticipantTest.class, true);
 
-            StudyParticipant participant = participantsApi.getUsersParticipantRecord(false).execute().body();
+        ParticipantsApi participantsApi = user.getClient(ParticipantsApi.class);
 
-            // This should be true by default, once a participant is created:
-            assertTrue(participant.isNotifyByEmail());
-            
-            participant.setFirstName("Davey");
-            participant.setLastName("Crockett");
-            participant.setAttributes(new ImmutableMap.Builder<String,String>().put("can_be_recontacted","true").build());
-            participant.setNotifyByEmail(null); // this should have no effect
-            participantsApi.updateUsersParticipantRecord(participant).execute().body();
+        StudyParticipant participant = participantsApi.getUsersParticipantRecord(false).execute().body();
 
-            participant = participantsApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals("Davey", participant.getFirstName());
-            assertEquals("Crockett", participant.getLastName());
-            assertEquals("true", participant.getAttributes().get("can_be_recontacted"));
-            // This should not have been changed as the result of updating other fields
-            assertTrue(participant.isNotifyByEmail());
-            
-            // Now update only some of the record but verify the map is still there
-            participant = participantsApi.getUsersParticipantRecord(false).execute().body();
-            participant.setFirstName("Davey2");
-            participant.setLastName("Crockett2");
-            participant.setNotifyByEmail(false);
-            participantsApi.updateUsersParticipantRecord(participant).execute().body();
-            
-            participant = participantsApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals("First name updated", "Davey2", participant.getFirstName());
-            assertEquals("Last name updated", "Crockett2", participant.getLastName());
-            assertEquals("true", participant.getAttributes().get("can_be_recontacted"));
-            assertFalse(participant.isNotifyByEmail());
-        } finally {
-            user.signOutAndDeleteUser();
-        }
+        // This should be true by default, once a participant is created:
+        assertTrue(participant.isNotifyByEmail());
+        
+        participant.setFirstName("Davey");
+        participant.setLastName("Crockett");
+        participant.setAttributes(new ImmutableMap.Builder<String,String>().put("can_be_recontacted","true").build());
+        participant.setNotifyByEmail(null); // this should have no effect
+        participantsApi.updateUsersParticipantRecord(participant).execute().body();
+
+        participant = participantsApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals("Davey", participant.getFirstName());
+        assertEquals("Crockett", participant.getLastName());
+        assertEquals("true", participant.getAttributes().get("can_be_recontacted"));
+        // This should not have been changed as the result of updating other fields
+        assertTrue(participant.isNotifyByEmail());
+        
+        // Now update only some of the record but verify the map is still there
+        participant = participantsApi.getUsersParticipantRecord(false).execute().body();
+        participant.setFirstName("Davey2");
+        participant.setLastName("Crockett2");
+        participant.setNotifyByEmail(false);
+        participantsApi.updateUsersParticipantRecord(participant).execute().body();
+        
+        participant = participantsApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals("First name updated", "Davey2", participant.getFirstName());
+        assertEquals("Last name updated", "Crockett2", participant.getLastName());
+        assertEquals("true", participant.getAttributes().get("can_be_recontacted"));
+        assertFalse(participant.isNotifyByEmail());
     }
 
     @Test
@@ -106,46 +108,44 @@ public class UserParticipantTest {
         String externalId1 = Tests.randomIdentifier(getClass());
         String externalId2 = Tests.randomIdentifier(getClass());
         
-        TestUser user = new TestUserHelper.Builder(UserParticipantTest.class)
+        user = new TestUserHelper.Builder(UserParticipantTest.class)
                 .withExternalIds(ImmutableMap.of(STUDY_ID_1, externalId1)).createAndSignInUser();
         
-        try {
-            ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
-            StudyParticipant participant = usersApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals(externalId1, participant.getExternalIds().get(STUDY_ID_1));
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        StudyParticipant participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals(externalId1, participant.getExternalIds().get(STUDY_ID_1));
 
-            UserSessionInfo session = usersApi.updateUsersParticipantRecord(participant).execute().body();
-            assertEquals(externalId1, session.getExternalIds().get(STUDY_ID_1));
+        UserSessionInfo session = usersApi.updateUsersParticipantRecord(participant).execute().body();
+        assertEquals(externalId1, session.getExternalIds().get(STUDY_ID_1));
 
-            participant = usersApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals(user.getEmail(), participant.getEmail());
-            assertTrue(participant.getExternalIds().values().contains(externalId1));
-            
-            // This doesn't do anything
-            participant.setExternalIds(ImmutableMap.of(STUDY_ID_2, externalId2));
-            usersApi.updateUsersParticipantRecord(participant).execute();
-            
-            StudyParticipant retValue = usersApi.getUsersParticipantRecord(false).execute().body();
-            assertEquals(externalId1, retValue.getExternalIds().get(STUDY_ID_1));
-            assertNull(retValue.getExternalIds().get(STUDY_ID_2));
-        } finally {
-            user.signOutAndDeleteUser();
-        }
+        participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals(user.getEmail(), participant.getEmail());
+        assertTrue(participant.getExternalIds().values().contains(externalId1));
+        
+        // This doesn't do anything
+        participant.setExternalIds(ImmutableMap.of(STUDY_ID_2, externalId2));
+        usersApi.updateUsersParticipantRecord(participant).execute();
+        
+        StudyParticipant retValue = usersApi.getUsersParticipantRecord(false).execute().body();
+        assertEquals(externalId1, retValue.getExternalIds().get(STUDY_ID_1));
+        assertNull(retValue.getExternalIds().get(STUDY_ID_2));
     }
     
     @Test
     public void canUpdateDataGroups() throws Exception {
+        user = TestUserHelper.createAndSignInUser(getClass(), true);
+                
         // Developer in this test is not a test user.
         List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2");
 
-        ForConsentedUsersApi usersApi = developer.getClient(ForConsentedUsersApi.class);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
 
         StudyParticipant participant = new StudyParticipant();
         participant.setDataGroups(dataGroups);
         usersApi.updateUsersParticipantRecord(participant).execute();
 
-        developer.signOut();
-        developer.signInAgain();
+        user.signOut();
+        user.signInAgain();
         
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
         assertListsEqualIgnoringOrder(ImmutableList.of("test_user", "sdk-int-1", "sdk-int-2"), 
@@ -155,8 +155,8 @@ public class UserParticipantTest {
         participant.setDataGroups(ImmutableList.of());
         usersApi.updateUsersParticipantRecord(participant).execute();
         
-        developer.signOut();
-        developer.signInAgain();
+        user.signOut();
+        user.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
         assertListsEqualIgnoringOrder(ImmutableList.of("test_user"), participant.getDataGroups());
@@ -164,29 +164,28 @@ public class UserParticipantTest {
 
     @Test
     public void canUpdateDataGroupsDoesNotOverrideTestFlag() throws Exception {
-        // Developer in this test is set as a test user.
-        List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2", "test_user");
+        user = new TestUserHelper.Builder(UserParticipantTest.class)
+                .withTestDataGroup().withConsentUser(true).createAndSignInUser();
 
-        ForConsentedUsersApi usersApi = developer.getClient(ForConsentedUsersApi.class);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
 
+        List<String> dataGroups = ImmutableList.of("sdk-int-1", "sdk-int-2");
         StudyParticipant participant = new StudyParticipant();
         participant.setDataGroups(dataGroups);
         usersApi.updateUsersParticipantRecord(participant).execute();
 
-        developer.signOut();
-        developer.signInAgain();
+        user.signOut();
+        user.signInAgain();
         
-        // Because this is only a developer, their own account is modified to be a test account
-        // on update.
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
-        assertListsEqualIgnoringOrder(dataGroups, participant.getDataGroups());
+        participant.getDataGroups().contains("test_user");
 
         // now clear the values, it should be possible to remove all but the test_user.
         participant.setDataGroups(ImmutableList.of());
         usersApi.updateUsersParticipantRecord(participant).execute();
         
-        developer.signOut();
-        developer.signInAgain();
+        user.signOut();
+        user.signInAgain();
 
         participant = usersApi.getUsersParticipantRecord(false).execute().body();
         assertEquals(ImmutableList.of("test_user"), participant.getDataGroups());
@@ -218,22 +217,18 @@ public class UserParticipantTest {
 
     @Test
     public void adminCanUpdateAndViewSelfNote() throws Exception {
-        ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
-        StudyParticipant researcherParticipant = researchersApi.getParticipantById(researcher.getUserId(), false)
-                .execute().body();
-        researcherParticipant.setNote("original note");
-        researchersApi.updateParticipant(researcher.getUserId(), researcherParticipant).execute();
+        AccountsApi accountsApi = researcher.getClient(AccountsApi.class);
+        Account researcherAccount = accountsApi.getAccountForSelf().execute().body();
+        researcherAccount.setNote("original note");
+        
+        accountsApi.updateAccountForSelf(researcherAccount).execute();
 
-        ParticipantsApi adminParticipantsApi = researcher.getClient(ParticipantsApi.class);
-
-        StudyParticipant preUpdateParticipant = adminParticipantsApi.getUsersParticipantRecord(false)
-                .execute().body();
-        preUpdateParticipant.setNote("updated note");
-        adminParticipantsApi.updateUsersParticipantRecord(preUpdateParticipant).execute();
+        Account preUpdateAccount = accountsApi.getAccountForSelf().execute().body();
+        preUpdateAccount.setNote("updated note");
+        accountsApi.updateAccountForSelf(preUpdateAccount).execute();
 
         // Verifying note is updated and viewable in an administrative role
-        StudyParticipant updatedParticipant = adminParticipantsApi.getUsersParticipantRecord(false)
-                .execute().body();
-        assertEquals("updated note", updatedParticipant.getNote());
+        Account updatedAccount = accountsApi.getAccountForSelf().execute().body();
+        assertEquals("updated note", updatedAccount.getNote());
     }
 }

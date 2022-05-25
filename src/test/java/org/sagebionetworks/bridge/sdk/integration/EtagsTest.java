@@ -73,8 +73,9 @@ public class EtagsTest {
         // create a schedule
         SchedulesV2Api schedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
         schedule = new Schedule2();
-        schedule.setName("Test Schedule [Schedule2Test]");
+        schedule.setName("Test Schedule [EtagsTest]");
         schedule.setDuration("P10W");
+        
         schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
         
         ForStudyDesignersApi designApi = studyDesigner.getClient(ForStudyDesignersApi.class);

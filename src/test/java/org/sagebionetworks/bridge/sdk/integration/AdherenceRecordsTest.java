@@ -527,6 +527,12 @@ public class AdherenceRecordsTest {
         assertEquals(ts0, sessionRecord.getStartedOn());
         assertNull(sessionRecord.getFinishedOn());
         
+        
+        Set<String> instanceGuids = usersApi.searchForAdherenceRecords(STUDY_ID_1, 
+                new AdherenceRecordsSearch().declined(Boolean.TRUE)).execute().body().getItems()
+                .stream().map(AdherenceRecord::getInstanceGuid).collect(Collectors.toSet());
+        assertEquals(ImmutableSet.of(asmt1.getInstanceGuid()), instanceGuids);
+        
         // declining both assessments declines the session. Also wipes out the 
         // finishedOn timestamp because the record is updated with no startedOn/finishedOn
         declineAssessmentRecord(usersApi, asmt2.getInstanceGuid());
@@ -535,6 +541,18 @@ public class AdherenceRecordsTest {
         assertTrue(sessionRecord.isDeclined());
         assertNull(sessionRecord.getStartedOn());
         assertNull(sessionRecord.getFinishedOn());
+        
+        // You can search and retrieve just these declined records.
+        instanceGuids = usersApi.searchForAdherenceRecords(STUDY_ID_1, 
+                new AdherenceRecordsSearch().declined(Boolean.TRUE)).execute().body().getItems()
+                .stream().map(AdherenceRecord::getInstanceGuid).collect(Collectors.toSet());
+        assertEquals(ImmutableSet.of(asmt1.getInstanceGuid(), asmt2.getInstanceGuid(), 
+                schSession.getInstanceGuid()), instanceGuids);
+        
+        instanceGuids = usersApi.searchForAdherenceRecords(STUDY_ID_1, 
+                new AdherenceRecordsSearch().declined(Boolean.FALSE)).execute().body().getItems()
+                .stream().map(AdherenceRecord::getInstanceGuid).collect(Collectors.toSet());
+        assertTrue(instanceGuids.isEmpty());
     }
     
     @Test
