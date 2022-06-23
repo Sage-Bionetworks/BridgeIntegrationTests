@@ -114,7 +114,8 @@ public class Exporter3Test {
         // Clean up stray Synapse resources before test.
         deleteEx3Resources();
 
-        // Clear queue.
+        // Clear queue. Note that PurgeQueue can only be called at most once every 60 seconds, or it will throw an
+        // exception.
         PurgeQueueRequest purgeQueueRequest = new PurgeQueueRequest(testQueueUrl);
         sqsClient.purgeQueue(purgeQueueRequest);
 
