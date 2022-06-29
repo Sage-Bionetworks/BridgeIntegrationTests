@@ -72,7 +72,19 @@ public class UploadTest {
 
     // Retry up to 6 times, so we don't spend more than 30 seconds per test.
     private static final int UPLOAD_STATUS_DELAY_RETRIES = 6;
-    
+
+    // invalid MD5 hashes for validation testing
+    private static final String[] INVALID_BASE64_MD5_HASHES = {
+            null, // empty
+            "", // empty
+            "not-md5", //
+            "AAAAAAAAAAAAAAAAAAAAAAA=", // 17 bytes (still 24 characters)
+            "AAAA", // too few bytes and characters
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", // too many bytes and characters
+    };
+    // valid MD5 hashes for validation testing
+    private static final String VALID_BASE64_MD5_HASH = "AAAAAAAAAAAAAAAAAAAAAA=="; // 16 bytes, 24 characters
+
     private static TestUser developer;
     private static TestUser otherAppAdmin;
     private static TestUser researcher;
@@ -431,6 +443,51 @@ public class UploadTest {
         assertEquals("added-value", userMetadata.get("added-metadata"));
         assertEquals("test-task-guid", userMetadata.get("taskRunId"));
         assertEquals(3.0, (double) userMetadata.get("lastMedicationHoursAgo"), 0.001);
+    }
+
+    @Test
+    public void md5Validation() throws Exception {
+        // Create upload request, file doesn't matter because only the MD5 is being
+        // tested
+        File file = resolveFilePath("generic-survey-encrypted");
+        UploadRequest request = RestUtils.makeUploadRequestForFile(file);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+
+        // test validation failure for bad MD5s
+        for (String base64Md5 : INVALID_BASE64_MD5_HASHES) {
+            request.setContentMd5(base64Md5);
+            UploadSession session = usersApi.requestUploadSession(request).execute().body();
+            String uploadId = session.getId();
+
+            UploadValidationStatus status = null;
+            for (int i = 0; i < UPLOAD_STATUS_DELAY_RETRIES; i++) {
+                Thread.sleep(UPLOAD_STATUS_DELAY_MILLISECONDS);
+
+                status = usersApi.getUploadStatus(session.getId()).execute().body();
+                if (status.getStatus() == UploadStatus.VALIDATION_FAILED) {
+                    break;
+                } else if (status.getStatus() == UploadStatus.SUCCEEDED) {
+                    fail("MD5 validation should have failed for MD5 \"" + base64Md5 + "\", UploadId=" + uploadId);
+                }
+            }
+        }
+
+        // test validation success for good MD5
+        request.setContentMd5(VALID_BASE64_MD5_HASH);
+        UploadSession session = usersApi.requestUploadSession(request).execute().body();
+        String uploadId = session.getId();
+        UploadValidationStatus status = null;
+        for (int i = 0; i < UPLOAD_STATUS_DELAY_RETRIES; i++) {
+            Thread.sleep(UPLOAD_STATUS_DELAY_MILLISECONDS);
+
+            status = usersApi.getUploadStatus(session.getId()).execute().body();
+            if (status.getStatus() == UploadStatus.VALIDATION_FAILED) {
+                fail("MD5 validation should have succeeded for MD5 \"" + VALID_BASE64_MD5_HASH + "\", UploadId="
+                        + uploadId);
+            } else if (status.getStatus() == UploadStatus.SUCCEEDED) {
+                break;
+            }
+        }
     }
 
     @Test
