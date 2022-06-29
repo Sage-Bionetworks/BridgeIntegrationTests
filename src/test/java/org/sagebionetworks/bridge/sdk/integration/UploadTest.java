@@ -37,6 +37,7 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
 import org.sagebionetworks.bridge.rest.model.RecordExportStatusRequest;
@@ -456,37 +457,19 @@ public class UploadTest {
         // test validation failure for bad MD5s
         for (String base64Md5 : INVALID_BASE64_MD5_HASHES) {
             request.setContentMd5(base64Md5);
-            UploadSession session = usersApi.requestUploadSession(request).execute().body();
-            String uploadId = session.getId();
-
-            UploadValidationStatus status = null;
-            for (int i = 0; i < UPLOAD_STATUS_DELAY_RETRIES; i++) {
-                Thread.sleep(UPLOAD_STATUS_DELAY_MILLISECONDS);
-
-                status = usersApi.getUploadStatus(session.getId()).execute().body();
-                if (status.getStatus() == UploadStatus.VALIDATION_FAILED) {
-                    break;
-                } else if (status.getStatus() == UploadStatus.SUCCEEDED) {
-                    fail("MD5 validation should have failed for MD5 \"" + base64Md5 + "\", UploadId=" + uploadId);
-                }
+            try {
+                usersApi.requestUploadSession(request).execute().body();
+                fail("MD5 validation should have failed for MD5 \"" + base64Md5 + "\"");
+            } catch (InvalidEntityException e) {
             }
         }
 
         // test validation success for good MD5
         request.setContentMd5(VALID_BASE64_MD5_HASH);
-        UploadSession session = usersApi.requestUploadSession(request).execute().body();
-        String uploadId = session.getId();
-        UploadValidationStatus status = null;
-        for (int i = 0; i < UPLOAD_STATUS_DELAY_RETRIES; i++) {
-            Thread.sleep(UPLOAD_STATUS_DELAY_MILLISECONDS);
-
-            status = usersApi.getUploadStatus(session.getId()).execute().body();
-            if (status.getStatus() == UploadStatus.VALIDATION_FAILED) {
-                fail("MD5 validation should have succeeded for MD5 \"" + VALID_BASE64_MD5_HASH + "\", UploadId="
-                        + uploadId);
-            } else if (status.getStatus() == UploadStatus.SUCCEEDED) {
-                break;
-            }
+        try {
+            usersApi.requestUploadSession(request).execute().body();
+        } catch (InvalidEntityException e) {
+            fail("MD5 validation should have succeeded for MD5 \"" + VALID_BASE64_MD5_HASH + "\"");
         }
     }
 
