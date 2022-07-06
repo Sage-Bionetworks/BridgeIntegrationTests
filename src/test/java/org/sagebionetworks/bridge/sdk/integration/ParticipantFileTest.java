@@ -184,7 +184,7 @@ public class ParticipantFileTest {
         connection.setRequestMethod("PUT");
         connection.setRequestProperty("Content-Type", "text/plain");
         OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.US_ASCII);
-        out.write(StringUtils.repeat("A", 100)); // 10 B in ASCII
+        out.write(StringUtils.repeat("A", 100)); // 100 B in ASCII
         out.close();
         assertEquals(200, connection.getResponseCode());
         connection.disconnect();
