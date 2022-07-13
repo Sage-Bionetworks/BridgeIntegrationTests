@@ -37,6 +37,7 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
 import org.sagebionetworks.bridge.rest.model.RecordExportStatusRequest;
@@ -72,7 +73,19 @@ public class UploadTest {
 
     // Retry up to 6 times, so we don't spend more than 30 seconds per test.
     private static final int UPLOAD_STATUS_DELAY_RETRIES = 6;
-    
+
+    // invalid MD5 hashes for validation testing
+    private static final String[] INVALID_BASE64_MD5_HASHES = {
+            null, // empty
+            "", // empty
+            "not-md5", //
+            "AAAAAAAAAAAAAAAAAAAAAAA=", // 17 bytes (still 24 characters)
+            "AAAA", // too few bytes and characters
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", // too many bytes and characters
+    };
+    // valid MD5 hashes for validation testing
+    private static final String VALID_BASE64_MD5_HASH = "AAAAAAAAAAAAAAAAAAAAAA=="; // 16 bytes, 24 characters
+
     private static TestUser developer;
     private static TestUser otherAppAdmin;
     private static TestUser researcher;
@@ -431,6 +444,33 @@ public class UploadTest {
         assertEquals("added-value", userMetadata.get("added-metadata"));
         assertEquals("test-task-guid", userMetadata.get("taskRunId"));
         assertEquals(3.0, (double) userMetadata.get("lastMedicationHoursAgo"), 0.001);
+    }
+
+    @Test
+    public void md5Validation() throws Exception {
+        // Create upload request, file doesn't matter because only the MD5 is being
+        // tested
+        File file = resolveFilePath("generic-survey-encrypted");
+        UploadRequest request = RestUtils.makeUploadRequestForFile(file);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+
+        // test validation failure for bad MD5s
+        for (String base64Md5 : INVALID_BASE64_MD5_HASHES) {
+            request.setContentMd5(base64Md5);
+            try {
+                usersApi.requestUploadSession(request).execute().body();
+                fail("MD5 validation should have failed for MD5 \"" + base64Md5 + "\"");
+            } catch (InvalidEntityException e) {
+            }
+        }
+
+        // test validation success for good MD5
+        request.setContentMd5(VALID_BASE64_MD5_HASH);
+        try {
+            usersApi.requestUploadSession(request).execute().body();
+        } catch (InvalidEntityException e) {
+            fail("MD5 validation should have succeeded for MD5 \"" + VALID_BASE64_MD5_HASH + "\"");
+        }
     }
 
     @Test

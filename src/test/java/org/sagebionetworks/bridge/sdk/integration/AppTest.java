@@ -617,7 +617,7 @@ public class AppTest {
             request.setName("upload.zip");
             request.setContentType("application/zip");
             request.setContentLength(100L);
-            request.setContentMd5("ABC");
+            request.setContentMd5("AAAAAAAAAAAAAAAAAAAAAA==");
 
             ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
             UploadSession uploadSession = usersApi.requestUploadSession(request).execute().body();
