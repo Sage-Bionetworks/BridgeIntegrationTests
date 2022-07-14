@@ -8,7 +8,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.CONFIG;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.io.IOException;
@@ -45,6 +44,7 @@ import org.sagebionetworks.repo.model.table.TableEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.rest.ApiClientProvider;
 import org.sagebionetworks.bridge.rest.api.AccountsApi;
@@ -95,17 +95,19 @@ public class Exporter3Test {
 
     @BeforeClass
     public static void beforeClass() throws Exception {
+        Config config = Tests.loadTestConfig();
+
         synapseClient = Tests.getSynapseClient();
         admin = TestUserHelper.getSignedInAdmin();
         adminsApi = admin.getClient(ForAdminsApi.class);
         oneHourAgo = DateTime.now().minusHours(1);
-        testQueueArn = CONFIG.get("integ.test.queue.arn");
-        testQueueUrl = CONFIG.get("integ.test.queue.url");
+        testQueueArn = config.get("integ.test.queue.arn");
+        testQueueUrl = config.get("integ.test.queue.url");
         workersApi = admin.getClient(ForWorkersApi.class);
 
         // Set up AWS clients.
-        AWSCredentials awsCredentials = new BasicAWSCredentials(CONFIG.get("aws.key"),
-                CONFIG.get("aws.secret.key"));
+        AWSCredentials awsCredentials = new BasicAWSCredentials(config.get("aws.key"),
+                config.get("aws.secret.key"));
         AWSCredentialsProvider awsCredentialsProvider = new AWSStaticCredentialsProvider(awsCredentials);
 
         snsClient = AmazonSNSClientBuilder.standard().withCredentials(awsCredentialsProvider).build();
