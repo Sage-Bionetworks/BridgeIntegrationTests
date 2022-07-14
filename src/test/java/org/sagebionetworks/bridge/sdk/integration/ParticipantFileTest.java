@@ -184,18 +184,18 @@ public class ParticipantFileTest {
         connection.setRequestMethod("PUT");
         connection.setRequestProperty("Content-Type", "text/plain");
         OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.US_ASCII);
-        out.write(StringUtils.repeat("A", 100)); // 100 B in ASCII
+        out.write(StringUtils.repeat("A", 1000)); // 1 KB in ASCII
         out.close();
         assertEquals(200, connection.getResponseCode());
         connection.disconnect();
 
-        for (int i = 0; i < 10; i++) {
-            try {
-                userApi.getParticipantFile("rate-limit-test").execute();
-            } catch (Exception e) {
-                fail(String.format("Download %d incorrectly failed with %s", i + 1, e.getMessage()));
-            }
+        // should succeed
+        try {
+            userApi.getParticipantFile("rate-limit-test").execute();
+        } catch (Exception e) {
+            fail(String.format("Download incorrectly failed with %s (%s)", e.getClass().getName(), e.getMessage()));
         }
+        // should fails
         try {
             userApi.getParticipantFile("rate-limit-test").execute();
             fail("Download should have failed with a rate limit error");
