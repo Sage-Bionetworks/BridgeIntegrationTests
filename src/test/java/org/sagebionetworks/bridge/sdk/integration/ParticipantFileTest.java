@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import okhttp3.ResponseBody;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,10 +14,12 @@ import org.sagebionetworks.bridge.rest.model.ParticipantFileList;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Scanner;
 
@@ -168,5 +171,40 @@ public class ParticipantFileTest {
         assertNotNull(results);
         resultList = results.getItems();
         assertEquals(0, resultList.size());
+    }
+
+    @Test
+    public void participantFileRateLimited() throws IOException, InterruptedException {
+        file = new ParticipantFile();
+        file.setMimeType("text/plain");
+        ParticipantFile upload = userApi.createParticipantFile("rate-limit-test", file).execute().body();
+        URL uploadUrl = new URL(upload.getUploadUrl());
+        HttpURLConnection connection = (HttpURLConnection) uploadUrl.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("PUT");
+        connection.setRequestProperty("Content-Type", "text/plain");
+        OutputStreamWriter out = new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.US_ASCII);
+        out.write(StringUtils.repeat("A", 1000)); // 1 KB in ASCII
+        out.close();
+        assertEquals(200, connection.getResponseCode());
+        connection.disconnect();
+
+        // should succeed
+        try {
+            userApi.getParticipantFile("rate-limit-test").execute();
+        } catch (Exception e) {
+            fail(String.format("Download incorrectly failed with %s (%s)", e.getClass().getName(), e.getMessage()));
+        }
+        // should fails
+        try {
+            userApi.getParticipantFile("rate-limit-test").execute();
+            fail("Download should have failed with a rate limit error");
+        } catch (BridgeSDKException e) {
+            assertEquals(429, e.getStatusCode());
+        }
+
+        // wait 5 seconds to let rate limit refresh so other tests and cleanup method
+        // can run
+        Thread.sleep(5000);
     }
 }
