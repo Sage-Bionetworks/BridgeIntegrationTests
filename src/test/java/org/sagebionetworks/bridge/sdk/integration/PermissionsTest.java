@@ -438,9 +438,8 @@ public class PermissionsTest {
         study = new Study().identifier(studyId).name("test-study-name");
         studiesApi.createStudy(study).execute();
     
-        // Adding the org as a study sponsor and enrolling a participant
+        // Adding the org as a study sponsor
         orgApi.addStudySponsorship(orgId, studyId).execute();
-        studiesApi.enrollParticipant(studyId, new Enrollment().userId(user1.getUserId())).execute();
         
         // Creating a user with roles
         String email = IntegTestUtils.makeEmail(PermissionsTest.class);
