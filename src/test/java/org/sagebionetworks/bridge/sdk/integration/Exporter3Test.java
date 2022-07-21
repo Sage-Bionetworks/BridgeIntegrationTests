@@ -549,6 +549,37 @@ public class Exporter3Test {
         assertTrue(participantVersionList.isEmpty());
     }
 
+    @Test
+    public void backfillParticipantVersion() throws Exception {
+        // Temporarily disable Exporter 3 for app. This way, when we create the test user, it doesn't create a
+        // participant version.
+        App app = adminsApi.getUsersApp().execute().body();
+        app.setExporter3Enabled(false);
+        adminsApi.updateUsersApp(app).execute();
+
+        // Create test user. We have to set the sharing scope, too.
+        TestUser user = TestUserHelper.createAndSignInUser(Exporter3Test.class, true);
+        userId = user.getUserId();
+        user.getClient(ForConsentedUsersApi.class).changeSharingScope(new SharingScopeForm()
+                .scope(SharingScope.ALL_QUALIFIED_RESEARCHERS)).execute();
+
+        // Enable Exporter 3.
+        app = adminsApi.getUsersApp().execute().body();
+        app.setExporter3Enabled(true);
+        adminsApi.updateUsersApp(app).execute();
+
+        // There are no participant versions, since Exporter 3 is was disabled when the user was created.
+        List<ParticipantVersion> participantVersionList = workersApi.getAllParticipantVersionsForUser(TEST_APP_ID,
+                userId).execute().body().getItems();
+        assertTrue(participantVersionList.isEmpty());
+
+        // Backfill participant version. There is now 1 participant version.
+        workersApi.backfillParticipantVersion(TEST_APP_ID, userId).execute();
+        participantVersionList = workersApi.getAllParticipantVersionsForUser(TEST_APP_ID, userId).execute().body()
+                .getItems();
+        assertEquals(1, participantVersionList.size());
+    }
+
     private void verifyCommonParams(ParticipantVersion participantVersion) {
         assertEquals(TEST_APP_ID, participantVersion.getAppId());
         // Health code exists (but we don't know what it is).
