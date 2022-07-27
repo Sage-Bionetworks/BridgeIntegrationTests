@@ -1,9 +1,12 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sagebionetworks.bridge.rest.api.AccountsApi;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.PermissionsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -11,7 +14,9 @@ import org.sagebionetworks.bridge.rest.exceptions.ConcurrentModificationExceptio
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.AccessLevel;
+import org.sagebionetworks.bridge.rest.model.Account;
 import org.sagebionetworks.bridge.rest.model.Assessment;
+import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.EntityType;
 import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.Permission;
@@ -19,6 +24,7 @@ import org.sagebionetworks.bridge.rest.model.PermissionDetail;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
+import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 import java.util.List;
 
@@ -38,6 +44,8 @@ import static org.sagebionetworks.bridge.rest.model.EntityType.ORGANIZATION;
 import static org.sagebionetworks.bridge.rest.model.EntityType.PARTICIPANTS;
 import static org.sagebionetworks.bridge.rest.model.EntityType.STUDY;
 import static org.sagebionetworks.bridge.rest.model.EntityType.STUDY_PI;
+import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
+import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.getElement;
 
 public class PermissionsTest {
@@ -45,11 +53,13 @@ public class PermissionsTest {
     private TestUser admin;
     private TestUser user1;
     private TestUser user2;
+    private String newUserId;
     
     private OrganizationsApi orgApi;
     private StudiesApi studiesApi;
     private AssessmentsApi assessmentsApi;
     private PermissionsApi permissionsApi;
+    private AccountsApi accountsApi;
     
     private String orgId;
     private Organization org;
@@ -70,6 +80,7 @@ public class PermissionsTest {
         orgApi = admin.getClient(OrganizationsApi.class);
         assessmentsApi = admin.getClient(AssessmentsApi.class);
         permissionsApi = admin.getClient(PermissionsApi.class);
+        accountsApi = admin.getClient(AccountsApi.class);
     }
     
     @After
@@ -80,21 +91,30 @@ public class PermissionsTest {
         if (user2 != null) {
             user2.signOutAndDeleteUser();
         }
-        
-        try {
-            assessmentsApi.deleteAssessment(assessmentId, true).execute();
-        } catch (EntityNotFoundException e) {
-            
+        if (newUserId != null) {
+            admin.getClient(ForAdminsApi.class).deleteUser(newUserId).execute();
         }
-        try {
-            studiesApi.deleteStudy(studyId, true).execute();
-        } catch (EntityNotFoundException e) {
-            
+    
+        if (assessmentId != null) {
+            try {
+                assessmentsApi.deleteAssessment(assessmentId, true).execute();
+            } catch (EntityNotFoundException e) {
+    
+            }
         }
-        try {
-            orgApi.deleteOrganization(orgId).execute();
-        } catch (EntityNotFoundException e) {
-            
+        if (studyId != null) {
+            try {
+                studiesApi.deleteStudy(studyId, true).execute();
+            } catch (EntityNotFoundException e) {
+    
+            }
+        }
+        if (orgId != null) {
+            try {
+                orgApi.deleteOrganization(orgId).execute();
+            } catch (EntityNotFoundException e) {
+    
+            }
         }
     }
     
@@ -401,6 +421,47 @@ public class PermissionsTest {
         } catch (EntityNotFoundException e) {
             assertEquals("Organization not found.", e.getMessage());
         }
+    }
+    
+    @Test
+    public void updatePermissionsFromRoleUpdates() throws Exception {
+        // Creating an Org
+        orgId = Tests.randomIdentifier(getClass());
+        org = new Organization();
+        org.setIdentifier(orgId);
+        org.setName("test permissions org");
+        org.description("testing permissions");
+        orgApi.createOrganization(org).execute();
+    
+        // Creating a study
+        studyId = Tests.randomIdentifier(getClass());
+        study = new Study().identifier(studyId).name("test-study-name");
+        studiesApi.createStudy(study).execute();
+    
+        // Adding the org as a study sponsor
+        orgApi.addStudySponsorship(orgId, studyId).execute();
+        
+        // Creating a user with roles
+        String email = IntegTestUtils.makeEmail(PermissionsTest.class);
+        Account account = new Account()
+                .email(email)
+                .roles(ImmutableList.of(STUDY_COORDINATOR))
+                .orgMembership(orgId);
+    
+        newUserId = accountsApi.createAccount(account).execute().body().getIdentifier();
+        Account newUser = accountsApi.getAccount(newUserId).execute().body();
+    
+        List<PermissionDetail> newUserPermissions = permissionsApi.getPermissionsForUser(newUserId)
+                .execute().body().getItems();
+        assertNotNull(newUserPermissions);
+        assertEquals(13, newUserPermissions.size());
+        
+        newUser.setRoles(ImmutableList.of(DEVELOPER));
+        accountsApi.updateAccount(newUserId, newUser).execute();
+        
+        newUserPermissions = permissionsApi.getPermissionsForUser(newUserId).execute().body().getItems();
+        assertNotNull(newUserPermissions);
+        assertEquals(12, newUserPermissions.size());
     }
     
     private Permission createNewPermission(String userId, AccessLevel accessLevel, EntityType entityType, String entityId) {
