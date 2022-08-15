@@ -1,43 +1,5 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
-import org.sagebionetworks.bridge.rest.model.App;
-import org.sagebionetworks.bridge.rest.model.Demographic;
-import org.sagebionetworks.bridge.rest.model.DemographicUser;
-import org.sagebionetworks.bridge.rest.model.DemographicUserAssessment;
-import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStep;
-import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStepAnswerType;
-import org.sagebionetworks.bridge.rest.model.DemographicUserList;
-import org.sagebionetworks.bridge.rest.model.Enrollment;
-import org.sagebionetworks.bridge.rest.model.Organization;
-import org.sagebionetworks.bridge.user.TestUser;
-import org.sagebionetworks.bridge.user.TestUserHelper;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Optional;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
-import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
-import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
-import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
-import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
-import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
-import org.sagebionetworks.bridge.rest.api.StudiesApi;
-import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
-import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
-import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
-import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
-import org.sagebionetworks.bridge.rest.model.Role;
-import org.sagebionetworks.bridge.rest.model.SignIn;
-import org.sagebionetworks.bridge.rest.model.SignUp;
-import org.sagebionetworks.bridge.rest.model.Study;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -46,6 +8,37 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Optional;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
+import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
+import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
+import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.Demographic;
+import org.sagebionetworks.bridge.rest.model.DemographicUser;
+import org.sagebionetworks.bridge.rest.model.DemographicUserAssessment;
+import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStep;
+import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStepAnswerType;
+import org.sagebionetworks.bridge.rest.model.DemographicUserList;
+import org.sagebionetworks.bridge.rest.model.Enrollment;
+import org.sagebionetworks.bridge.rest.model.Organization;
+import org.sagebionetworks.bridge.rest.model.Role;
+import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.user.TestUser;
+import org.sagebionetworks.bridge.user.TestUserHelper;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 public class DemographicsTest {
     private static final String TEST_STUDY_ID = "study-id";
@@ -77,8 +70,6 @@ public class DemographicsTest {
     ForConsentedUsersApi unconsentedConsentedUsersApi;
     ForResearchersApi researchersApi;
     StudiesApi studiesApi;
-    // ForSuperadminsApi superadminApi;
-    // AuthenticationApi authenticationApi;
     OrganizationsApi organizationsApi;
 
     @Before
@@ -87,11 +78,7 @@ public class DemographicsTest {
 
         adminsApi = admin.getClient(ForAdminsApi.class);
         studiesApi = admin.getClient(StudiesApi.class);
-        // superadminApi = admin.getClient(ForSuperadminsApi.class);
-        // authenticationApi = admin.getClient(AuthenticationApi.class);
         organizationsApi = admin.getClient(OrganizationsApi.class);
-
-        // System.out.println(admin.getAppId());
 
         researcherStudyCoordinator = TestUserHelper.createAndSignInUser(DemographicsTest.class, true, Role.RESEARCHER,
                 Role.STUDY_COORDINATOR);
@@ -260,14 +247,14 @@ public class DemographicsTest {
                                 .value("value3")));
         try {
             consentedUsersNotInStudyApi
-                    .saveDemographicUserAssessmentSelf(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
+                    .saveDemographicUserSelfAssessment(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
                     .execute().body();
             fail("should have thrown an exception (user not in study)");
         } catch (EntityNotFoundException e) {
 
         }
         DemographicUser saveAssessmentSelfResult = secondConsentedUsersApi
-                .saveDemographicUserAssessmentSelf(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
+                .saveDemographicUserSelfAssessment(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
                 .execute().body();
 
         assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentSelfResult.getUserId());
@@ -365,6 +352,196 @@ public class DemographicsTest {
         researchersApi.deleteDemographicUser(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId()).execute();
         DemographicUserList getDemographicUsersAfterDeleteResult = researchersApi.getDemographicUsers(TEST_STUDY_ID)
                 .execute()
+                .body();
+
+        assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
+        DemographicUser getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems().get(0);
+        assertNotNull(getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getId());
+        assertFalse(
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getValues());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
+    }
+
+    @Test
+    public void appLevel() throws IOException {
+        // save
+        DemographicUser demographicUserToSave = new DemographicUser().demographics(ImmutableMap.of(TEST_CATEGORY1,
+                new Demographic().multipleSelect(true).values(ImmutableList.of(TEST_VALUE1, TEST_VALUE2)),
+                TEST_CATEGORY2,
+                new Demographic().multipleSelect(false).values(ImmutableList.of(TEST_VALUE3)).units("units")));
+        DemographicUser saveResult = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserToSave).execute()
+                .body();
+
+        assertEquals(consentedUserInStudy.getUserId(), saveResult.getUserId());
+        assertEquals(2, saveResult.getDemographics().size());
+        assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY2).getId());
+        assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(saveResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
+        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY1).getValues(),
+                saveResult.getDemographics().get(TEST_CATEGORY1).getValues());
+        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY2).getValues(),
+                saveResult.getDemographics().get(TEST_CATEGORY2).getValues());
+        assertNull(saveResult.getDemographics().get(TEST_CATEGORY1).getUnits());
+        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY2).getUnits(),
+                saveResult.getDemographics().get(TEST_CATEGORY2).getUnits());
+
+        // save self
+        DemographicUser demographicUserToSaveSelf = new DemographicUser().demographics(ImmutableMap.of(TEST_CATEGORY1,
+                new Demographic().multipleSelect(true).values(ImmutableList.of(TEST_VALUE1, TEST_VALUE2)),
+                TEST_CATEGORY3,
+                new Demographic().multipleSelect(false).values(ImmutableList.of(TEST_VALUE3)).units("units")));
+        try {
+            unconsentedConsentedUsersApi.saveDemographicUserSelfAppLevel(demographicUserToSaveSelf).execute()
+                    .body();
+            fail("should have thrown an exception (user is not consented)");
+        } catch (ConsentRequiredException e) {
+
+        }
+        DemographicUser saveSelfResult = consentedUsersApi
+                .saveDemographicUserSelfAppLevel(demographicUserToSaveSelf).execute().body();
+
+        assertEquals(consentedUserInStudy.getUserId(), saveSelfResult.getUserId());
+        assertEquals(2, saveSelfResult.getDemographics().size());
+        assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
+        assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(saveSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
+                saveSelfResult.getDemographics().get(TEST_CATEGORY1).getValues());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
+                saveSelfResult.getDemographics().get(TEST_CATEGORY3).getValues());
+        assertNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
+                saveSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+
+        // save assessment
+        DemographicUserAssessment demographicUserAssessmentToSave = new DemographicUserAssessment()
+                .stepHistory(ImmutableList.of(
+                        new DemographicUserAssessmentStep().identifier(TEST_CATEGORY1)
+                                .answerType(new DemographicUserAssessmentStepAnswerType().type("array"))
+                                .value(ImmutableList.copyOf(TEST_VALUE_ARRAY)),
+                        new DemographicUserAssessmentStep().identifier(TEST_CATEGORY2)
+                                .answerType(new DemographicUserAssessmentStepAnswerType().type("string"))
+                                .value("value3")));
+        DemographicUser saveAssessmentResult = adminsApi
+                .saveDemographicUserAssessmentAppLevel(secondConsentedUserInStudy.getUserId(),
+                        demographicUserAssessmentToSave)
+                .execute().body();
+
+        assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentResult.getUserId());
+        assertEquals(2, saveAssessmentResult.getDemographics().size());
+        assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getId());
+        assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
+        assertArrayEquals(TEST_VALUE_ARRAY_STRING,
+                saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
+        assertEquals(demographicUserAssessmentToSave.getStepHistory().get(1).getValue(),
+                saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getValues().get(0));
+        assertNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getUnits());
+        assertNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getUnits());
+
+        // save self assessment
+        DemographicUserAssessment demographicUserAssessmentToSaveSelf = new DemographicUserAssessment()
+                .stepHistory(ImmutableList.of(
+                        new DemographicUserAssessmentStep().identifier(TEST_CATEGORY1)
+                                .answerType(new DemographicUserAssessmentStepAnswerType().type("array"))
+                                .value(ImmutableList.copyOf(TEST_VALUE_ARRAY)),
+                        new DemographicUserAssessmentStep().identifier(TEST_CATEGORY3)
+                                .answerType(new DemographicUserAssessmentStepAnswerType().type("string"))
+                                .value("value3")));
+        DemographicUser saveAssessmentSelfResult = secondConsentedUsersApi
+                .saveDemographicUserSelfAssessmentAppLevel(demographicUserAssessmentToSaveSelf)
+                .execute().body();
+
+        assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentSelfResult.getUserId());
+        assertEquals(2, saveAssessmentSelfResult.getDemographics().size());
+        assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
+        assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertArrayEquals(TEST_VALUE_ARRAY_STRING,
+                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
+        assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(1).getValue(),
+                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues().get(0));
+        assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
+        assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+
+        // get multiple
+        DemographicUserList getDemographicUsersResult = adminsApi.getDemographicUsersAppLevel().execute().body();
+
+        assertEquals(2, getDemographicUsersResult.getItems().size());
+        // first user
+        Optional<DemographicUser> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems().stream()
+                .filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
+        assertTrue(getDemographicUsersResult0Optional.isPresent());
+        DemographicUser getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
+        assertEquals(2, getDemographicUsersResult0.getDemographics().size());
+        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
+        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
+                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getValues());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
+                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getValues());
+        assertNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getUnits());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
+                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
+        // second user
+        Optional<DemographicUser> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems().stream()
+                .filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
+        assertTrue(getDemographicUsersResult1Optional.isPresent());
+        DemographicUser getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
+        assertEquals(2, getDemographicUsersResult1.getDemographics().size());
+        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
+        assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertArrayEquals(TEST_VALUE_ARRAY_STRING,
+                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
+        assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(1).getValue(),
+                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues().get(0));
+        assertNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getUnits());
+        assertNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getUnits());
+
+        // delete, get
+        try {
+            adminsApi.deleteDemographicAppLevel(secondConsentedUserInStudy.getUserId(),
+                    saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
+            fail("should have thrown an exception (user does not own this demographic)");
+        } catch (EntityNotFoundException e) {
+
+        }
+        adminsApi.deleteDemographicAppLevel(consentedUserInStudy.getUserId(),
+                saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
+        DemographicUser getResult = adminsApi
+                .getDemographicUserAppLevel(consentedUserInStudy.getUserId()).execute().body();
+
+        assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
+        assertEquals(1, getResult.getDemographics().size());
+        assertFalse(getResult.getDemographics().containsKey(TEST_CATEGORY1));
+        assertNotNull(getResult.getDemographics().get(TEST_CATEGORY3).getId());
+        assertFalse(getResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
+                getResult.getDemographics().get(TEST_CATEGORY3).getValues());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
+                getResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+
+        // delete user, get multiple
+        adminsApi.deleteDemographicUserAppLevel(secondConsentedUserInStudy.getUserId()).execute();
+        DemographicUserList getDemographicUsersAfterDeleteResult = adminsApi.getDemographicUsersAppLevel().execute()
                 .body();
 
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
