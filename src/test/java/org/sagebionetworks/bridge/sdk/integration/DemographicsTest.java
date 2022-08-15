@@ -16,6 +16,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Optional;
 
 import org.junit.After;
 import org.junit.Before;
@@ -36,6 +38,7 @@ import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -57,6 +60,8 @@ public class DemographicsTest {
     private static final double TEST_VALUE_FLOAT = 6.7;
     private static final Object[] TEST_VALUE_ARRAY = { TEST_VALUE1, TEST_VALUE_BOOL, TEST_VALUE_NUMBER,
             TEST_VALUE_FLOAT };
+    private static final Object[] TEST_VALUE_ARRAY_STRING = Arrays.stream(TEST_VALUE_ARRAY).map(String::valueOf)
+            .toArray();
 
     TestUser admin;
     TestUser researcherStudyCoordinator;
@@ -72,8 +77,8 @@ public class DemographicsTest {
     ForConsentedUsersApi unconsentedConsentedUsersApi;
     ForResearchersApi researchersApi;
     StudiesApi studiesApi;
-    ForSuperadminsApi superadminApi;
-    AuthenticationApi authenticationApi;
+    // ForSuperadminsApi superadminApi;
+    // AuthenticationApi authenticationApi;
     OrganizationsApi organizationsApi;
 
     @Before
@@ -82,8 +87,8 @@ public class DemographicsTest {
 
         adminsApi = admin.getClient(ForAdminsApi.class);
         studiesApi = admin.getClient(StudiesApi.class);
-        superadminApi = admin.getClient(ForSuperadminsApi.class);
-        authenticationApi = admin.getClient(AuthenticationApi.class);
+        // superadminApi = admin.getClient(ForSuperadminsApi.class);
+        // authenticationApi = admin.getClient(AuthenticationApi.class);
         organizationsApi = admin.getClient(OrganizationsApi.class);
 
         // System.out.println(admin.getAppId());
@@ -214,7 +219,7 @@ public class DemographicsTest {
                 .stepHistory(ImmutableList.of(
                         new DemographicUserAssessmentStep().identifier(TEST_CATEGORY1)
                                 .answerType(new DemographicUserAssessmentStepAnswerType().type("array"))
-                                .value(ImmutableList.of("value1", "value2")),
+                                .value(ImmutableList.copyOf(TEST_VALUE_ARRAY)),
                         new DemographicUserAssessmentStep().identifier(TEST_CATEGORY2)
                                 .answerType(new DemographicUserAssessmentStepAnswerType().type("string"))
                                 .value("value3")));
@@ -237,8 +242,8 @@ public class DemographicsTest {
         assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
-        assertEquals(demographicUserAssessmentToSave.getStepHistory().get(0).getValue(),
-                saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues());
+        assertArrayEquals(TEST_VALUE_ARRAY_STRING,
+                saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
         assertEquals(demographicUserAssessmentToSave.getStepHistory().get(1).getValue(),
                 saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getValues().get(0));
         assertNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getUnits());
@@ -249,7 +254,7 @@ public class DemographicsTest {
                 .stepHistory(ImmutableList.of(
                         new DemographicUserAssessmentStep().identifier(TEST_CATEGORY1)
                                 .answerType(new DemographicUserAssessmentStepAnswerType().type("array"))
-                                .value(ImmutableList.of("value1", "value2")),
+                                .value(ImmutableList.copyOf(TEST_VALUE_ARRAY)),
                         new DemographicUserAssessmentStep().identifier(TEST_CATEGORY3)
                                 .answerType(new DemographicUserAssessmentStepAnswerType().type("string"))
                                 .value("value3")));
@@ -272,8 +277,8 @@ public class DemographicsTest {
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(0).getValue(),
-                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues());
+        assertArrayEquals(TEST_VALUE_ARRAY_STRING,
+                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
         assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(1).getValue(),
                 saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues().get(0));
         assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
@@ -291,8 +296,10 @@ public class DemographicsTest {
 
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
-        DemographicUser getDemographicUsersResult0 = getDemographicUsersResult.getItems().get(0);
-        assertEquals(consentedUserInStudy.getUserId(), getDemographicUsersResult0.getUserId());
+        Optional<DemographicUser> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems().stream()
+                .filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
+        assertTrue(getDemographicUsersResult0Optional.isPresent());
+        DemographicUser getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
         assertEquals(2, getDemographicUsersResult0.getDemographics().size());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
@@ -307,16 +314,18 @@ public class DemographicsTest {
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
                 getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
         // second user
-        DemographicUser getDemographicUsersResult1 = getDemographicUsersResult.getItems().get(1);
-        assertEquals(secondConsentedUserInStudy.getUserId(), getDemographicUsersResult1.getUserId());
+        Optional<DemographicUser> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems().stream()
+                .filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
+        assertTrue(getDemographicUsersResult1Optional.isPresent());
+        DemographicUser getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
         assertEquals(2, getDemographicUsersResult1.getDemographics().size());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(0).getValue(),
-                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues());
+        assertArrayEquals(TEST_VALUE_ARRAY_STRING,
+                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
         assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(1).getValue(),
                 getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues().get(0));
         assertNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getUnits());
