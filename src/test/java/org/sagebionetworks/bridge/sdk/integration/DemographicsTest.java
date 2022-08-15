@@ -138,7 +138,7 @@ public class DemographicsTest {
     // app assessment, delete user app, get multiple app
 
     @Test
-    public void getDemographicUser() throws IOException {
+    public void studyLevel() throws IOException {
         // save
         DemographicUser demographicUserToSave = new DemographicUser().demographics(ImmutableMap.of(TEST_CATEGORY1,
                 new Demographic().multipleSelect(true).values(ImmutableList.of(TEST_VALUE1, TEST_VALUE2)),
@@ -209,36 +209,6 @@ public class DemographicsTest {
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
                 saveSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
-        // delete, get
-        try {
-            researchersApi.deleteDemographic(TEST_STUDY_ID, consentedUserNotInStudy.getUserId(),
-                    saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
-            fail("should have thrown an exception (user not in study)");
-        } catch (EntityNotFoundException e) {
-
-        }
-        try {
-            researchersApi.deleteDemographic(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId(),
-                    saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
-            fail("should have thrown an exception (user does not own this demographic)");
-        } catch (EntityNotFoundException e) {
-
-        }
-        researchersApi.deleteDemographic(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
-                saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
-        DemographicUser getResult = researchersApi
-                .getDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId()).execute().body();
-
-        assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
-        assertEquals(1, getResult.getDemographics().size());
-        assertFalse(getResult.getDemographics().containsKey(TEST_CATEGORY1));
-        assertNotNull(getResult.getDemographics().get(TEST_CATEGORY3).getId());
-        assertFalse(getResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getResult.getDemographics().get(TEST_CATEGORY3).getValues());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                getResult.getDemographics().get(TEST_CATEGORY3).getUnits());
-
         // save assessment
         DemographicUserAssessment demographicUserAssessmentToSave = new DemographicUserAssessment()
                 .stepHistory(ImmutableList.of(
@@ -255,7 +225,6 @@ public class DemographicsTest {
         } catch (EntityNotFoundException e) {
 
         }
-        System.out.println(researchersApi.getDemographicUsers(TEST_STUDY_ID).execute().body().getItems().size());
         DemographicUser saveAssessmentResult = researchersApi
                 .saveDemographicUserAssessment(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId(),
                         demographicUserAssessmentToSave)
@@ -292,7 +261,6 @@ public class DemographicsTest {
         } catch (EntityNotFoundException e) {
 
         }
-        System.out.println(researchersApi.getDemographicUsers(TEST_STUDY_ID).execute().body().getItems().size());
         DemographicUser saveAssessmentSelfResult = secondConsentedUsersApi
                 .saveDemographicUserAssessmentSelf(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
                 .execute().body();
@@ -311,27 +279,93 @@ public class DemographicsTest {
         assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
         assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
-        // delete user, get multiple
+        // get multiple
         try {
             researchersApi.deleteDemographicUser(TEST_STUDY_ID, consentedUserNotInStudy.getUserId()).execute();
             fail("should have thrown an exception (user not in study)");
         } catch (EntityNotFoundException e) {
 
         }
-        System.out.println(researchersApi.getDemographicUsers(TEST_STUDY_ID).execute().body().getItems());
-        researchersApi.deleteDemographicUser(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId()).execute();
         DemographicUserList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID).execute()
                 .body();
 
-        System.out.println(getDemographicUsersResult.getItems());
-        // TODO there should only be 1 here
-        assertEquals(1, getDemographicUsersResult.getItems().size());
-        assertNotNull(getDemographicUsersResult.getItems().get(0).getDemographics().get(TEST_CATEGORY3).getId());
-        assertFalse(
-                getDemographicUsersResult.getItems().get(0).getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(2, getDemographicUsersResult.getItems().size());
+        // first user
+        DemographicUser getDemographicUsersResult0 = getDemographicUsersResult.getItems().get(0);
+        assertEquals(consentedUserInStudy.getUserId(), getDemographicUsersResult0.getUserId());
+        assertEquals(2, getDemographicUsersResult0.getDemographics().size());
+        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
+        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
+                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getValues());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getDemographicUsersResult.getItems().get(0).getDemographics().get(TEST_CATEGORY3).getValues());
+                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getValues());
+        assertNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getUnits());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                getDemographicUsersResult.getItems().get(0).getDemographics().get(TEST_CATEGORY3).getUnits());
+                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
+        // second user
+        DemographicUser getDemographicUsersResult1 = getDemographicUsersResult.getItems().get(1);
+        assertEquals(secondConsentedUserInStudy.getUserId(), getDemographicUsersResult1.getUserId());
+        assertEquals(2, getDemographicUsersResult1.getDemographics().size());
+        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
+        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
+        assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
+        assertFalse(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(0).getValue(),
+                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues());
+        assertEquals(demographicUserAssessmentToSaveSelf.getStepHistory().get(1).getValue(),
+                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues().get(0));
+        assertNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getUnits());
+        assertNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getUnits());
+
+        // delete, get
+        try {
+            researchersApi.deleteDemographic(TEST_STUDY_ID, consentedUserNotInStudy.getUserId(),
+                    saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
+            fail("should have thrown an exception (user not in study)");
+        } catch (EntityNotFoundException e) {
+
+        }
+        try {
+            researchersApi.deleteDemographic(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId(),
+                    saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
+            fail("should have thrown an exception (user does not own this demographic)");
+        } catch (EntityNotFoundException e) {
+
+        }
+        researchersApi.deleteDemographic(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
+                saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
+        DemographicUser getResult = researchersApi
+                .getDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId()).execute().body();
+
+        assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
+        assertEquals(1, getResult.getDemographics().size());
+        assertFalse(getResult.getDemographics().containsKey(TEST_CATEGORY1));
+        assertNotNull(getResult.getDemographics().get(TEST_CATEGORY3).getId());
+        assertFalse(getResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
+                getResult.getDemographics().get(TEST_CATEGORY3).getValues());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
+                getResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+
+        // delete user, get multiple
+        researchersApi.deleteDemographicUser(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId()).execute();
+        DemographicUserList getDemographicUsersAfterDeleteResult = researchersApi.getDemographicUsers(TEST_STUDY_ID)
+                .execute()
+                .body();
+
+        assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
+        DemographicUser getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems().get(0);
+        assertNotNull(getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getId());
+        assertFalse(
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getValues());
+        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
     }
 }
