@@ -124,11 +124,6 @@ public class DemographicsTest {
         organizationsApi.deleteOrganization(SAGE_ID);
     }
 
-    // save, save self, delete, get, save assessment, save self assessment, delete
-    // user, get multiple
-    // save app, save self app, delete app, get app, save app assessment, save self
-    // app assessment, delete user app, get multiple app
-
     @Test
     public void studyLevel() throws IOException {
         // save
