@@ -124,6 +124,11 @@ public class DemographicsTest {
         organizationsApi.deleteOrganization(SAGE_ID);
     }
 
+    /**
+     * Tests saving, saving self, saving assessment format, saving assessment format
+     * self, get multiple, delete demographic, get one, delete user, get multiple.
+     * Tested at the study level.
+     */
     @Test
     public void studyLevel() throws IOException {
         // save
@@ -360,6 +365,11 @@ public class DemographicsTest {
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
     }
 
+    /**
+     * Tests saving, saving self, saving assessment format, saving assessment format
+     * self, get multiple, delete demographic, get one, delete user, get multiple.
+     * Tested at the app level.
+     */
     @Test
     public void appLevel() throws IOException {
         // save
