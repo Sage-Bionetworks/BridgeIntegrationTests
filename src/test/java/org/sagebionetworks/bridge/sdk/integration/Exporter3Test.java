@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -27,6 +28,8 @@ import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.PurgeQueueRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.ImmutableList;
+
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.junit.After;
@@ -39,6 +42,8 @@ import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.repo.model.Folder;
 import org.sagebionetworks.repo.model.Project;
 import org.sagebionetworks.repo.model.Team;
+import org.sagebionetworks.repo.model.annotation.v2.Annotations;
+import org.sagebionetworks.repo.model.annotation.v2.AnnotationsValueType;
 import org.sagebionetworks.repo.model.project.StsStorageLocationSetting;
 import org.sagebionetworks.repo.model.table.TableEntity;
 import org.slf4j.Logger;
@@ -217,6 +222,13 @@ public class Exporter3Test {
         assertTrue(updatedApp.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedApp.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+
+        // Verify that the project has the correct app id annotation
+        String projectId = ex3Config.getProjectId();
+        Annotations annotations = synapseClient.getAnnotationsV2(projectId);
+        assertEquals(AnnotationsValueType.STRING, annotations.getAnnotations().get("appId").getType());
+        assertEquals(ImmutableList.of(TEST_APP_ID), annotations.getAnnotations().get("appId").getValue());
+        assertFalse(annotations.getAnnotations().containsKey(STUDY_ID_1));
     }
 
     @Test
@@ -238,6 +250,14 @@ public class Exporter3Test {
         assertTrue(updatedStudy.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedStudy.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+
+        // Verify that the project has the correct study id annotation.
+        String projectId = ex3Config.getProjectId();
+        Annotations annotations = synapseClient.getAnnotationsV2(projectId);
+        assertEquals(AnnotationsValueType.STRING, annotations.getAnnotations().get("appId").getType());
+        assertEquals(ImmutableList.of(TEST_APP_ID), annotations.getAnnotations().get("appId").getValue());
+        assertEquals(AnnotationsValueType.STRING, annotations.getAnnotations().get("studyId").getType());
+        assertEquals(ImmutableList.of(STUDY_ID_1), annotations.getAnnotations().get("studyId").getValue());
 
         // Verify notification in queue.
         ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest();
