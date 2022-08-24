@@ -7,7 +7,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -31,7 +30,6 @@ import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStep;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStepAnswerType;
 import org.sagebionetworks.bridge.rest.model.DemographicUserList;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
-import org.sagebionetworks.bridge.rest.model.Organization;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.user.TestUser;
@@ -93,13 +91,6 @@ public class DemographicsTest {
         consentedUsersNotInStudyApi = consentedUserNotInStudy.getClient(ForConsentedUsersApi.class);
         unconsentedConsentedUsersApi = unconsentedUser.getClient(ForConsentedUsersApi.class);
 
-        Organization org = new Organization().identifier(SAGE_ID).name("Sage Bionetworks");
-        try {
-            organizationsApi.createOrganization(org).execute();
-        } catch (EntityAlreadyExistsException e) {
-
-        }
-
         Study study = new Study().identifier(TEST_STUDY_ID).name("test study");
         try {
             studiesApi.createStudy(study).execute();
@@ -118,10 +109,10 @@ public class DemographicsTest {
     public void after() {
         researcherStudyCoordinator.signOutAndDeleteUser();
         consentedUserInStudy.signOutAndDeleteUser();
+        secondConsentedUserInStudy.signOutAndDeleteUser();
         consentedUserNotInStudy.signOutAndDeleteUser();
         unconsentedUser.signOutAndDeleteUser();
         studiesApi.deleteStudy(TEST_STUDY_ID, true);
-        organizationsApi.deleteOrganization(SAGE_ID);
     }
 
     /**
@@ -272,12 +263,6 @@ public class DemographicsTest {
         assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // get multiple
-        try {
-            researchersApi.deleteDemographicUser(TEST_STUDY_ID, consentedUserNotInStudy.getUserId()).execute();
-            fail("should have thrown an exception (user not in study)");
-        } catch (EntityNotFoundException e) {
-
-        }
         DemographicUserList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID).execute()
                 .body();
 
@@ -349,6 +334,12 @@ public class DemographicsTest {
                 getResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // delete user, get multiple
+        try {
+            researchersApi.deleteDemographicUser(TEST_STUDY_ID, consentedUserNotInStudy.getUserId()).execute();
+            fail("should have thrown an exception (user not in study)");
+        } catch (EntityNotFoundException e) {
+
+        }
         researchersApi.deleteDemographicUser(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId()).execute();
         DemographicUserList getDemographicUsersAfterDeleteResult = researchersApi.getDemographicUsers(TEST_STUDY_ID)
                 .execute()
