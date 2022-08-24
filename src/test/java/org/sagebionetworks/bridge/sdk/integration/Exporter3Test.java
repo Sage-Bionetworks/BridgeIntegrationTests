@@ -228,7 +228,7 @@ public class Exporter3Test {
         Annotations annotations = synapseClient.getAnnotationsV2(projectId);
         assertEquals(AnnotationsValueType.STRING, annotations.getAnnotations().get("appId").getType());
         assertEquals(ImmutableList.of(TEST_APP_ID), annotations.getAnnotations().get("appId").getValue());
-        assertFalse(annotations.getAnnotations().containsKey(STUDY_ID_1));
+        assertFalse(annotations.getAnnotations().containsKey("studyId"));
     }
 
     @Test
