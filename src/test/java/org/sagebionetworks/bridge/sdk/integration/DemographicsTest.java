@@ -259,8 +259,8 @@ public class DemographicsTest {
         assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // get multiple
-        DemographicUserList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID).execute()
-                .body();
+        DemographicUserList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID, 0, 10)
+                .execute().body();
 
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
@@ -335,9 +335,8 @@ public class DemographicsTest {
 
         }
         researchersApi.deleteDemographicUser(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId()).execute();
-        DemographicUserList getDemographicUsersAfterDeleteResult = researchersApi.getDemographicUsers(TEST_STUDY_ID)
-                .execute()
-                .body();
+        DemographicUserList getDemographicUsersAfterDeleteResult = researchersApi
+                .getDemographicUsers(TEST_STUDY_ID, 0, 10).execute().body();
 
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
         DemographicUser getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems().get(0);
@@ -463,7 +462,7 @@ public class DemographicsTest {
         assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // get multiple
-        DemographicUserList getDemographicUsersResult = adminsApi.getDemographicUsersAppLevel().execute().body();
+        DemographicUserList getDemographicUsersResult = adminsApi.getDemographicUsersAppLevel(0, 10).execute().body();
 
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
@@ -525,8 +524,8 @@ public class DemographicsTest {
 
         // delete user, get multiple
         adminsApi.deleteDemographicUserAppLevel(secondConsentedUserInStudy.getUserId()).execute();
-        DemographicUserList getDemographicUsersAfterDeleteResult = adminsApi.getDemographicUsersAppLevel().execute()
-                .body();
+        DemographicUserList getDemographicUsersAfterDeleteResult = adminsApi.getDemographicUsersAppLevel(0, 10)
+                .execute().body();
 
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
         DemographicUser getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems().get(0);
