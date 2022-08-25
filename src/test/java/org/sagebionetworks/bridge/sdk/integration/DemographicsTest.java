@@ -145,7 +145,6 @@ public class DemographicsTest {
         assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY2).getId());
         assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
         assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY1).getValues(),
                 saveResult.getDemographics().get(TEST_CATEGORY1).getValues());
@@ -182,7 +181,6 @@ public class DemographicsTest {
         assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
         assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
                 saveSelfResult.getDemographics().get(TEST_CATEGORY1).getValues());
@@ -218,7 +216,6 @@ public class DemographicsTest {
         assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getId());
         assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
                 saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
@@ -253,7 +250,6 @@ public class DemographicsTest {
         assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
                 saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
@@ -276,7 +272,6 @@ public class DemographicsTest {
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
         assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
                 getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getValues());
@@ -293,7 +288,6 @@ public class DemographicsTest {
         assertEquals(2, getDemographicUsersResult1.getDemographics().size());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
-        assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
@@ -377,7 +371,6 @@ public class DemographicsTest {
         assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY2).getId());
         assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
         assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY1).getValues(),
                 saveResult.getDemographics().get(TEST_CATEGORY1).getValues());
@@ -407,7 +400,6 @@ public class DemographicsTest {
         assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
         assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
                 saveSelfResult.getDemographics().get(TEST_CATEGORY1).getValues());
@@ -436,7 +428,6 @@ public class DemographicsTest {
         assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getId());
         assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
                 saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
@@ -463,7 +454,6 @@ public class DemographicsTest {
         assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
                 saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
@@ -485,7 +475,6 @@ public class DemographicsTest {
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
         assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
                 getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getValues());
@@ -502,7 +491,6 @@ public class DemographicsTest {
         assertEquals(2, getDemographicUsersResult1.getDemographics().size());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
-        assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
