@@ -148,7 +148,7 @@ public class StudyLifecycleTest {
         shouldSucceed(() -> coordinatorApi.transitionStudyToAnalysis(studyId3), ANALYSIS);
         shouldSucceed(() -> coordinatorApi.transitionStudyToWithdrawn(studyId3), WITHDRAWN);
     }
-    
+
     protected String createStudy(StudiesApi coordinatorApi) throws IOException {
         String id = Tests.randomIdentifier(getClass());
         studiesToDelete.add(id);
