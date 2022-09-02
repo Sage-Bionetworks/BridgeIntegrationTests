@@ -20,6 +20,7 @@ import static org.sagebionetworks.bridge.rest.model.SignInType.EMAIL_MESSAGE;
 import static org.sagebionetworks.bridge.rest.model.SignInType.PHONE_PASSWORD;
 import static org.sagebionetworks.bridge.rest.model.StudyPhase.DESIGN;
 import static org.sagebionetworks.bridge.rest.model.StudyPhase.IN_FLIGHT;
+import static org.sagebionetworks.bridge.rest.model.StudyPhase.RECRUITMENT;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
@@ -44,6 +45,7 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.HostedFilesApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
@@ -527,5 +529,24 @@ public class StudyTest {
         } finally {
             schedulesApi.deleteSchedule(scheduleGuid).execute();
         }
+    }
+    
+    @Test
+    public void superadminCanRevertStudyPhaseToDesign() throws IOException {
+         ForSuperadminsApi superadminsApi = admin.getClient(ForSuperadminsApi.class);
+         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+         
+         String studyId = Tests.randomIdentifier(getClass());
+         studyIdsToDelete.add(studyId);
+         Study study = new Study().identifier(studyId).name("StudyTest");
+         studiesApi.createStudy(study).execute();
+         
+         study = studiesApi.transitionStudyToRecruitment(studyId).execute().body();
+         assertNotNull(study);
+         assertEquals(RECRUITMENT, study.getPhase());
+         
+         study = superadminsApi.revertStudyToDesign(studyId).execute().body();
+         assertNotNull(study);
+         assertEquals(DESIGN, study.getPhase());
     }
 }
