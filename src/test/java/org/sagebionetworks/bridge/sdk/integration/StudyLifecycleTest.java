@@ -1,9 +1,11 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
+import static org.sagebionetworks.bridge.rest.model.Role.SUPERADMIN;
 import static org.sagebionetworks.bridge.rest.model.StudyPhase.ANALYSIS;
 import static org.sagebionetworks.bridge.rest.model.StudyPhase.COMPLETED;
 import static org.sagebionetworks.bridge.rest.model.StudyPhase.DESIGN;
@@ -19,6 +21,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
@@ -41,6 +44,7 @@ public class StudyLifecycleTest {
 
     private TestUser studyDesigner;
     private TestUser studyCoordinator;
+    private TestUser superadmin;
     private List<String> studiesToDelete;
     
     @Before
@@ -48,6 +52,7 @@ public class StudyLifecycleTest {
         studiesToDelete = new ArrayList<>();
         studyDesigner = TestUserHelper.createAndSignInUser(StudyLifecycleTest.class, false, STUDY_DESIGNER);
         studyCoordinator = TestUserHelper.createAndSignInUser(StudyLifecycleTest.class, false, STUDY_COORDINATOR);
+        superadmin = TestUserHelper.createAndSignInUser(StudyLifecycleTest.class, false, SUPERADMIN);
     }
     
     @After
@@ -61,6 +66,9 @@ public class StudyLifecycleTest {
         }
         if (studyCoordinator != null) {
             studyCoordinator.signOutAndDeleteUser();
+        }
+        if (superadmin != null) {
+            superadmin.signOutAndDeleteUser();
         }
     }
     
@@ -147,6 +155,19 @@ public class StudyLifecycleTest {
         shouldSucceed(() -> coordinatorApi.transitionStudyToInFlight(studyId3), IN_FLIGHT);
         shouldSucceed(() -> coordinatorApi.transitionStudyToAnalysis(studyId3), ANALYSIS);
         shouldSucceed(() -> coordinatorApi.transitionStudyToWithdrawn(studyId3), WITHDRAWN);
+    }
+    
+    @Test
+    public void superadminCanRevertStudyPhaseToDesign() throws IOException {
+        ForSuperadminsApi superadminsApi = superadmin.getClient(ForSuperadminsApi.class);
+        
+        StudiesApi designerApi = studyDesigner.getClient(StudiesApi.class);
+        String studyId = createStudy(designerApi);
+        
+        StudiesApi coordinatorApi = studyCoordinator.getClient(StudiesApi.class);
+        shouldSucceed(() -> coordinatorApi.transitionStudyToRecruitment(studyId), RECRUITMENT);
+        
+        shouldSucceed(() -> superadminsApi.revertStudyToDesign(studyId), DESIGN);
     }
 
     protected String createStudy(StudiesApi coordinatorApi) throws IOException {
