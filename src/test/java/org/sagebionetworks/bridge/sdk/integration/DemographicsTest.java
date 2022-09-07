@@ -29,6 +29,7 @@ import org.sagebionetworks.bridge.rest.model.DemographicUserAssessment;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStep;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentStepAnswerType;
 import org.sagebionetworks.bridge.rest.model.DemographicUserList;
+import org.sagebionetworks.bridge.rest.model.DemographicUserResponse;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -136,7 +137,7 @@ public class DemographicsTest {
         } catch (EntityNotFoundException e) {
 
         }
-        DemographicUser saveResult = researchersApi
+        DemographicUserResponse saveResult = researchersApi
                 .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserToSave).execute()
                 .body();
 
@@ -173,7 +174,7 @@ public class DemographicsTest {
         } catch (ConsentRequiredException e) {
 
         }
-        DemographicUser saveSelfResult = consentedUsersApi
+        DemographicUserResponse saveSelfResult = consentedUsersApi
                 .saveDemographicUserSelf(TEST_STUDY_ID, demographicUserToSaveSelf).execute().body();
 
         assertEquals(consentedUserInStudy.getUserId(), saveSelfResult.getUserId());
@@ -206,7 +207,7 @@ public class DemographicsTest {
         } catch (EntityNotFoundException e) {
 
         }
-        DemographicUser saveAssessmentResult = researchersApi
+        DemographicUserResponse saveAssessmentResult = researchersApi
                 .saveDemographicUserAssessment(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId(),
                         demographicUserAssessmentToSave)
                 .execute().body();
@@ -241,7 +242,7 @@ public class DemographicsTest {
         } catch (EntityNotFoundException e) {
 
         }
-        DemographicUser saveAssessmentSelfResult = secondConsentedUsersApi
+        DemographicUserResponse saveAssessmentSelfResult = secondConsentedUsersApi
                 .saveDemographicUserSelfAssessment(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
                 .execute().body();
 
@@ -264,10 +265,10 @@ public class DemographicsTest {
 
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
-        Optional<DemographicUser> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems().stream()
-                .filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
+        Optional<DemographicUserResponse> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems()
+                .stream().filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult0Optional.isPresent());
-        DemographicUser getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
+        DemographicUserResponse getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
         assertEquals(2, getDemographicUsersResult0.getDemographics().size());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
@@ -281,10 +282,10 @@ public class DemographicsTest {
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
                 getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
         // second user
-        Optional<DemographicUser> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems().stream()
-                .filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
+        Optional<DemographicUserResponse> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems()
+                .stream().filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult1Optional.isPresent());
-        DemographicUser getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
+        DemographicUserResponse getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
         assertEquals(2, getDemographicUsersResult1.getDemographics().size());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
@@ -314,7 +315,7 @@ public class DemographicsTest {
         }
         researchersApi.deleteDemographic(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
                 saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
-        DemographicUser getResult = researchersApi
+        DemographicUserResponse getResult = researchersApi
                 .getDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId()).execute().body();
 
         assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
@@ -339,7 +340,8 @@ public class DemographicsTest {
                 .getDemographicUsers(TEST_STUDY_ID, 0, 10).execute().body();
 
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
-        DemographicUser getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems().get(0);
+        DemographicUserResponse getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems()
+                .get(0);
         assertNotNull(getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getId());
         assertFalse(
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
@@ -361,7 +363,7 @@ public class DemographicsTest {
                 new Demographic().multipleSelect(true).values(ImmutableList.of(TEST_VALUE1, TEST_VALUE2)),
                 TEST_CATEGORY2,
                 new Demographic().multipleSelect(false).values(ImmutableList.of(TEST_VALUE3)).units("units")));
-        DemographicUser saveResult = adminsApi
+        DemographicUserResponse saveResult = adminsApi
                 .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserToSave).execute()
                 .body();
 
@@ -391,7 +393,7 @@ public class DemographicsTest {
         } catch (ConsentRequiredException e) {
 
         }
-        DemographicUser saveSelfResult = consentedUsersApi
+        DemographicUserResponse saveSelfResult = consentedUsersApi
                 .saveDemographicUserSelfAppLevel(demographicUserToSaveSelf).execute().body();
 
         assertEquals(consentedUserInStudy.getUserId(), saveSelfResult.getUserId());
@@ -417,7 +419,7 @@ public class DemographicsTest {
                         new DemographicUserAssessmentStep().identifier(TEST_CATEGORY2)
                                 .answerType(new DemographicUserAssessmentStepAnswerType().type("string"))
                                 .value("value3")));
-        DemographicUser saveAssessmentResult = adminsApi
+        DemographicUserResponse saveAssessmentResult = adminsApi
                 .saveDemographicUserAssessmentAppLevel(secondConsentedUserInStudy.getUserId(),
                         demographicUserAssessmentToSave)
                 .execute().body();
@@ -444,7 +446,7 @@ public class DemographicsTest {
                         new DemographicUserAssessmentStep().identifier(TEST_CATEGORY3)
                                 .answerType(new DemographicUserAssessmentStepAnswerType().type("string"))
                                 .value("value3")));
-        DemographicUser saveAssessmentSelfResult = secondConsentedUsersApi
+        DemographicUserResponse saveAssessmentSelfResult = secondConsentedUsersApi
                 .saveDemographicUserSelfAssessmentAppLevel(demographicUserAssessmentToSaveSelf)
                 .execute().body();
 
@@ -466,10 +468,10 @@ public class DemographicsTest {
 
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
-        Optional<DemographicUser> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems().stream()
-                .filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
+        Optional<DemographicUserResponse> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems()
+                .stream().filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult0Optional.isPresent());
-        DemographicUser getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
+        DemographicUserResponse getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
         assertEquals(2, getDemographicUsersResult0.getDemographics().size());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
@@ -483,10 +485,10 @@ public class DemographicsTest {
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
                 getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
         // second user
-        Optional<DemographicUser> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems().stream()
-                .filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
+        Optional<DemographicUserResponse> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems()
+                .stream().filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult1Optional.isPresent());
-        DemographicUser getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
+        DemographicUserResponse getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
         assertEquals(2, getDemographicUsersResult1.getDemographics().size());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
         assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
@@ -509,7 +511,7 @@ public class DemographicsTest {
         }
         adminsApi.deleteDemographicAppLevel(consentedUserInStudy.getUserId(),
                 saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId()).execute();
-        DemographicUser getResult = adminsApi
+        DemographicUserResponse getResult = adminsApi
                 .getDemographicUserAppLevel(consentedUserInStudy.getUserId()).execute().body();
 
         assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
@@ -528,7 +530,8 @@ public class DemographicsTest {
                 .execute().body();
 
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
-        DemographicUser getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems().get(0);
+        DemographicUserResponse getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems()
+                .get(0);
         assertNotNull(getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getId());
         assertFalse(
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
