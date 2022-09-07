@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -10,7 +11,9 @@ import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +30,9 @@ import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.PurgeQueueRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.ImmutableList;
+
+import com.google.common.io.Files;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.junit.After;
@@ -39,6 +45,8 @@ import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.repo.model.Folder;
 import org.sagebionetworks.repo.model.Project;
 import org.sagebionetworks.repo.model.Team;
+import org.sagebionetworks.repo.model.annotation.v2.Annotations;
+import org.sagebionetworks.repo.model.annotation.v2.AnnotationsValueType;
 import org.sagebionetworks.repo.model.project.StsStorageLocationSetting;
 import org.sagebionetworks.repo.model.table.TableEntity;
 import org.slf4j.Logger;
@@ -47,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.rest.ApiClientProvider;
+import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AccountsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ConsentsApi;
@@ -60,10 +69,12 @@ import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.model.Account;
 import org.sagebionetworks.bridge.rest.model.App;
+import org.sagebionetworks.bridge.rest.model.ClientInfo;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
 import org.sagebionetworks.bridge.rest.model.Exporter3Configuration;
 import org.sagebionetworks.bridge.rest.model.ExporterSubscriptionRequest;
 import org.sagebionetworks.bridge.rest.model.ExporterSubscriptionResult;
+import org.sagebionetworks.bridge.rest.model.HealthDataRecordEx3;
 import org.sagebionetworks.bridge.rest.model.ParticipantVersion;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
@@ -72,12 +83,21 @@ import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.rest.model.UploadRequest;
+import org.sagebionetworks.bridge.rest.model.UploadSession;
 import org.sagebionetworks.bridge.rest.model.Withdrawal;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
+@SuppressWarnings("UnstableApiUsage")
 public class Exporter3Test {
     private static final Logger LOG = LoggerFactory.getLogger(Exporter3Test.class);
+
+    private static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
+    private static final byte[] UPLOAD_CONTENT = "This is the upload content".getBytes(StandardCharsets.UTF_8);
+
+    private static final String APP_NAME_FOR_USER = "app-name-for-user";
+    private static final ClientInfo CLIENT_INFO_FOR_USER = new ClientInfo().appName(APP_NAME_FOR_USER);
 
     private static TestUser admin;
     private static ForAdminsApi adminsApi;
@@ -217,6 +237,13 @@ public class Exporter3Test {
         assertTrue(updatedApp.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedApp.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+
+        // Verify that the project has the correct app id annotation
+        String projectId = ex3Config.getProjectId();
+        Annotations annotations = synapseClient.getAnnotationsV2(projectId);
+        assertEquals(AnnotationsValueType.STRING, annotations.getAnnotations().get("appId").getType());
+        assertEquals(ImmutableList.of(TEST_APP_ID), annotations.getAnnotations().get("appId").getValue());
+        assertFalse(annotations.getAnnotations().containsKey("studyId"));
     }
 
     @Test
@@ -238,6 +265,14 @@ public class Exporter3Test {
         assertTrue(updatedStudy.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedStudy.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+
+        // Verify that the project has the correct study id annotation.
+        String projectId = ex3Config.getProjectId();
+        Annotations annotations = synapseClient.getAnnotationsV2(projectId);
+        assertEquals(AnnotationsValueType.STRING, annotations.getAnnotations().get("appId").getType());
+        assertEquals(ImmutableList.of(TEST_APP_ID), annotations.getAnnotations().get("appId").getValue());
+        assertEquals(AnnotationsValueType.STRING, annotations.getAnnotations().get("studyId").getType());
+        assertEquals(ImmutableList.of(STUDY_ID_1), annotations.getAnnotations().get("studyId").getValue());
 
         // Verify notification in queue.
         ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest();
@@ -592,4 +627,63 @@ public class Exporter3Test {
         assertEquals(1, participantVersion.getDataGroups().size());
         assertEquals("test_user", participantVersion.getDataGroups().get(0));
     }
+
+    // UPLOAD TESTS
+    // Basic tests for the Health Data that is generated by Exporter 3.0.
+
+    @Test
+    public void upload_completedByUploader() throws Exception {
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withClientInfo(CLIENT_INFO_FOR_USER)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify client info.
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        String clientInfoJsonText = record.getClientInfo();
+        JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
+        assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+    }
+
+    @Test
+    public void upload_completedByWorker() throws Exception {
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withClientInfo(CLIENT_INFO_FOR_USER)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user);
+        workersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify client info.
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        String clientInfoJsonText = record.getClientInfo();
+        JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
+        assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+    }
+
+    private String createUpload(TestUser user) throws IOException {
+        // Create a temp file so that we can use RestUtils.
+        File file = File.createTempFile("text", ".txt");
+        Files.write(UPLOAD_CONTENT, file);
+
+        // Create upload request. RestUtils defaults to application/zip. We want to overwrite this.
+        UploadRequest uploadRequest = RestUtils.makeUploadRequestForFile(file);
+        uploadRequest.setContentType(CONTENT_TYPE_TEXT_PLAIN);
+        uploadRequest.setEncrypted(false);
+        uploadRequest.setZipped(false);
+
+        // Upload.
+        UploadSession session = user.getClient(ForConsentedUsersApi.class).requestUploadSession(uploadRequest)
+                .execute().body();
+        String uploadId = session.getId();
+        RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
+        return uploadId;
+    }
+
 }
