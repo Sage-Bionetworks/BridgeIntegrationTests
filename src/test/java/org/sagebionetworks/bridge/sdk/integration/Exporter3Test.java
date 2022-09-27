@@ -48,6 +48,7 @@ import org.sagebionetworks.repo.model.Team;
 import org.sagebionetworks.repo.model.annotation.v2.Annotations;
 import org.sagebionetworks.repo.model.annotation.v2.AnnotationsValueType;
 import org.sagebionetworks.repo.model.project.StsStorageLocationSetting;
+import org.sagebionetworks.repo.model.table.MaterializedView;
 import org.sagebionetworks.repo.model.table.TableEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -307,6 +308,16 @@ public class Exporter3Test {
         TableEntity participantVersionTable = synapseClient.getEntity(participantVersionTableId, TableEntity.class);
         assertNotNull(participantVersionTable);
         assertEquals(projectId, participantVersionTable.getParentId());
+
+        String participantVersionDemographicsTableId = ex3Config.getParticipantVersionDemographicsTableId();
+        TableEntity participantVersionDemographicsTable = synapseClient.getEntity(participantVersionDemographicsTableId, TableEntity.class);
+        assertNotNull(participantVersionDemographicsTable);
+        assertEquals(projectId, participantVersionDemographicsTable.getParentId());
+
+        String participantVersionDemographicsViewId = ex3Config.getParticipantVersionDemographicsViewId();
+        MaterializedView participantVersionDemographicsView = synapseClient.getEntity(participantVersionDemographicsViewId, MaterializedView.class);
+        assertNotNull(participantVersionDemographicsView);
+        assertEquals(projectId, participantVersionDemographicsView.getParentId());
 
         String rawFolderId = ex3Config.getRawDataFolderId();
         Folder rawFolder = synapseClient.getEntity(rawFolderId, Folder.class);
