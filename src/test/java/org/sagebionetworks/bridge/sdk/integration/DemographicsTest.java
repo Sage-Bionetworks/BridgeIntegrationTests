@@ -33,8 +33,8 @@ import org.sagebionetworks.bridge.rest.model.DemographicUserAssessment;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswer;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswerAnswerType;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswerCollection;
-import org.sagebionetworks.bridge.rest.model.DemographicUserList;
 import org.sagebionetworks.bridge.rest.model.DemographicUserResponse;
+import org.sagebionetworks.bridge.rest.model.DemographicUserResponseList;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -277,7 +277,7 @@ public class DemographicsTest {
         assertEquals(TEST_UNITS, saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // get multiple
-        DemographicUserList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID, 0, 10)
+        DemographicUserResponseList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID, 0, 10)
                 .execute().body();
 
         assertEquals(2, getDemographicUsersResult.getItems().size());
@@ -358,7 +358,7 @@ public class DemographicsTest {
 
         }
         researchersApi.deleteDemographicUser(TEST_STUDY_ID, secondConsentedUserInStudy.getUserId()).execute();
-        DemographicUserList getDemographicUsersAfterDeleteResult = researchersApi
+        DemographicUserResponseList getDemographicUsersAfterDeleteResult = researchersApi
                 .getDemographicUsers(TEST_STUDY_ID, 0, 10).execute().body();
 
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
@@ -488,7 +488,8 @@ public class DemographicsTest {
         assertEquals(TEST_UNITS, saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // get multiple
-        DemographicUserList getDemographicUsersResult = adminsApi.getDemographicUsersAppLevel(0, 10).execute().body();
+        DemographicUserResponseList getDemographicUsersResult = adminsApi.getDemographicUsersAppLevel(0, 10).execute()
+                .body();
 
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
@@ -555,7 +556,7 @@ public class DemographicsTest {
 
         // delete user, get multiple
         adminsApi.deleteDemographicUserAppLevel(secondConsentedUserInStudy.getUserId()).execute();
-        DemographicUserList getDemographicUsersAfterDeleteResult = adminsApi.getDemographicUsersAppLevel(0, 10)
+        DemographicUserResponseList getDemographicUsersAfterDeleteResult = adminsApi.getDemographicUsersAppLevel(0, 10)
                 .execute().body();
 
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
