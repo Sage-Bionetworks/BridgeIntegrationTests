@@ -21,6 +21,8 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.SAGE_ID;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +51,7 @@ import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentInfo;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.ColorScheme;
+import org.sagebionetworks.bridge.rest.model.ImageResource;
 import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.Notification;
 import org.sagebionetworks.bridge.rest.model.NotificationInfo;
@@ -79,6 +82,11 @@ public class Schedule2Test {
 
     private static final String TIME_ZONE = "America/Chicago";
     private static final String PARTICIPANT_API = "/v5/studies/study1/participants/self/schedule?clientTimeZone=";
+    private static final String IMAGE_RESOURCE_NAME = "default";
+    private static final String IMAGE_RESOURCE_MODULE = "sage_survey";
+    private static final String IMAGE_RESOURCE_LABEL_LANG = "en";
+    private static final String IMAGE_RESOURCE_LABEL_VALUE = "english label for image";
+
     TestUser developer;
     TestUser studyDesigner;
     TestUser studyCoordinator;
@@ -639,7 +647,129 @@ public class Schedule2Test {
             assertEquals("Account not found.", e.getMessage());
         }
     }
-    
+
+    @Test
+    public void assessmentReferenceImageResource() throws Exception {
+        studyCoordinator = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_COORDINATOR);
+
+        SchedulesV2Api schedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+
+        // create AssessmentReference2s with different types of ImageResources
+        // make identifier a sortable key for easy checking later
+        AssessmentReference2 nullImageResource = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier("0")
+                .imageResource(null);
+        AssessmentReference2 moduleAndLabel = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier("1")
+                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(IMAGE_RESOURCE_MODULE)
+                        .label(new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE)));
+        AssessmentReference2 nullModule = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier("2")
+                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(null)
+                        .label(new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE)));
+        AssessmentReference2 nullLabel = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier("3")
+                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(IMAGE_RESOURCE_MODULE).label(null));
+        AssessmentReference2 nullModuleAndLabel = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier("4")
+                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(null).label(null));
+
+        schedule = new Schedule2();
+        schedule.setName("Test Schedule [Schedule2Test]");
+        schedule.setDuration("P1W");
+        Session session = new Session();
+        session.setName("Simple repeating assessment");
+        session.setAssessments(
+                ImmutableList.of(nullImageResource, moduleAndLabel, nullModule, nullLabel, nullModuleAndLabel));
+        session.addStartEventIdsItem("enrollment");
+        session.setPerformanceOrder(SEQUENTIAL);
+        session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT1H"));
+        schedule.addSessionsItem(session);
+
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+        user = TestUserHelper.createAndSignInUser(Schedule2Test.class, true);
+
+        // check ImageResources in ParticipantSchedule
+        ForStudyCoordinatorsApi coordsApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
+        ParticipantSchedule participantSchedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId())
+                .execute().body();
+        Collections.sort(participantSchedule.getAssessments(),
+                Comparator.comparing(assessment -> assessment.getIdentifier()));
+
+        assertEquals(5, participantSchedule.getAssessments().size());
+        assertNull(participantSchedule.getAssessments().get(0).getImageResource());
+        assertImageResource(
+                participantSchedule.getAssessments().get(1).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                IMAGE_RESOURCE_MODULE,
+                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+        assertImageResource(
+                participantSchedule.getAssessments().get(2).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                null,
+                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+        assertImageResource(
+                participantSchedule.getAssessments().get(3).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                IMAGE_RESOURCE_MODULE,
+                null);
+        assertImageResource(
+                participantSchedule.getAssessments().get(4).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                null,
+                null);
+
+        // check ImageResources in Timeline
+        Timeline timeline = coordsApi.getStudyParticipantTimeline(STUDY_ID_1, user.getUserId()).execute().body();
+        Collections.sort(timeline.getAssessments(), Comparator.comparing(assessment -> assessment.getIdentifier()));
+
+        assertEquals(5, timeline.getAssessments().size());
+        assertNull(timeline.getAssessments().get(0).getImageResource());
+        assertImageResource(
+                timeline.getAssessments().get(1).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                IMAGE_RESOURCE_MODULE,
+                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+        assertImageResource(
+                timeline.getAssessments().get(2).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                null,
+                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+        assertImageResource(
+                timeline.getAssessments().get(3).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                IMAGE_RESOURCE_MODULE,
+                null);
+        assertImageResource(
+                timeline.getAssessments().get(4).getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                null,
+                null);
+    }
+
+    public static void assertImageResource(ImageResource imageResource, String expectedName, String expectedModule,
+            Label expectedLabel) {
+        assertNotNull(imageResource);
+        assertEquals(expectedName, imageResource.getName());
+        assertEquals(expectedModule, imageResource.getModule());
+        if (expectedLabel == null) {
+            assertNull(imageResource.getLabel());
+        } else {
+            assertEquals(expectedLabel.getLang(), imageResource.getLabel().getLang());
+            assertEquals(expectedLabel.getValue(), imageResource.getLabel().getValue());
+        }
+    }
+
     private void assertSchedule(Schedule2 schedule) {
         assertEquals("Test Schedule [Schedule2Test]", schedule.getName());
         assertEquals("P10W", schedule.getDuration());
