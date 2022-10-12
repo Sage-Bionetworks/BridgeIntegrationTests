@@ -19,6 +19,7 @@ import java.util.Optional;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sagebionetworks.bridge.rest.api.AppConfigsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
@@ -27,6 +28,8 @@ import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
+import org.sagebionetworks.bridge.rest.model.AppConfigElement;
 import org.sagebionetworks.bridge.rest.model.Demographic;
 import org.sagebionetworks.bridge.rest.model.DemographicUser;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessment;
@@ -68,6 +71,18 @@ public class DemographicsTest {
         TEST_VALUE_MAP.put("b", 3);
         TEST_VALUE_MAP.put("c", -5.7);
     }
+    private static final String APP_CONFIG_RANDOM_ID = "id-that-should-be-ignored";
+    private static final String APP_CONFIG_CATEGORY1_ID = "bridge-demographics-category1";
+    private static final String APP_CONFIG_CATEGORY2_ID = "bridge-demographics-category2";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX = "bridge-demographics-biological-sex";
+    private static final String NIH_CATEGORY_BIOLOGICAL_SEX = "biological-sex";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY = "bridge-demographics-ethnicity";
+    private static final String NIH_CATEGORY_ETHNICITY = "ethnicity";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION = "bridge-demographics-highest-education";
+    private static final String NIH_CATEGORY_HIGHEST_EDUCATION = "highest-education";
+    private static final String[] APP_CONFIG_CATEGORIES_TO_DELETE = { APP_CONFIG_RANDOM_ID, APP_CONFIG_CATEGORY1_ID,
+            APP_CONFIG_CATEGORY2_ID, APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX, APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY,
+            APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION };
 
     TestUser admin;
     TestUser researcherStudyCoordinator;
@@ -84,6 +99,7 @@ public class DemographicsTest {
     ForResearchersApi researchersApi;
     StudiesApi studiesApi;
     OrganizationsApi organizationsApi;
+    AppConfigsApi appConfigsApi;
 
     @Before
     public void before() throws Exception {
@@ -92,6 +108,7 @@ public class DemographicsTest {
         adminsApi = admin.getClient(ForAdminsApi.class);
         studiesApi = admin.getClient(StudiesApi.class);
         organizationsApi = admin.getClient(OrganizationsApi.class);
+        appConfigsApi = admin.getClient(AppConfigsApi.class);
 
         researcherStudyCoordinator = TestUserHelper.createAndSignInUser(DemographicsTest.class, true, Role.RESEARCHER,
                 Role.STUDY_COORDINATOR);
@@ -121,7 +138,10 @@ public class DemographicsTest {
     }
 
     @After
-    public void after() {
+    public void after() throws IOException {
+        for (String appConfigElementId : APP_CONFIG_CATEGORIES_TO_DELETE) {
+            appConfigsApi.deleteAllAppConfigElementRevisions(appConfigElementId, true).execute();
+        }
         researcherStudyCoordinator.signOutAndDeleteUser();
         consentedUserInStudy.signOutAndDeleteUser();
         secondConsentedUserInStudy.signOutAndDeleteUser();
@@ -569,6 +589,167 @@ public class DemographicsTest {
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getValues());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
+    }
+
+    @Test
+    public void valueValidationWithAppConfigElements() throws IOException {
+        // add random id that should be ignored
+        appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_RANDOM_ID).revision(1L)
+                .data(ImmutableMap.of("en", ImmutableList.of("a", "b")))).execute();
+
+        // add validation for category2
+        appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY2_ID).revision(1L)
+                .data(ImmutableMap.of("en", ImmutableList.of("foo", "bar")))).execute();
+
+        // validation is for category2 not category1, no validation exists for
+        // category1, so should work
+        DemographicUser demographicUserInvalid = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                "category1",
+                                new Demographic().values(ImmutableList.of("incorrect", "values"))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid).execute();
+
+        // add validation for category1
+        // spanish should be ignored
+        appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY1_ID).revision(1L)
+                .data(ImmutableMap.of("en", ImmutableList.of("a", "bb", "7", "-6.3", "true"),
+                        "sp", ImmutableList.of("this", "should", "be", "ignored"))))
+                .execute();
+
+        // retry invalid demographics with validation for category1 now added (should
+        // not work)
+        try {
+            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid).execute();
+            fail("should have thrown an exception, demographics are invalid for category1");
+        } catch (InvalidEntityException e) {
+
+        }
+
+        // retry with valid demographics
+        // values are out of order, repeated, and in all types
+        DemographicUser demographicUserValid = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                "category1",
+                                new Demographic()
+                                        .values(ImmutableList.of(true, "bb", "a", -6.3, 7, "a", "a", "a", "a"))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid).execute();
+
+        // add another revision
+        appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY1_ID).revision(2L)
+                .data(ImmutableMap.of("en", ImmutableList.of("xyz")))).execute();
+
+        // this should not work because validation should only use the most revision
+        try {
+            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid).execute();
+            fail("should have thrown an exception, demographics are now invalid after app config element revision");
+        } catch (InvalidEntityException e) {
+
+        }
+
+        // uploading for study should work even with invalid values because validation
+        // only applies to app-level demographics
+        researchersApi.saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalid)
+                .execute();
+    }
+
+    /**
+     * Real-world test for NIH minimum categories. Valid and invalid sample for each
+     * category.
+     */
+    @Test
+    public void validateNIHCategories() throws IOException {
+        // add validation
+        appConfigsApi
+                .createAppConfigElement(
+                        new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX).revision(1L)
+                                .data(ImmutableMap
+                                        .of("en",
+                                                ImmutableList.of("Male", "Female", "Intersex",
+                                                        "None of these describe me", "Prefer not to answer"))))
+                .execute();
+        appConfigsApi
+                .createAppConfigElement(new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY).revision(1L)
+                        .data(ImmutableMap.of("en",
+                                ImmutableList.of("American Indian or Alaska Native", "Asian",
+                                        "Black, African American, or African", "Hispanic, Latino, or Spanish",
+                                        "Middle Eastern or North African", "Native Hawaiian or other Pacific Islander",
+                                        "White", "None of these fully describe me", "Prefer not to answer"))))
+                .execute();
+        appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION)
+                .revision(1L)
+                .data(ImmutableMap.of("en", ImmutableList.of("Never attended school or only attended kindergarten",
+                        "Grades 1 through 4 (Primary)", "Grades 5 through 8 (Middle school)",
+                        "Grades 9 through 11 (Some high school)", "Grade 12 or GED (High school graduate)",
+                        "1 to 3 years after high school (Some college, Associate’s degree, or technical school)",
+                        "College 4 years or more (College graduate)", "Advanced degree (Master’s, Doctorate, etc.)",
+                        "Prefer not to answer"))))
+                .execute();
+
+        // test responses
+        DemographicUser demographicUserValidSex = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_BIOLOGICAL_SEX,
+                                new Demographic().values(ImmutableList.of("None of these describe me"))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidSex).execute();
+        DemographicUser demographicUserValidInvalidSex = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_BIOLOGICAL_SEX,
+                                new Demographic().values(ImmutableList.of("invalid value"))));
+        try {
+            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidSex)
+                    .execute();
+            fail("should have thrown an exception, invalid value for biological sex");
+        } catch (InvalidEntityException e) {
+
+        }
+
+        DemographicUser demographicUserValidEthnicity = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_ETHNICITY,
+                                new Demographic().values(ImmutableList.of("Black, African American, or African",
+                                        "Hispanic, Latino, or Spanish"))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEthnicity)
+                .execute();
+        DemographicUser demographicUserValidInvalidEthnicity = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_ETHNICITY,
+                                new Demographic().values(ImmutableList.of("invalid value"))));
+        try {
+            adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEthnicity)
+                    .execute();
+            fail("should have thrown an exception, invalid value for ethnicity");
+        } catch (InvalidEntityException e) {
+
+        }
+
+        DemographicUser demographicUserValidEducation = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_HIGHEST_EDUCATION,
+                                new Demographic().values(ImmutableList.of(
+                                        "1 to 3 years after high school (Some college, Associate’s degree, or technical school)"))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEducation)
+                .execute();
+        DemographicUser demographicUserValidInvalidEducation = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_HIGHEST_EDUCATION,
+                                new Demographic().values(ImmutableList.of("invalid value"))));
+        try {
+            adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEducation)
+                    .execute();
+            fail("should have thrown an exception, invalid value for highest education");
+        } catch (InvalidEntityException e) {
+
+        }
     }
 
     private String makeStringEntry(Map.Entry<String, Object> entry) throws JsonProcessingException {
