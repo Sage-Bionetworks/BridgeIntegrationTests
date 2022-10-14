@@ -38,6 +38,10 @@ import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswerAnsw
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswerCollection;
 import org.sagebionetworks.bridge.rest.model.DemographicUserResponse;
 import org.sagebionetworks.bridge.rest.model.DemographicUserResponseList;
+import org.sagebionetworks.bridge.rest.model.DemographicValuesEnumValidationRules;
+import org.sagebionetworks.bridge.rest.model.DemographicValuesNumberRangeValidationRules;
+import org.sagebionetworks.bridge.rest.model.DemographicValuesValidationConfiguration;
+import org.sagebionetworks.bridge.rest.model.DemographicValuesValidationConfiguration.ValidationTypeEnum;
 import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Study;
@@ -74,6 +78,8 @@ public class DemographicsTest {
     private static final String APP_CONFIG_RANDOM_ID = "id-that-should-be-ignored";
     private static final String APP_CONFIG_CATEGORY1_ID = "bridge-validation-demographics-category1";
     private static final String APP_CONFIG_CATEGORY2_ID = "bridge-validation-demographics-category2";
+    private static final String APP_CONFIG_CATEGORY3_ID = "bridge-validation-demographics-category3";
+    private static final String APP_CONFIG_CATEGORY4_ID = "bridge-validation-demographics-category4";
     private static final String APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH = "bridge-validation-demographics-year-of-birth";
     private static final String NIH_CATEGORY_YEAR_OF_BIRTH = "year-of-birth";
     private static final String APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX = "bridge-validation-demographics-biological-sex";
@@ -83,9 +89,9 @@ public class DemographicsTest {
     private static final String APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION = "bridge-validation-demographics-highest-education";
     private static final String NIH_CATEGORY_HIGHEST_EDUCATION = "highest-education";
     private static final String[] APP_CONFIG_CATEGORIES_TO_DELETE = { APP_CONFIG_RANDOM_ID, APP_CONFIG_CATEGORY1_ID,
-            APP_CONFIG_CATEGORY2_ID, APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH,
-            APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX, APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY,
-            APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION };
+            APP_CONFIG_CATEGORY2_ID, APP_CONFIG_CATEGORY3_ID, APP_CONFIG_CATEGORY4_ID,
+            APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH, APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX,
+            APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY, APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION };
 
     TestUser admin;
     TestUser researcherStudyCoordinator;
@@ -597,12 +603,20 @@ public class DemographicsTest {
     @Test
     public void valueValidationWithAppConfigElements() throws IOException {
         // add random id that should be ignored
+        DemographicValuesEnumValidationRules randomRules = new DemographicValuesEnumValidationRules();
+        randomRules.put("en", ImmutableList.of("a", "b"));
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_RANDOM_ID).revision(1L)
-                .data(ImmutableMap.of("en", ImmutableList.of("a", "b")))).execute();
+                .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
+                        .validationRules(randomRules)))
+                .execute();
 
         // add validation for category2
+        DemographicValuesEnumValidationRules category2Rules = new DemographicValuesEnumValidationRules();
+        category2Rules.put("en", ImmutableList.of("foo", "bar"));
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY2_ID).revision(1L)
-                .data(ImmutableMap.of("en", ImmutableList.of("foo", "bar")))).execute();
+                .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
+                        .validationRules(category2Rules)))
+                .execute();
 
         // validation is for category2 not category1, no validation exists for
         // category1, so should work
@@ -615,10 +629,12 @@ public class DemographicsTest {
 
         // add validation for category1
         // spanish should be ignored
+        DemographicValuesEnumValidationRules category1Rules = new DemographicValuesEnumValidationRules();
+        category1Rules.put("en", ImmutableList.of("a", "bb", "7", "-6.3", "true"));
+        category1Rules.put("sp", ImmutableList.of("this", "should", "be", "ignored"));
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY1_ID).revision(1L)
-                .data(ImmutableMap.of("validationType", "ENUM", "validationRules",
-                        ImmutableMap.of("en", ImmutableList.of("a", "bb", "7", "-6.3", "true"),
-                                "sp", ImmutableList.of("this", "should", "be", "ignored")))))
+                .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
+                        .validationRules(category1Rules)))
                 .execute();
 
         // retry invalid demographics with validation for category1 now added (should
@@ -641,13 +657,78 @@ public class DemographicsTest {
         adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid).execute();
 
         // add another revision
+        DemographicValuesEnumValidationRules category1RulesRev2 = new DemographicValuesEnumValidationRules();
+        category1RulesRev2.put("en", ImmutableList.of("xyz"));
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY1_ID).revision(2L)
-                .data(ImmutableMap.of("en", ImmutableList.of("xyz")))).execute();
+                .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
+                        .validationRules(category1RulesRev2)))
+                .execute();
 
-        // this should not work because validation should only use the most revision
+        // this SHOULD NOT work because validation should only use the most revision
         try {
             adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid).execute();
             fail("should have thrown an exception, demographics are now invalid after app config element revision");
+        } catch (InvalidEntityException e) {
+
+        }
+
+        // this SHOULD work because validation should only use the most revision
+        DemographicUser demographicUserValidRev2 = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                "category1",
+                                new Demographic()
+                                        .values(ImmutableList.of("xyz", "xyz"))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidRev2).execute();
+
+        // no english
+        DemographicValuesEnumValidationRules category4Rules = new DemographicValuesEnumValidationRules();
+        category4Rules.put("sp", ImmutableList.of());
+        appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY4_ID).revision(1L)
+                .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
+                        .validationRules(category4Rules)))
+                .execute();
+
+        // should not error even when english is not explicitly specified in
+        // configuration
+        DemographicUser demographicUserValidNoEnglish = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                "category4",
+                                new Demographic()
+                                        .values(ImmutableList.of(true, "bb", "a", -6.3, 7, "a", "a", "a", "a"))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNoEnglish)
+                .execute();
+
+        // number range validation
+        appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY3_ID).revision(1L)
+                .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.NUMBER_RANGE)
+                        .validationRules(new DemographicValuesNumberRangeValidationRules().min(0d).max(100d))))
+                .execute();
+
+        // should work because number range validation is ignored when values are not
+        // numbers
+        DemographicUser demographicUserStringsInNumberValidation = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                "category3",
+                                new Demographic()
+                                        .values(ImmutableList.of("xyz", "xyz"))));
+        adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserStringsInNumberValidation)
+                .execute();
+
+        // should not work
+        DemographicUser demographicUserInvalidNumber = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                "category3",
+                                new Demographic()
+                                        .values(ImmutableList.of(-12.7))));
+        try {
+            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidNumber)
+                    .execute();
+            fail("should have thrown an exception (number is less than min)");
         } catch (InvalidEntityException e) {
 
         }
@@ -668,42 +749,45 @@ public class DemographicsTest {
         appConfigsApi
                 .createAppConfigElement(
                         new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH).revision(1L)
-                                .data(ImmutableMap.of(
-                                        "validationType", "NUMBER_RANGE",
-                                        "validationRules", ImmutableMap.of("min", 1900, "max", 2050))))
+                                .data(new DemographicValuesValidationConfiguration()
+                                        .validationType(ValidationTypeEnum.NUMBER_RANGE)
+                                        .validationRules(new DemographicValuesNumberRangeValidationRules().min(1900.0)
+                                                .max(2050.0))))
                 .execute();
+        DemographicValuesEnumValidationRules biologicalSexEnumRules = new DemographicValuesEnumValidationRules();
+        biologicalSexEnumRules.put("en",
+                ImmutableList.of("Male", "Female", "Intersex", "None of these describe me", "Prefer not to answer"));
         appConfigsApi
                 .createAppConfigElement(
                         new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX).revision(1L)
-                                .data(ImmutableMap.of(
-                                        "validationType", "ENUM",
-                                        "validationRules", ImmutableMap.of("en",
-                                                ImmutableList.of("Male", "Female", "Intersex",
-                                                        "None of these describe me", "Prefer not to answer")))))
+                                .data(new DemographicValuesValidationConfiguration()
+                                        .validationType(ValidationTypeEnum.ENUM)
+                                        .validationRules(biologicalSexEnumRules)))
                 .execute();
+        DemographicValuesEnumValidationRules ethnicityEnumRules = new DemographicValuesEnumValidationRules();
+        ethnicityEnumRules.put("en",
+                ImmutableList.of("American Indian or Alaska Native", "Asian", "Black, African American, or African",
+                        "Hispanic, Latino, or Spanish", "Middle Eastern or North African",
+                        "Native Hawaiian or other Pacific Islander", "White", "None of these fully describe me",
+                        "Prefer not to answer"));
         appConfigsApi
                 .createAppConfigElement(new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY).revision(1L)
-                        .data(ImmutableMap.of(
-                                "validationType", "ENUM",
-                                "validationRules", ImmutableMap.of("en",
-                                        ImmutableList.of("American Indian or Alaska Native", "Asian",
-                                                "Black, African American, or African", "Hispanic, Latino, or Spanish",
-                                                "Middle Eastern or North African",
-                                                "Native Hawaiian or other Pacific Islander",
-                                                "White", "None of these fully describe me", "Prefer not to answer")))))
+                        .data(new DemographicValuesValidationConfiguration()
+                                .validationType(ValidationTypeEnum.ENUM)
+                                .validationRules(ethnicityEnumRules)))
                 .execute();
+        DemographicValuesEnumValidationRules highestEducationRules = new DemographicValuesEnumValidationRules();
+        highestEducationRules.put("en",
+                ImmutableList.of("Never attended school or only attended kindergarten", "Grades 1 through 4 (Primary)",
+                        "Grades 5 through 8 (Middle school)", "Grades 9 through 11 (Some high school)",
+                        "Grade 12 or GED (High school graduate)",
+                        "1 to 3 years after high school (Some college, Associate’s degree, or technical school)",
+                        "College 4 years or more (College graduate)", "Advanced degree (Master’s, Doctorate, etc.)",
+                        "Prefer not to answer"));
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION)
                 .revision(1L)
-                .data(ImmutableMap.of(
-                        "validationType", "ENUM",
-                        "validationRules",
-                        ImmutableMap.of("en", ImmutableList.of("Never attended school or only attended kindergarten",
-                                "Grades 1 through 4 (Primary)", "Grades 5 through 8 (Middle school)",
-                                "Grades 9 through 11 (Some high school)", "Grade 12 or GED (High school graduate)",
-                                "1 to 3 years after high school (Some college, Associate’s degree, or technical school)",
-                                "College 4 years or more (College graduate)",
-                                "Advanced degree (Master’s, Doctorate, etc.)",
-                                "Prefer not to answer")))))
+                .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
+                        .validationRules(highestEducationRules)))
                 .execute();
 
         // test responses
