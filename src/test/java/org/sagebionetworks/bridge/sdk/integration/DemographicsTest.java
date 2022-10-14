@@ -72,16 +72,19 @@ public class DemographicsTest {
         TEST_VALUE_MAP.put("c", -5.7);
     }
     private static final String APP_CONFIG_RANDOM_ID = "id-that-should-be-ignored";
-    private static final String APP_CONFIG_CATEGORY1_ID = "bridge-demographics-category1";
-    private static final String APP_CONFIG_CATEGORY2_ID = "bridge-demographics-category2";
-    private static final String APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX = "bridge-demographics-biological-sex";
+    private static final String APP_CONFIG_CATEGORY1_ID = "bridge-validation-demographics-category1";
+    private static final String APP_CONFIG_CATEGORY2_ID = "bridge-validation-demographics-category2";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH = "bridge-validation-demographics-year-of-birth";
+    private static final String NIH_CATEGORY_YEAR_OF_BIRTH = "year-of-birth";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX = "bridge-validation-demographics-biological-sex";
     private static final String NIH_CATEGORY_BIOLOGICAL_SEX = "biological-sex";
-    private static final String APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY = "bridge-demographics-ethnicity";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY = "bridge-validation-demographics-ethnicity";
     private static final String NIH_CATEGORY_ETHNICITY = "ethnicity";
-    private static final String APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION = "bridge-demographics-highest-education";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION = "bridge-validation-demographics-highest-education";
     private static final String NIH_CATEGORY_HIGHEST_EDUCATION = "highest-education";
     private static final String[] APP_CONFIG_CATEGORIES_TO_DELETE = { APP_CONFIG_RANDOM_ID, APP_CONFIG_CATEGORY1_ID,
-            APP_CONFIG_CATEGORY2_ID, APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX, APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY,
+            APP_CONFIG_CATEGORY2_ID, APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH,
+            APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX, APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY,
             APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION };
 
     TestUser admin;
@@ -613,8 +616,9 @@ public class DemographicsTest {
         // add validation for category1
         // spanish should be ignored
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY1_ID).revision(1L)
-                .data(ImmutableMap.of("en", ImmutableList.of("a", "bb", "7", "-6.3", "true"),
-                        "sp", ImmutableList.of("this", "should", "be", "ignored"))))
+                .data(ImmutableMap.of("validationType", "ENUM", "validationRules",
+                        ImmutableMap.of("en", ImmutableList.of("a", "bb", "7", "-6.3", "true"),
+                                "sp", ImmutableList.of("this", "should", "be", "ignored")))))
                 .execute();
 
         // retry invalid demographics with validation for category1 now added (should
@@ -663,31 +667,78 @@ public class DemographicsTest {
         // add validation
         appConfigsApi
                 .createAppConfigElement(
+                        new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH).revision(1L)
+                                .data(ImmutableMap.of(
+                                        "validationType", "NUMBER_RANGE",
+                                        "validationRules", ImmutableMap.of("min", 1900, "max", 2050))))
+                .execute();
+        appConfigsApi
+                .createAppConfigElement(
                         new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX).revision(1L)
-                                .data(ImmutableMap
-                                        .of("en",
+                                .data(ImmutableMap.of(
+                                        "validationType", "ENUM",
+                                        "validationRules", ImmutableMap.of("en",
                                                 ImmutableList.of("Male", "Female", "Intersex",
-                                                        "None of these describe me", "Prefer not to answer"))))
+                                                        "None of these describe me", "Prefer not to answer")))))
                 .execute();
         appConfigsApi
                 .createAppConfigElement(new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY).revision(1L)
-                        .data(ImmutableMap.of("en",
-                                ImmutableList.of("American Indian or Alaska Native", "Asian",
-                                        "Black, African American, or African", "Hispanic, Latino, or Spanish",
-                                        "Middle Eastern or North African", "Native Hawaiian or other Pacific Islander",
-                                        "White", "None of these fully describe me", "Prefer not to answer"))))
+                        .data(ImmutableMap.of(
+                                "validationType", "ENUM",
+                                "validationRules", ImmutableMap.of("en",
+                                        ImmutableList.of("American Indian or Alaska Native", "Asian",
+                                                "Black, African American, or African", "Hispanic, Latino, or Spanish",
+                                                "Middle Eastern or North African",
+                                                "Native Hawaiian or other Pacific Islander",
+                                                "White", "None of these fully describe me", "Prefer not to answer")))))
                 .execute();
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION)
                 .revision(1L)
-                .data(ImmutableMap.of("en", ImmutableList.of("Never attended school or only attended kindergarten",
-                        "Grades 1 through 4 (Primary)", "Grades 5 through 8 (Middle school)",
-                        "Grades 9 through 11 (Some high school)", "Grade 12 or GED (High school graduate)",
-                        "1 to 3 years after high school (Some college, Associate’s degree, or technical school)",
-                        "College 4 years or more (College graduate)", "Advanced degree (Master’s, Doctorate, etc.)",
-                        "Prefer not to answer"))))
+                .data(ImmutableMap.of(
+                        "validationType", "ENUM",
+                        "validationRules",
+                        ImmutableMap.of("en", ImmutableList.of("Never attended school or only attended kindergarten",
+                                "Grades 1 through 4 (Primary)", "Grades 5 through 8 (Middle school)",
+                                "Grades 9 through 11 (Some high school)", "Grade 12 or GED (High school graduate)",
+                                "1 to 3 years after high school (Some college, Associate’s degree, or technical school)",
+                                "College 4 years or more (College graduate)",
+                                "Advanced degree (Master’s, Doctorate, etc.)",
+                                "Prefer not to answer")))))
                 .execute();
 
         // test responses
+        DemographicUser demographicUserValidBirthYear = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_YEAR_OF_BIRTH,
+                                new Demographic().values(ImmutableList.of(2000))));
+        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidBirthYear)
+                .execute();
+        DemographicUser demographicUserInvalidBirthYear1 = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_YEAR_OF_BIRTH,
+                                new Demographic().values(ImmutableList.of(1899))));
+        try {
+            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear1)
+                    .execute();
+            fail("should have thrown an exception, invalid value for year of birth");
+        } catch (InvalidEntityException e) {
+
+        }
+        DemographicUser demographicUserInvalidBirthYear2 = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                NIH_CATEGORY_YEAR_OF_BIRTH,
+                                new Demographic().values(ImmutableList.of(2051))));
+        try {
+            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear2)
+                    .execute();
+            fail("should have thrown an exception, invalid value for year of birth");
+        } catch (InvalidEntityException e) {
+
+        }
+
         DemographicUser demographicUserValidSex = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
