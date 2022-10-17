@@ -184,6 +184,7 @@ public class DemographicsTest {
                 .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserToSave).execute()
                 .body();
 
+        assertNotNull(saveResult);
         assertEquals(consentedUserInStudy.getUserId(), saveResult.getUserId());
         assertEquals(2, saveResult.getDemographics().size());
         assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -220,6 +221,7 @@ public class DemographicsTest {
         DemographicUserResponse saveSelfResult = consentedUsersApi
                 .saveDemographicUserSelf(TEST_STUDY_ID, demographicUserToSaveSelf).execute().body();
 
+        assertNotNull(saveSelfResult);
         assertEquals(consentedUserInStudy.getUserId(), saveSelfResult.getUserId());
         assertEquals(2, saveSelfResult.getDemographics().size());
         assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -255,6 +257,7 @@ public class DemographicsTest {
                         demographicUserAssessmentToSave)
                 .execute().body();
 
+        assertNotNull(saveAssessmentResult);
         assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentResult.getUserId());
         assertEquals(2, saveAssessmentResult.getDemographics().size());
         assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -287,6 +290,7 @@ public class DemographicsTest {
                 .saveDemographicUserSelfAssessment(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
                 .execute().body();
 
+        assertNotNull(saveAssessmentSelfResult);
         assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentSelfResult.getUserId());
         assertEquals(2, saveAssessmentSelfResult.getDemographics().size());
         assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -309,6 +313,7 @@ public class DemographicsTest {
         DemographicUserResponseList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID, 0, 10)
                 .execute().body();
 
+        assertNotNull(getDemographicUsersResult);
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
         Optional<DemographicUserResponse> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems()
@@ -369,6 +374,7 @@ public class DemographicsTest {
         DemographicUserResponse getResult = researchersApi
                 .getDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId()).execute().body();
 
+        assertNotNull(getResult);
         assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
         assertEquals(1, getResult.getDemographics().size());
         assertFalse(getResult.getDemographics().containsKey(TEST_CATEGORY1));
@@ -390,6 +396,7 @@ public class DemographicsTest {
         DemographicUserResponseList getDemographicUsersAfterDeleteResult = researchersApi
                 .getDemographicUsers(TEST_STUDY_ID, 0, 10).execute().body();
 
+        assertNotNull(getDemographicUsersAfterDeleteResult);
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
         DemographicUserResponse getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems()
                 .get(0);
@@ -418,6 +425,7 @@ public class DemographicsTest {
                 .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserToSave).execute()
                 .body();
 
+        assertNotNull(saveResult);
         assertEquals(consentedUserInStudy.getUserId(), saveResult.getUserId());
         assertEquals(2, saveResult.getDemographics().size());
         assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -447,6 +455,7 @@ public class DemographicsTest {
         DemographicUserResponse saveSelfResult = consentedUsersApi
                 .saveDemographicUserSelfAppLevel(demographicUserToSaveSelf).execute().body();
 
+        assertNotNull(saveSelfResult);
         assertEquals(consentedUserInStudy.getUserId(), saveSelfResult.getUserId());
         assertEquals(2, saveSelfResult.getDemographics().size());
         assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -474,6 +483,7 @@ public class DemographicsTest {
                         demographicUserAssessmentToSave)
                 .execute().body();
 
+        assertNotNull(saveAssessmentResult);
         assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentResult.getUserId());
         assertEquals(2, saveAssessmentResult.getDemographics().size());
         assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -498,6 +508,7 @@ public class DemographicsTest {
                 .saveDemographicUserSelfAssessmentAppLevel(demographicUserAssessmentToSaveSelf)
                 .execute().body();
 
+        assertNotNull(saveAssessmentSelfResult);
         assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentSelfResult.getUserId());
         assertEquals(2, saveAssessmentSelfResult.getDemographics().size());
         assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
@@ -520,6 +531,7 @@ public class DemographicsTest {
         DemographicUserResponseList getDemographicUsersResult = adminsApi.getDemographicUsersAppLevel(0, 10).execute()
                 .body();
 
+        assertNotNull(getDemographicUsersResult);
         assertEquals(2, getDemographicUsersResult.getItems().size());
         // first user
         Optional<DemographicUserResponse> getDemographicUsersResult0Optional = getDemographicUsersResult.getItems()
@@ -573,6 +585,7 @@ public class DemographicsTest {
         DemographicUserResponse getResult = adminsApi
                 .getDemographicUserAppLevel(consentedUserInStudy.getUserId()).execute().body();
 
+        assertNotNull(getResult);
         assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
         assertEquals(1, getResult.getDemographics().size());
         assertFalse(getResult.getDemographics().containsKey(TEST_CATEGORY1));
@@ -588,6 +601,7 @@ public class DemographicsTest {
         DemographicUserResponseList getDemographicUsersAfterDeleteResult = adminsApi.getDemographicUsersAppLevel(0, 10)
                 .execute().body();
 
+        assertNotNull(getDemographicUsersAfterDeleteResult);
         assertEquals(1, getDemographicUsersAfterDeleteResult.getItems().size());
         DemographicUserResponse getDemographicUsersAfterDeleteResult0 = getDemographicUsersAfterDeleteResult.getItems()
                 .get(0);
@@ -706,17 +720,33 @@ public class DemographicsTest {
                         .validationRules(new DemographicValuesNumberRangeValidationRules().min(0d).max(100d))))
                 .execute();
 
-        // should work because number range validation is ignored when values are not
-        // numbers
+        // should work
+        DemographicUser demographicUserValidNumber = new DemographicUser()
+                .demographics(
+                        ImmutableMap.of(
+                                "category3",
+                                new Demographic()
+                                        .values(ImmutableList.of(99))));
+        adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNumber)
+                .execute();
+
+        // should not work because not a number
         DemographicUser demographicUserStringsInNumberValidation = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
                                 "category3",
                                 new Demographic()
                                         .values(ImmutableList.of("xyz", "xyz"))));
-        adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserStringsInNumberValidation)
-                .execute();
+        try {
+            adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(),
+                            demographicUserStringsInNumberValidation)
+                    .execute();
+            fail("should have thrown an exception (specified number range validation but not a number)");
+        } catch (InvalidEntityException e) {
+
+        }
 
         // should not work
         DemographicUser demographicUserInvalidNumber = new DemographicUser()
