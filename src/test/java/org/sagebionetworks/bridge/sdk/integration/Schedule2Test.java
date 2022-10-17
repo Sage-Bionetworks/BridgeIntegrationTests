@@ -79,7 +79,8 @@ import com.google.common.net.HttpHeaders;
 import retrofit2.Response;
 
 public class Schedule2Test {
-
+    private static final ImmutableList<Label> LABELS = ImmutableList.of(new Label().lang("en").value("English"),
+            new Label().lang("fr").value("French"));
     private static final String TIME_ZONE = "America/Chicago";
     private static final String PARTICIPANT_API = "/v5/studies/study1/participants/self/schedule?clientTimeZone=";
     private static final String IMAGE_RESOURCE_NAME = "default";
@@ -666,23 +667,23 @@ public class Schedule2Test {
                 .guid(assessment.getGuid())
                 .identifier("1")
                 .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(IMAGE_RESOURCE_MODULE)
-                        .label(new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE)));
+                        .labels(LABELS));
         AssessmentReference2 nullModule = new AssessmentReference2()
                 .appId(TEST_APP_ID)
                 .guid(assessment.getGuid())
                 .identifier("2")
                 .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(null)
-                        .label(new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE)));
+                        .labels(LABELS));
         AssessmentReference2 nullLabel = new AssessmentReference2()
                 .appId(TEST_APP_ID)
                 .guid(assessment.getGuid())
                 .identifier("3")
-                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(IMAGE_RESOURCE_MODULE).label(null));
+                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(IMAGE_RESOURCE_MODULE).labels(null));
         AssessmentReference2 nullModuleAndLabel = new AssessmentReference2()
                 .appId(TEST_APP_ID)
                 .guid(assessment.getGuid())
                 .identifier("4")
-                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(null).label(null));
+                .imageResource(new ImageResource().name(IMAGE_RESOURCE_NAME).module(null).labels(null));
 
         schedule = new Schedule2();
         schedule.setName("Test Schedule [Schedule2Test]");
@@ -703,6 +704,7 @@ public class Schedule2Test {
         ForStudyCoordinatorsApi coordsApi = studyCoordinator.getClient(ForStudyCoordinatorsApi.class);
         ParticipantSchedule participantSchedule = coordsApi.getParticipantSchedule(STUDY_ID_1, user.getUserId())
                 .execute().body();
+        assertNotNull(participantSchedule);
         Collections.sort(participantSchedule.getAssessments(),
                 Comparator.comparing(assessment -> assessment.getIdentifier()));
 
@@ -712,12 +714,12 @@ public class Schedule2Test {
                 participantSchedule.getAssessments().get(1).getImageResource(),
                 IMAGE_RESOURCE_NAME,
                 IMAGE_RESOURCE_MODULE,
-                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+                LABELS);
         assertImageResource(
                 participantSchedule.getAssessments().get(2).getImageResource(),
                 IMAGE_RESOURCE_NAME,
                 null,
-                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+                LABELS);
         assertImageResource(
                 participantSchedule.getAssessments().get(3).getImageResource(),
                 IMAGE_RESOURCE_NAME,
@@ -731,6 +733,7 @@ public class Schedule2Test {
 
         // check ImageResources in Timeline
         Timeline timeline = coordsApi.getStudyParticipantTimeline(STUDY_ID_1, user.getUserId()).execute().body();
+        assertNotNull(timeline);
         Collections.sort(timeline.getAssessments(), Comparator.comparing(assessment -> assessment.getIdentifier()));
 
         assertEquals(5, timeline.getAssessments().size());
@@ -739,12 +742,12 @@ public class Schedule2Test {
                 timeline.getAssessments().get(1).getImageResource(),
                 IMAGE_RESOURCE_NAME,
                 IMAGE_RESOURCE_MODULE,
-                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+                LABELS);
         assertImageResource(
                 timeline.getAssessments().get(2).getImageResource(),
                 IMAGE_RESOURCE_NAME,
                 null,
-                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+                LABELS);
         assertImageResource(
                 timeline.getAssessments().get(3).getImageResource(),
                 IMAGE_RESOURCE_NAME,
@@ -758,15 +761,17 @@ public class Schedule2Test {
     }
 
     public static void assertImageResource(ImageResource imageResource, String expectedName, String expectedModule,
-            Label expectedLabel) {
+            List<Label> expectedLabels) {
         assertNotNull(imageResource);
         assertEquals(expectedName, imageResource.getName());
         assertEquals(expectedModule, imageResource.getModule());
-        if (expectedLabel == null) {
-            assertNull(imageResource.getLabel());
+        if (expectedLabels == null) {
+            assertNull(imageResource.getLabels());
         } else {
-            assertEquals(expectedLabel.getLang(), imageResource.getLabel().getLang());
-            assertEquals(expectedLabel.getValue(), imageResource.getLabel().getValue());
+            for (int i = 0; i < expectedLabels.size(); i++) {
+                assertEquals(expectedLabels.get(i).getLang(), imageResource.getLabels().get(i).getLang());
+                assertEquals(expectedLabels.get(i).getValue(), imageResource.getLabels().get(i).getValue());
+            }
         }
     }
 

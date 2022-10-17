@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -65,9 +66,7 @@ public class AssessmentTest {
     private static final String TAG2 = "category:cat2";
     private static final String IMAGE_RESOURCE_NAME = "default";
     private static final String IMAGE_RESOURCE_MODULE = "sage_survey";
-    private static final String IMAGE_RESOURCE_LABEL_LANG = "en";
-    private static final String IMAGE_RESOURCE_LABEL_VALUE = "english label for image";
-    
+
     // This isn't usable until the configuration is implemented, but 
     // verify it is persisted correctly
     private static final Map<String, List<PropertyInfo>> CUSTOMIZATION_FIELDS = ImmutableMap.of(
@@ -628,57 +627,65 @@ public class AssessmentTest {
                 .title(TITLE)
                 .osName("Both")
                 .imageResource(null);
-        String guid = assessmentApiOrg1.createAssessment(assessment).execute().body().getGuid();
+        Assessment createdAssessment = assessmentApiOrg1.createAssessment(assessment).execute().body();
+        assertNotNull(createdAssessment);
+        String guid = createdAssessment.getGuid();
+        assertNotNull(createdAssessment);
         assessment.setImageResource(
                 new ImageResource()
                         .name(IMAGE_RESOURCE_NAME)
                         .module(IMAGE_RESOURCE_MODULE)
-                        .label(new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE)));
+                        .labels(LABELS));
         assessment.setRevision(2L);
         assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
         assessment.setImageResource(
                 new ImageResource()
                         .name(IMAGE_RESOURCE_NAME)
                         .module(null)
-                        .label(new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE)));
+                        .labels(LABELS));
         assessment.setRevision(3L);
         assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
         assessment.setImageResource(
                 new ImageResource()
                         .name(IMAGE_RESOURCE_NAME)
                         .module(IMAGE_RESOURCE_MODULE)
-                        .label(null));
+                        .labels(null));
         assessment.setRevision(4L);
         assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
         assessment.setImageResource(
                 new ImageResource()
                         .name(IMAGE_RESOURCE_NAME)
                         .module(null)
-                        .label(null));
+                        .labels(null));
         assessment.setRevision(5L);
         assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
 
         Assessment nullImageResource = assessmentApiOrg1.getAssessmentById(id, 1L).execute().body();
+        assertNotNull(nullImageResource);
         assertNull(nullImageResource.getImageResource());
         Assessment moduleAndLabel = assessmentApiOrg1.getAssessmentById(id, 2L).execute().body();
+        assertNotNull(moduleAndLabel);
         assertImageResource(
                 moduleAndLabel.getImageResource(),
                 IMAGE_RESOURCE_NAME,
                 IMAGE_RESOURCE_MODULE,
-                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+                LABELS);
         Assessment nullModule = assessmentApiOrg1.getAssessmentById(id, 3L).execute().body();
+        assertNotNull(nullModule);
         assertImageResource(
                 nullModule.getImageResource(),
                 IMAGE_RESOURCE_NAME,
                 null,
-                new Label().lang(IMAGE_RESOURCE_LABEL_LANG).value(IMAGE_RESOURCE_LABEL_VALUE));
+                LABELS);
         Assessment nullLabel = assessmentApiOrg1.getAssessmentById(id, 4L).execute().body();
+        assertNotNull(nullLabel);
         assertImageResource(
                 nullLabel.getImageResource(),
                 IMAGE_RESOURCE_NAME,
                 IMAGE_RESOURCE_MODULE,
                 null);
         Assessment nullModuleAndLabel = assessmentApiOrg1.getAssessmentById(id, 5L).execute().body();
+        assertNotNull(nullModuleAndLabel);
         assertImageResource(
                 nullModuleAndLabel.getImageResource(),
                 IMAGE_RESOURCE_NAME,
