@@ -85,8 +85,6 @@ public class Schedule2Test {
     private static final String PARTICIPANT_API = "/v5/studies/study1/participants/self/schedule?clientTimeZone=";
     private static final String IMAGE_RESOURCE_NAME = "default";
     private static final String IMAGE_RESOURCE_MODULE = "sage_survey";
-    private static final String IMAGE_RESOURCE_LABEL_LANG = "en";
-    private static final String IMAGE_RESOURCE_LABEL_VALUE = "english label for image";
 
     TestUser developer;
     TestUser studyDesigner;
