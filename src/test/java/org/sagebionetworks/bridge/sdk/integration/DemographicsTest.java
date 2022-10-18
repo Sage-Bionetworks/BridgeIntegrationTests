@@ -76,17 +76,17 @@ public class DemographicsTest {
         TEST_VALUE_MAP.put("c", -5.7);
     }
     private static final String APP_CONFIG_RANDOM_ID = "id-that-should-be-ignored";
-    private static final String APP_CONFIG_CATEGORY1_ID = "bridge-validation-demographics-category1";
-    private static final String APP_CONFIG_CATEGORY2_ID = "bridge-validation-demographics-category2";
-    private static final String APP_CONFIG_CATEGORY3_ID = "bridge-validation-demographics-category3";
-    private static final String APP_CONFIG_CATEGORY4_ID = "bridge-validation-demographics-category4";
-    private static final String APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH = "bridge-validation-demographics-year-of-birth";
+    private static final String APP_CONFIG_CATEGORY1_ID = "bridge-validation-demographics-values-category1";
+    private static final String APP_CONFIG_CATEGORY2_ID = "bridge-validation-demographics-values-category2";
+    private static final String APP_CONFIG_CATEGORY3_ID = "bridge-validation-demographics-values-category3";
+    private static final String APP_CONFIG_CATEGORY4_ID = "bridge-validation-demographics-values-category4";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH = "bridge-validation-demographics-values-year-of-birth";
     private static final String NIH_CATEGORY_YEAR_OF_BIRTH = "year-of-birth";
-    private static final String APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX = "bridge-validation-demographics-biological-sex";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX = "bridge-validation-demographics-values-biological-sex";
     private static final String NIH_CATEGORY_BIOLOGICAL_SEX = "biological-sex";
-    private static final String APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY = "bridge-validation-demographics-ethnicity";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY = "bridge-validation-demographics-values-ethnicity";
     private static final String NIH_CATEGORY_ETHNICITY = "ethnicity";
-    private static final String APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION = "bridge-validation-demographics-highest-education";
+    private static final String APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION = "bridge-validation-demographics-values-highest-education";
     private static final String NIH_CATEGORY_HIGHEST_EDUCATION = "highest-education";
     private static final String[] APP_CONFIG_CATEGORIES_TO_DELETE = { APP_CONFIG_RANDOM_ID, APP_CONFIG_CATEGORY1_ID,
             APP_CONFIG_CATEGORY2_ID, APP_CONFIG_CATEGORY3_ID, APP_CONFIG_CATEGORY4_ID,
