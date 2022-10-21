@@ -626,11 +626,11 @@ public class AssessmentTest {
                 .ownerId(ORG_ID_1)
                 .title(TITLE)
                 .osName("Both")
-                .imageResource(null);
+                .imageResource(null)
+                .tags(ImmutableList.of(markerTag));
         Assessment createdAssessment = assessmentApiOrg1.createAssessment(assessment).execute().body();
         assertNotNull(createdAssessment);
         String guid = createdAssessment.getGuid();
-        assertNotNull(createdAssessment);
         assessment.setImageResource(
                 new ImageResource()
                         .name(IMAGE_RESOURCE_NAME)
