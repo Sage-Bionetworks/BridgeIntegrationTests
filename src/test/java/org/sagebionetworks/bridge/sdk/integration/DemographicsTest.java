@@ -645,7 +645,7 @@ public class DemographicsTest {
         // spanish should be ignored
         DemographicValuesEnumValidationRules category1Rules = new DemographicValuesEnumValidationRules();
         category1Rules.put("en", ImmutableList.of("a", "bb", "7", "-6.3", "true"));
-        category1Rules.put("sp", ImmutableList.of("this", "should", "be", "ignored"));
+        category1Rules.put("es", ImmutableList.of("this", "should", "be", "ignored"));
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY1_ID).revision(1L)
                 .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
                         .validationRules(category1Rules)))
@@ -697,7 +697,7 @@ public class DemographicsTest {
 
         // no english
         DemographicValuesEnumValidationRules category4Rules = new DemographicValuesEnumValidationRules();
-        category4Rules.put("sp", ImmutableList.of());
+        category4Rules.put("es", ImmutableList.of());
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY4_ID).revision(1L)
                 .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
                         .validationRules(category4Rules)))
