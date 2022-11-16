@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -226,6 +228,11 @@ public class WeeklyAdherenceReportTest {
         
         EventStreamWindow win = report.getByDayEntries().get("0").get(1).getTimeWindows().get(0);
         assertEquals(SessionCompletionState.UNSTARTED, win.getState());
+        assertEquals(LocalDate.now(DateTimeZone.forID(report.getClientTimeZone())), win.getStartDate());
+        assertEquals("08:00", win.getStartTime());
+        assertEquals(LocalDate.now(DateTimeZone.forID(report.getClientTimeZone())), win.getEndDate());
+        assertEquals("20:00", win.getEndTime());
+        
         String instanceGuid = win.getSessionInstanceGuid();
         
         AdherenceRecord rec = new AdherenceRecord();
