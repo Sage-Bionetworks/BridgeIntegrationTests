@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -28,9 +29,9 @@ import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityAlreadyExistsException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
-import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.model.AppConfigElement;
 import org.sagebionetworks.bridge.rest.model.Demographic;
+import org.sagebionetworks.bridge.rest.model.DemographicResponse;
 import org.sagebionetworks.bridge.rest.model.DemographicUser;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessment;
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswer;
@@ -38,6 +39,7 @@ import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswerAnsw
 import org.sagebionetworks.bridge.rest.model.DemographicUserAssessmentAnswerCollection;
 import org.sagebionetworks.bridge.rest.model.DemographicUserResponse;
 import org.sagebionetworks.bridge.rest.model.DemographicUserResponseList;
+import org.sagebionetworks.bridge.rest.model.DemographicValueResponse;
 import org.sagebionetworks.bridge.rest.model.DemographicValuesEnumValidationRules;
 import org.sagebionetworks.bridge.rest.model.DemographicValuesNumberRangeValidationRules;
 import org.sagebionetworks.bridge.rest.model.DemographicValuesValidationConfiguration;
@@ -92,6 +94,10 @@ public class DemographicsTest {
             APP_CONFIG_CATEGORY2_ID, APP_CONFIG_CATEGORY3_ID, APP_CONFIG_CATEGORY4_ID,
             APP_CONFIG_NIH_CATEGORY_ID_YEAR_OF_BIRTH, APP_CONFIG_NIH_CATEGORY_ID_BIOLOGICAL_SEX,
             APP_CONFIG_NIH_CATEGORY_ID_ETHNICITY, APP_CONFIG_NIH_CATEGORY_ID_HIGHEST_EDUCATION };
+    private static final String INVALID_ENUM_VALUE = "invalid enum value";
+    private static final String INVALID_NUMBER_VALUE_NOT_A_NUMBER = "invalid number";
+    private static final String INVALID_NUMBER_VALUE_LESS_THAN_MIN = "invalid number value (less than min)";
+    private static final String INVALID_NUMBER_VALUE_GREATER_THAN_MAX = "invalid number (larger than max)";
 
     TestUser admin;
     TestUser researcherStudyCoordinator;
@@ -159,6 +165,40 @@ public class DemographicsTest {
         studiesApi.deleteStudy(TEST_STUDY_ID, true);
     }
 
+    private void assertUploadAndResponse(String userId, DemographicUser uploaded, DemographicUserResponse response) {
+        assertNotNull(response);
+        assertEquals(userId, response.getUserId());
+        assertEquals(uploaded.getDemographics().size(), response.getDemographics().size());
+        for (String category : uploaded.getDemographics().keySet()) {
+            Demographic uploadedDemographic = uploaded.getDemographics().get(category);
+            DemographicResponse responseDemographic = response.getDemographics().get(category);
+            assertNotNull(responseDemographic);
+            assertNotNull(responseDemographic.getId());
+            assertEquals(uploadedDemographic.isMultipleSelect(), responseDemographic.isMultipleSelect());
+            assertEquals(uploadedDemographic.getValues().size(), responseDemographic.getValues().size());
+            for (int i = 0; i < uploadedDemographic.getValues().size(); i++) {
+                assertEquals(uploadedDemographic.getValues().get(i), responseDemographic.getValues().get(i).getValue());
+            }
+            assertEquals(uploadedDemographic.getUnits(), responseDemographic.getUnits());
+        }
+    }
+
+    // does not check values or whether it is multiple select because everything is
+    // a generic Object
+    private void assertAssessmentUploadAndResponseWithoutValuesOrMultipleSelect(String userId,
+            DemographicUserAssessment uploaded, int answerCollectionIndex, DemographicUserResponse response) {
+        DemographicUserAssessmentAnswerCollection answerCollection = (DemographicUserAssessmentAnswerCollection) uploaded
+                .getStepHistory().get(answerCollectionIndex);
+        assertNotNull(response);
+        assertEquals(userId, response.getUserId());
+        assertEquals(answerCollection.getChildren().size(), response.getDemographics().size());
+        for (DemographicUserAssessmentAnswer answer : answerCollection.getChildren()) {
+            DemographicResponse responseDemographic = response.getDemographics().get(answer.getIdentifier());
+            assertNotNull(responseDemographic);
+            assertNotNull(responseDemographic.getId());
+        }
+    }
+
     /**
      * Tests saving, saving self, saving assessment format, saving assessment format
      * self, get multiple, delete demographic, get one, delete user, get multiple.
@@ -184,23 +224,11 @@ public class DemographicsTest {
                 .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserToSave).execute()
                 .body();
 
-        assertNotNull(saveResult);
-        assertEquals(consentedUserInStudy.getUserId(), saveResult.getUserId());
-        assertEquals(2, saveResult.getDemographics().size());
-        assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY2).getId());
-        assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertFalse(saveResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
-        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY1).getValues(),
-                saveResult.getDemographics().get(TEST_CATEGORY1).getValues());
-        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY2).getValues(),
-                saveResult.getDemographics().get(TEST_CATEGORY2).getValues());
-        assertNull(saveResult.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY2).getUnits(),
-                saveResult.getDemographics().get(TEST_CATEGORY2).getUnits());
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSave, saveResult);
 
         // save self
-        DemographicUser demographicUserToSaveSelf = new DemographicUser().demographics(ImmutableMap.of(TEST_CATEGORY1,
+        DemographicUser demographicUserToSaveSelf = new DemographicUser().demographics(new HashMap<>());
+        demographicUserToSaveSelf.getDemographics().putAll(ImmutableMap.of(TEST_CATEGORY1,
                 new Demographic().multipleSelect(true).values(ImmutableList.of(TEST_VALUE1, TEST_VALUE2)),
                 TEST_CATEGORY3,
                 new Demographic().multipleSelect(false).values(ImmutableList.of(TEST_VALUE3)).units(TEST_UNITS)));
@@ -221,20 +249,7 @@ public class DemographicsTest {
         DemographicUserResponse saveSelfResult = consentedUsersApi
                 .saveDemographicUserSelf(TEST_STUDY_ID, demographicUserToSaveSelf).execute().body();
 
-        assertNotNull(saveSelfResult);
-        assertEquals(consentedUserInStudy.getUserId(), saveSelfResult.getUserId());
-        assertEquals(2, saveSelfResult.getDemographics().size());
-        assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
-        assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertFalse(saveSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
-                saveSelfResult.getDemographics().get(TEST_CATEGORY1).getValues());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                saveSelfResult.getDemographics().get(TEST_CATEGORY3).getValues());
-        assertNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                saveSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSaveSelf, saveSelfResult);
 
         // save assessment
         DemographicUserAssessment demographicUserAssessmentToSave = new DemographicUserAssessment()
@@ -257,16 +272,15 @@ public class DemographicsTest {
                         demographicUserAssessmentToSave)
                 .execute().body();
 
-        assertNotNull(saveAssessmentResult);
-        assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentResult.getUserId());
-        assertEquals(2, saveAssessmentResult.getDemographics().size());
-        assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getId());
+        assertAssessmentUploadAndResponseWithoutValuesOrMultipleSelect(secondConsentedUserInStudy.getUserId(),
+                demographicUserAssessmentToSave, 0, saveAssessmentResult);
         assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
-                saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
-        assertEquals(TEST_VALUE3, saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getValues().get(0));
+                saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().stream()
+                        .map(DemographicValueResponse::getValue).toArray());
+        assertEquals(TEST_VALUE3,
+                saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getValues().get(0).getValue());
         assertNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getUnits());
         assertEquals(TEST_UNITS, saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getUnits());
 
@@ -290,24 +304,23 @@ public class DemographicsTest {
                 .saveDemographicUserSelfAssessment(TEST_STUDY_ID, demographicUserAssessmentToSaveSelf)
                 .execute().body();
 
-        assertNotNull(saveAssessmentSelfResult);
-        assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentSelfResult.getUserId());
-        assertEquals(2, saveAssessmentSelfResult.getDemographics().size());
-        assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
+        assertAssessmentUploadAndResponseWithoutValuesOrMultipleSelect(secondConsentedUserInStudy.getUserId(),
+                demographicUserAssessmentToSaveSelf, 0, saveAssessmentSelfResult);
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
+
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
-                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
+                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().stream()
+                        .map(DemographicValueResponse::getValue).toArray());
         assertEquals(TEST_VALUE_MAP.size(),
                 saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues().size());
         for (Map.Entry<String, Object> entry : TEST_VALUE_MAP.entrySet()) {
             String entryString = makeStringEntry(entry);
-            assertThat(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues(),
+            assertThat(
+                    saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues().stream()
+                            .map(DemographicValueResponse::getValue).collect(Collectors.toList()),
                     hasItem(entryString));
         }
-        assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(TEST_UNITS, saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // get multiple
         DemographicUserResponseList getDemographicUsersResult = researchersApi.getDemographicUsers(TEST_STUDY_ID, 0, 10)
@@ -320,35 +333,27 @@ public class DemographicsTest {
                 .stream().filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult0Optional.isPresent());
         DemographicUserResponse getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
-        assertEquals(2, getDemographicUsersResult0.getDemographics().size());
-        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
-        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertFalse(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
-                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getValues());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getValues());
-        assertNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSaveSelf,
+                getDemographicUsersResult0);
         // second user
         Optional<DemographicUserResponse> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems()
                 .stream().filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult1Optional.isPresent());
         DemographicUserResponse getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
-        assertEquals(2, getDemographicUsersResult1.getDemographics().size());
-        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
+        assertAssessmentUploadAndResponseWithoutValuesOrMultipleSelect(secondConsentedUserInStudy.getUserId(),
+                demographicUserAssessmentToSaveSelf, 0, getDemographicUsersResult1);
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
-                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
+                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues().stream()
+                        .map(DemographicValueResponse::getValue).toArray());
         assertEquals(TEST_VALUE_MAP.size(),
                 getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues().size());
         for (Map.Entry<String, Object> entry : TEST_VALUE_MAP.entrySet()) {
             String entryString = makeStringEntry(entry);
-            assertThat(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues(),
+            assertThat(
+                    getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues().stream()
+                            .map(DemographicValueResponse::getValue).collect(Collectors.toList()),
                     hasItem(entryString));
         }
         assertNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getUnits());
@@ -374,16 +379,8 @@ public class DemographicsTest {
         DemographicUserResponse getResult = researchersApi
                 .getDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId()).execute().body();
 
-        assertNotNull(getResult);
-        assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
-        assertEquals(1, getResult.getDemographics().size());
-        assertFalse(getResult.getDemographics().containsKey(TEST_CATEGORY1));
-        assertNotNull(getResult.getDemographics().get(TEST_CATEGORY3).getId());
-        assertFalse(getResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getResult.getDemographics().get(TEST_CATEGORY3).getValues());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                getResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+        demographicUserToSaveSelf.getDemographics().remove(TEST_CATEGORY1);
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSaveSelf, getResult);
 
         // delete user, get multiple
         try {
@@ -404,7 +401,8 @@ public class DemographicsTest {
         assertFalse(
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getValues());
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getValues().stream()
+                        .map(DemographicValueResponse::getValue).collect(Collectors.toList()));
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
     }
@@ -425,23 +423,11 @@ public class DemographicsTest {
                 .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserToSave).execute()
                 .body();
 
-        assertNotNull(saveResult);
-        assertEquals(consentedUserInStudy.getUserId(), saveResult.getUserId());
-        assertEquals(2, saveResult.getDemographics().size());
-        assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveResult.getDemographics().get(TEST_CATEGORY2).getId());
-        assertTrue(saveResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertFalse(saveResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
-        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY1).getValues(),
-                saveResult.getDemographics().get(TEST_CATEGORY1).getValues());
-        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY2).getValues(),
-                saveResult.getDemographics().get(TEST_CATEGORY2).getValues());
-        assertNull(saveResult.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(demographicUserToSave.getDemographics().get(TEST_CATEGORY2).getUnits(),
-                saveResult.getDemographics().get(TEST_CATEGORY2).getUnits());
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSave, saveResult);
 
         // save self
-        DemographicUser demographicUserToSaveSelf = new DemographicUser().demographics(ImmutableMap.of(TEST_CATEGORY1,
+        DemographicUser demographicUserToSaveSelf = new DemographicUser().demographics(new HashMap<>());
+        demographicUserToSaveSelf.getDemographics().putAll(ImmutableMap.of(TEST_CATEGORY1,
                 new Demographic().multipleSelect(true).values(ImmutableList.of(TEST_VALUE1, TEST_VALUE2)),
                 TEST_CATEGORY3,
                 new Demographic().multipleSelect(false).values(ImmutableList.of(TEST_VALUE3)).units(TEST_UNITS)));
@@ -455,20 +441,7 @@ public class DemographicsTest {
         DemographicUserResponse saveSelfResult = consentedUsersApi
                 .saveDemographicUserSelfAppLevel(demographicUserToSaveSelf).execute().body();
 
-        assertNotNull(saveSelfResult);
-        assertEquals(consentedUserInStudy.getUserId(), saveSelfResult.getUserId());
-        assertEquals(2, saveSelfResult.getDemographics().size());
-        assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
-        assertTrue(saveSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertFalse(saveSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
-                saveSelfResult.getDemographics().get(TEST_CATEGORY1).getValues());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                saveSelfResult.getDemographics().get(TEST_CATEGORY3).getValues());
-        assertNull(saveSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                saveSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSaveSelf, saveSelfResult);
 
         // save assessment
         DemographicUserAssessment demographicUserAssessmentToSave = new DemographicUserAssessment()
@@ -483,16 +456,15 @@ public class DemographicsTest {
                         demographicUserAssessmentToSave)
                 .execute().body();
 
-        assertNotNull(saveAssessmentResult);
-        assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentResult.getUserId());
-        assertEquals(2, saveAssessmentResult.getDemographics().size());
-        assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getId());
+        assertAssessmentUploadAndResponseWithoutValuesOrMultipleSelect(secondConsentedUserInStudy.getUserId(),
+                demographicUserAssessmentToSave, 0, saveAssessmentResult);
         assertTrue(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertFalse(saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
-                saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
-        assertEquals(TEST_VALUE3, saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getValues().get(0));
+                saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getValues().stream()
+                        .map(DemographicValueResponse::getValue).toArray());
+        assertEquals(TEST_VALUE3,
+                saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getValues().get(0).getValue());
         assertNull(saveAssessmentResult.getDemographics().get(TEST_CATEGORY1).getUnits());
         assertEquals(TEST_UNITS, saveAssessmentResult.getDemographics().get(TEST_CATEGORY2).getUnits());
 
@@ -508,24 +480,22 @@ public class DemographicsTest {
                 .saveDemographicUserSelfAssessmentAppLevel(demographicUserAssessmentToSaveSelf)
                 .execute().body();
 
-        assertNotNull(saveAssessmentSelfResult);
-        assertEquals(secondConsentedUserInStudy.getUserId(), saveAssessmentSelfResult.getUserId());
-        assertEquals(2, saveAssessmentSelfResult.getDemographics().size());
-        assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getId());
+        assertAssessmentUploadAndResponseWithoutValuesOrMultipleSelect(secondConsentedUserInStudy.getUserId(),
+                demographicUserAssessmentToSaveSelf, 0, saveAssessmentSelfResult);
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
-                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
+                saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getValues().stream()
+                        .map(DemographicValueResponse::getValue).toArray());
         assertEquals(TEST_VALUE_MAP.size(),
                 saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues().size());
         for (Map.Entry<String, Object> entry : TEST_VALUE_MAP.entrySet()) {
             String entryString = makeStringEntry(entry);
-            assertThat(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues(),
+            assertThat(
+                    saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getValues().stream()
+                            .map(DemographicValueResponse::getValue).collect(Collectors.toList()),
                     hasItem(entryString));
         }
-        assertNull(saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(TEST_UNITS, saveAssessmentSelfResult.getDemographics().get(TEST_CATEGORY3).getUnits());
 
         // get multiple
         DemographicUserResponseList getDemographicUsersResult = adminsApi.getDemographicUsersAppLevel(0, 10).execute()
@@ -538,35 +508,27 @@ public class DemographicsTest {
                 .stream().filter(user -> user.getUserId().equals(consentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult0Optional.isPresent());
         DemographicUserResponse getDemographicUsersResult0 = getDemographicUsersResult0Optional.get();
-        assertEquals(2, getDemographicUsersResult0.getDemographics().size());
-        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getId());
-        assertTrue(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
-        assertFalse(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY1).getValues(),
-                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getValues());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getValues());
-        assertNull(getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY1).getUnits());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                getDemographicUsersResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSaveSelf,
+                getDemographicUsersResult0);
         // second user
         Optional<DemographicUserResponse> getDemographicUsersResult1Optional = getDemographicUsersResult.getItems()
                 .stream().filter(user -> user.getUserId().equals(secondConsentedUserInStudy.getUserId())).findFirst();
         assertTrue(getDemographicUsersResult1Optional.isPresent());
         DemographicUserResponse getDemographicUsersResult1 = getDemographicUsersResult1Optional.get();
-        assertEquals(2, getDemographicUsersResult1.getDemographics().size());
-        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getId());
-        assertNotNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getId());
+        assertAssessmentUploadAndResponseWithoutValuesOrMultipleSelect(secondConsentedUserInStudy.getUserId(),
+                demographicUserAssessmentToSaveSelf, 0, getDemographicUsersResult1);
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).isMultipleSelect());
         assertTrue(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertArrayEquals(TEST_VALUE_ARRAY_STRING,
-                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues().toArray());
+                getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getValues().stream()
+                        .map(DemographicValueResponse::getValue).toArray());
         assertEquals(TEST_VALUE_MAP.size(),
                 getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues().size());
         for (Map.Entry<String, Object> entry : TEST_VALUE_MAP.entrySet()) {
             String entryString = makeStringEntry(entry);
-            assertThat(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues(),
+            assertThat(
+                    getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY3).getValues().stream()
+                            .map(DemographicValueResponse::getValue).collect(Collectors.toList()),
                     hasItem(entryString));
         }
         assertNull(getDemographicUsersResult1.getDemographics().get(TEST_CATEGORY1).getUnits());
@@ -585,16 +547,8 @@ public class DemographicsTest {
         DemographicUserResponse getResult = adminsApi
                 .getDemographicUserAppLevel(consentedUserInStudy.getUserId()).execute().body();
 
-        assertNotNull(getResult);
-        assertEquals(consentedUserInStudy.getUserId(), getResult.getUserId());
-        assertEquals(1, getResult.getDemographics().size());
-        assertFalse(getResult.getDemographics().containsKey(TEST_CATEGORY1));
-        assertNotNull(getResult.getDemographics().get(TEST_CATEGORY3).getId());
-        assertFalse(getResult.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getResult.getDemographics().get(TEST_CATEGORY3).getValues());
-        assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
-                getResult.getDemographics().get(TEST_CATEGORY3).getUnits());
+        demographicUserToSaveSelf.getDemographics().remove(TEST_CATEGORY1);
+        assertUploadAndResponse(consentedUserInStudy.getUserId(), demographicUserToSaveSelf, getResult);
 
         // delete user, get multiple
         adminsApi.deleteDemographicUserAppLevel(secondConsentedUserInStudy.getUserId()).execute();
@@ -609,9 +563,27 @@ public class DemographicsTest {
         assertFalse(
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).isMultipleSelect());
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getValues(),
-                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getValues());
+                getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getValues().stream()
+                        .map(DemographicValueResponse::getValue).collect(Collectors.toList()));
         assertEquals(demographicUserToSaveSelf.getDemographics().get(TEST_CATEGORY3).getUnits(),
                 getDemographicUsersAfterDeleteResult0.getDemographics().get(TEST_CATEGORY3).getUnits());
+    }
+
+    private void assertValid(DemographicResponse response) {
+        assertNotNull(response);
+        for (DemographicValueResponse value : response.getValues()) {
+            assertNull(value.getInvalidity());
+        }
+    }
+
+    private void assertValidAtIndex(DemographicResponse response, int index) {
+        assertNotNull(response);
+        assertNull(response.getValues().get(index).getInvalidity());
+    }
+
+    private void assertInvalidAtIndex(DemographicResponse response, String expectedErrorMessage, int index) {
+        assertNotNull(response);
+        assertEquals(expectedErrorMessage, response.getValues().get(index).getInvalidity());
     }
 
     @Test
@@ -639,12 +611,14 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 "category1",
                                 new Demographic().values(ImmutableList.of("incorrect", "values"))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid).execute();
+        DemographicUserResponse response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid).execute().body();
+        assertValid(response.getDemographics().get("category1"));
 
         // add validation for category1
         // spanish should be ignored
         DemographicValuesEnumValidationRules category1Rules = new DemographicValuesEnumValidationRules();
-        category1Rules.put("en", ImmutableList.of("a", "bb", "7", "-6.3", "true"));
+        category1Rules.put("en", ImmutableList.of("a", "bb", "7", "-6.3", "true", "xyz"));
         category1Rules.put("es", ImmutableList.of("this", "should", "be", "ignored"));
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY1_ID).revision(1L)
                 .data(new DemographicValuesValidationConfiguration().validationType(ValidationTypeEnum.ENUM)
@@ -653,12 +627,10 @@ public class DemographicsTest {
 
         // retry invalid demographics with validation for category1 now added (should
         // not work)
-        try {
-            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid).execute();
-            fail("should have thrown an exception, demographics are invalid for category1");
-        } catch (InvalidEntityException e) {
-
-        }
+        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid)
+                .execute().body();
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 0);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 1);
 
         // retry with valid demographics
         // values are out of order, repeated, and in all types
@@ -667,8 +639,11 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 "category1",
                                 new Demographic()
-                                        .values(ImmutableList.of(true, "bb", "a", -6.3, 7, "a", "a", "a", "a"))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid).execute();
+                                        .values(ImmutableList.of(true, "bb", "xyz", "a", -6.3, 7, "a", "a", "a",
+                                                "a"))));
+        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid)
+                .execute().body();
+        assertValid(response.getDemographics().get("category1"));
 
         // add another revision
         DemographicValuesEnumValidationRules category1RulesRev2 = new DemographicValuesEnumValidationRules();
@@ -679,12 +654,18 @@ public class DemographicsTest {
                 .execute();
 
         // this SHOULD NOT work because validation should only use the most revision
-        try {
-            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid).execute();
-            fail("should have thrown an exception, demographics are now invalid after app config element revision");
-        } catch (InvalidEntityException e) {
-
-        }
+        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid)
+                .execute().body();
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 0);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 1);
+        assertValidAtIndex(response.getDemographics().get("category1"), 2);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 3);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 4);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 5);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 6);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 7);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 8);
+        assertInvalidAtIndex(response.getDemographics().get("category1"), INVALID_ENUM_VALUE, 9);
 
         // this SHOULD work because validation should only use the most revision
         DemographicUser demographicUserValidRev2 = new DemographicUser()
@@ -693,7 +674,9 @@ public class DemographicsTest {
                                 "category1",
                                 new Demographic()
                                         .values(ImmutableList.of("xyz", "xyz"))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidRev2).execute();
+        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidRev2)
+                .execute().body();
+        assertValid(response.getDemographics().get("category1"));
 
         // no english
         DemographicValuesEnumValidationRules category4Rules = new DemographicValuesEnumValidationRules();
@@ -711,8 +694,10 @@ public class DemographicsTest {
                                 "category4",
                                 new Demographic()
                                         .values(ImmutableList.of(true, "bb", "a", -6.3, 7, "a", "a", "a", "a"))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNoEnglish)
-                .execute();
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNoEnglish)
+                .execute().body();
+        assertValid(response.getDemographics().get("category4"));
 
         // number range validation
         appConfigsApi.createAppConfigElement(new AppConfigElement().id(APP_CONFIG_CATEGORY3_ID).revision(1L)
@@ -727,9 +712,10 @@ public class DemographicsTest {
                                 "category3",
                                 new Demographic()
                                         .values(ImmutableList.of(99))));
-        adminsApi
+        response = adminsApi
                 .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNumber)
-                .execute();
+                .execute().body();
+        assertValid(response.getDemographics().get("category3"));
 
         // should not work because not a number
         DemographicUser demographicUserStringsInNumberValidation = new DemographicUser()
@@ -737,16 +723,14 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 "category3",
                                 new Demographic()
-                                        .values(ImmutableList.of("xyz", "xyz"))));
-        try {
-            adminsApi
-                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(),
-                            demographicUserStringsInNumberValidation)
-                    .execute();
-            fail("should have thrown an exception (specified number range validation but not a number)");
-        } catch (InvalidEntityException e) {
-
-        }
+                                        .values(ImmutableList.of("5", "xyz", "xyz"))));
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(),
+                        demographicUserStringsInNumberValidation)
+                .execute().body();
+        assertValidAtIndex(response.getDemographics().get("category3"), 0);
+        assertInvalidAtIndex(response.getDemographics().get("category3"), INVALID_NUMBER_VALUE_NOT_A_NUMBER, 1);
+        assertInvalidAtIndex(response.getDemographics().get("category3"), INVALID_NUMBER_VALUE_NOT_A_NUMBER, 2);
 
         // should not work
         DemographicUser demographicUserInvalidNumber = new DemographicUser()
@@ -754,19 +738,19 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 "category3",
                                 new Demographic()
-                                        .values(ImmutableList.of(-12.7))));
-        try {
-            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidNumber)
-                    .execute();
-            fail("should have thrown an exception (number is less than min)");
-        } catch (InvalidEntityException e) {
-
-        }
+                                        .values(ImmutableList.of(5, -12.7, 100.6))));
+        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidNumber)
+                .execute().body();
+        assertValidAtIndex(response.getDemographics().get("category3"), 0);
+        assertInvalidAtIndex(response.getDemographics().get("category3"), INVALID_NUMBER_VALUE_LESS_THAN_MIN, 1);
+        assertInvalidAtIndex(response.getDemographics().get("category3"), INVALID_NUMBER_VALUE_GREATER_THAN_MAX, 2);
 
         // uploading for study should work even with invalid values because validation
         // only applies to app-level demographics
-        researchersApi.saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalid)
-                .execute();
+        response = researchersApi
+                .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalid)
+                .execute().body();
+        assertValid(response.getDemographics().get("category1"));
     }
 
     /**
@@ -826,51 +810,48 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_YEAR_OF_BIRTH,
                                 new Demographic().values(ImmutableList.of(2000))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidBirthYear)
-                .execute();
+        DemographicUserResponse response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidBirthYear)
+                .execute().body();
+        assertValid(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH));
         DemographicUser demographicUserInvalidBirthYear1 = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
                                 NIH_CATEGORY_YEAR_OF_BIRTH,
                                 new Demographic().values(ImmutableList.of(1899))));
-        try {
-            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear1)
-                    .execute();
-            fail("should have thrown an exception, invalid value for year of birth");
-        } catch (InvalidEntityException e) {
-
-        }
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear1)
+                .execute().body();
+        assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH),
+                INVALID_NUMBER_VALUE_LESS_THAN_MIN, 0);
         DemographicUser demographicUserInvalidBirthYear2 = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
                                 NIH_CATEGORY_YEAR_OF_BIRTH,
                                 new Demographic().values(ImmutableList.of(2051))));
-        try {
-            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear2)
-                    .execute();
-            fail("should have thrown an exception, invalid value for year of birth");
-        } catch (InvalidEntityException e) {
-
-        }
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear2)
+                .execute().body();
+        assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH),
+                INVALID_NUMBER_VALUE_GREATER_THAN_MAX, 0);
 
         DemographicUser demographicUserValidSex = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
                                 NIH_CATEGORY_BIOLOGICAL_SEX,
                                 new Demographic().values(ImmutableList.of("None of these describe me"))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidSex).execute();
+        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidSex)
+                .execute().body();
+        assertValid(response.getDemographics().get(NIH_CATEGORY_BIOLOGICAL_SEX));
         DemographicUser demographicUserValidInvalidSex = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
                                 NIH_CATEGORY_BIOLOGICAL_SEX,
                                 new Demographic().values(ImmutableList.of("invalid value"))));
-        try {
-            adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidSex)
-                    .execute();
-            fail("should have thrown an exception, invalid value for biological sex");
-        } catch (InvalidEntityException e) {
-
-        }
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidSex)
+                .execute().body();
+        assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_BIOLOGICAL_SEX), INVALID_ENUM_VALUE, 0);
 
         DemographicUser demographicUserValidEthnicity = new DemographicUser()
                 .demographics(
@@ -878,21 +859,19 @@ public class DemographicsTest {
                                 NIH_CATEGORY_ETHNICITY,
                                 new Demographic().values(ImmutableList.of("Black, African American, or African",
                                         "Hispanic, Latino, or Spanish"))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEthnicity)
-                .execute();
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEthnicity)
+                .execute().body();
+        assertValid(response.getDemographics().get(NIH_CATEGORY_ETHNICITY));
         DemographicUser demographicUserValidInvalidEthnicity = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
                                 NIH_CATEGORY_ETHNICITY,
                                 new Demographic().values(ImmutableList.of("invalid value"))));
-        try {
-            adminsApi
-                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEthnicity)
-                    .execute();
-            fail("should have thrown an exception, invalid value for ethnicity");
-        } catch (InvalidEntityException e) {
-
-        }
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEthnicity)
+                .execute().body();
+        assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_ETHNICITY), INVALID_ENUM_VALUE, 0);
 
         DemographicUser demographicUserValidEducation = new DemographicUser()
                 .demographics(
@@ -900,21 +879,19 @@ public class DemographicsTest {
                                 NIH_CATEGORY_HIGHEST_EDUCATION,
                                 new Demographic().values(ImmutableList.of(
                                         "1 to 3 years after high school (Some college, Associate’s degree, or technical school)"))));
-        adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEducation)
-                .execute();
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEducation)
+                .execute().body();
+        assertValid(response.getDemographics().get(NIH_CATEGORY_HIGHEST_EDUCATION));
         DemographicUser demographicUserValidInvalidEducation = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
                                 NIH_CATEGORY_HIGHEST_EDUCATION,
                                 new Demographic().values(ImmutableList.of("invalid value"))));
-        try {
-            adminsApi
-                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEducation)
-                    .execute();
-            fail("should have thrown an exception, invalid value for highest education");
-        } catch (InvalidEntityException e) {
-
-        }
+        response = adminsApi
+                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEducation)
+                .execute().body();
+        assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_HIGHEST_EDUCATION), INVALID_ENUM_VALUE, 0);
     }
 
     private String makeStringEntry(Map.Entry<String, Object> entry) throws JsonProcessingException {
