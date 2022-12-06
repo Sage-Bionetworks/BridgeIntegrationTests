@@ -4,10 +4,13 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
+import static org.sagebionetworks.bridge.sdk.integration.Schedule2Test.assertImageResource;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_2;
@@ -43,6 +46,7 @@ import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentList;
 import org.sagebionetworks.bridge.rest.model.ColorScheme;
+import org.sagebionetworks.bridge.rest.model.ImageResource;
 import org.sagebionetworks.bridge.rest.model.Label;
 import org.sagebionetworks.bridge.rest.model.PropertyInfo;
 import org.sagebionetworks.bridge.rest.model.RequestParams;
@@ -60,7 +64,9 @@ public class AssessmentTest {
     private static final String TITLE = "Title";
     private static final String TAG1 = "category:cat1";
     private static final String TAG2 = "category:cat2";
-    
+    private static final String IMAGE_RESOURCE_NAME = "default";
+    private static final String IMAGE_RESOURCE_MODULE = "sage_survey";
+
     // This isn't usable until the configuration is implemented, but 
     // verify it is persisted correctly
     private static final Map<String, List<PropertyInfo>> CUSTOMIZATION_FIELDS = ImmutableMap.of(
@@ -607,6 +613,84 @@ public class AssessmentTest {
             fail("Should have thrown exception");
         } catch(EntityNotFoundException e) {
         }
+    }
+
+    @Test
+    public void imageResource() throws Exception {
+        studyDesignerOrg1 = TestUserHelper.createAndSignInUser(AssessmentTest.class, false, STUDY_DESIGNER);
+        assessmentApiOrg1 = studyDesignerOrg1.getClient(AssessmentsApi.class);
+
+        Assessment assessment = new Assessment()
+                .identifier(id)
+                .revision(1L)
+                .ownerId(ORG_ID_1)
+                .title(TITLE)
+                .osName("Both")
+                .imageResource(null)
+                .tags(ImmutableList.of(markerTag));
+        Assessment createdAssessment = assessmentApiOrg1.createAssessment(assessment).execute().body();
+        assertNotNull(createdAssessment);
+        String guid = createdAssessment.getGuid();
+        assessment.setImageResource(
+                new ImageResource()
+                        .name(IMAGE_RESOURCE_NAME)
+                        .module(IMAGE_RESOURCE_MODULE)
+                        .labels(LABELS));
+        assessment.setRevision(2L);
+        assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
+        assessment.setImageResource(
+                new ImageResource()
+                        .name(IMAGE_RESOURCE_NAME)
+                        .module(null)
+                        .labels(LABELS));
+        assessment.setRevision(3L);
+        assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
+        assessment.setImageResource(
+                new ImageResource()
+                        .name(IMAGE_RESOURCE_NAME)
+                        .module(IMAGE_RESOURCE_MODULE)
+                        .labels(null));
+        assessment.setRevision(4L);
+        assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
+        assessment.setImageResource(
+                new ImageResource()
+                        .name(IMAGE_RESOURCE_NAME)
+                        .module(null)
+                        .labels(null));
+        assessment.setRevision(5L);
+        assessmentApiOrg1.createAssessmentRevision(guid, assessment).execute();
+
+        Assessment nullImageResource = assessmentApiOrg1.getAssessmentById(id, 1L).execute().body();
+        assertNotNull(nullImageResource);
+        assertNull(nullImageResource.getImageResource());
+        Assessment moduleAndLabel = assessmentApiOrg1.getAssessmentById(id, 2L).execute().body();
+        assertNotNull(moduleAndLabel);
+        assertImageResource(
+                moduleAndLabel.getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                IMAGE_RESOURCE_MODULE,
+                LABELS);
+        Assessment nullModule = assessmentApiOrg1.getAssessmentById(id, 3L).execute().body();
+        assertNotNull(nullModule);
+        assertImageResource(
+                nullModule.getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                null,
+                LABELS);
+        Assessment nullLabel = assessmentApiOrg1.getAssessmentById(id, 4L).execute().body();
+        assertNotNull(nullLabel);
+        assertImageResource(
+                nullLabel.getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                IMAGE_RESOURCE_MODULE,
+                null);
+        Assessment nullModuleAndLabel = assessmentApiOrg1.getAssessmentById(id, 5L).execute().body();
+        assertNotNull(nullModuleAndLabel);
+        assertImageResource(
+                nullModuleAndLabel.getImageResource(),
+                IMAGE_RESOURCE_NAME,
+                null,
+                null);
     }
 
     private void assertRequestParams(AssessmentList list, int offsetBy, int pageSize, int total,
