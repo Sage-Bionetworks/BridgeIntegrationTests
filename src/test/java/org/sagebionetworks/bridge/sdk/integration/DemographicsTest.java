@@ -805,6 +805,7 @@ public class DemographicsTest {
                 .execute();
 
         // test responses
+        // valid year of birth
         DemographicUser demographicUserValidBirthYear = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -814,6 +815,7 @@ public class DemographicsTest {
                 .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidBirthYear)
                 .execute().body();
         assertValid(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH));
+        // invalid year of birth
         DemographicUser demographicUserInvalidBirthYear1 = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -824,6 +826,7 @@ public class DemographicsTest {
                 .execute().body();
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH),
                 INVALID_NUMBER_VALUE_LESS_THAN_MIN, 0);
+        // invalid year of birth
         DemographicUser demographicUserInvalidBirthYear2 = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -835,6 +838,7 @@ public class DemographicsTest {
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH),
                 INVALID_NUMBER_VALUE_GREATER_THAN_MAX, 0);
 
+        // valid sex
         DemographicUser demographicUserValidSex = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -843,6 +847,7 @@ public class DemographicsTest {
         response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidSex)
                 .execute().body();
         assertValid(response.getDemographics().get(NIH_CATEGORY_BIOLOGICAL_SEX));
+        // invalid sex
         DemographicUser demographicUserValidInvalidSex = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -853,6 +858,7 @@ public class DemographicsTest {
                 .execute().body();
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_BIOLOGICAL_SEX), INVALID_ENUM_VALUE, 0);
 
+        // valid ethnicity
         DemographicUser demographicUserValidEthnicity = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -863,6 +869,7 @@ public class DemographicsTest {
                 .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEthnicity)
                 .execute().body();
         assertValid(response.getDemographics().get(NIH_CATEGORY_ETHNICITY));
+        // invalid ethnicity
         DemographicUser demographicUserValidInvalidEthnicity = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -873,6 +880,7 @@ public class DemographicsTest {
                 .execute().body();
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_ETHNICITY), INVALID_ENUM_VALUE, 0);
 
+        // valid education
         DemographicUser demographicUserValidEducation = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
@@ -883,6 +891,7 @@ public class DemographicsTest {
                 .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEducation)
                 .execute().body();
         assertValid(response.getDemographics().get(NIH_CATEGORY_HIGHEST_EDUCATION));
+        // invalid education
         DemographicUser demographicUserValidInvalidEducation = new DemographicUser()
                 .demographics(
                         ImmutableMap.of(
