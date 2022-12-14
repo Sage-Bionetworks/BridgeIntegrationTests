@@ -13,6 +13,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -75,7 +76,7 @@ public class DemographicsTest {
         TEST_VALUE_MAP.put("b", 3);
         TEST_VALUE_MAP.put("c", -5.7);
     }
-    
+
     private static final String IGNORED_CATEGORY = "category-that-should-be-ignored";
     private static final String CATEGORY1 = "category1";
     private static final String CATEGORY2 = "category2";
@@ -85,6 +86,9 @@ public class DemographicsTest {
     private static final String NIH_CATEGORY_BIOLOGICAL_SEX = "biological-sex";
     private static final String NIH_CATEGORY_ETHNICITY = "ethnicity";
     private static final String NIH_CATEGORY_HIGHEST_EDUCATION = "highest-education";
+    private static final String[] VALIDATION_CATEGORIES_TO_DELETE = { IGNORED_CATEGORY, CATEGORY1, CATEGORY2, CATEGORY3,
+            CATEGORY4, NIH_CATEGORY_YEAR_OF_BIRTH, NIH_CATEGORY_BIOLOGICAL_SEX, NIH_CATEGORY_ETHNICITY,
+            NIH_CATEGORY_HIGHEST_EDUCATION };
     private static final String INVALID_ENUM_VALUE = "invalid enum value";
     private static final String INVALID_NUMBER_VALUE_NOT_A_NUMBER = "invalid number";
     private static final String INVALID_NUMBER_VALUE_LESS_THAN_MIN = "invalid number value (less than min)";
@@ -143,6 +147,16 @@ public class DemographicsTest {
 
     @After
     public void after() throws IOException {
+        for (String categoryName : VALIDATION_CATEGORIES_TO_DELETE) {
+            try {
+                adminsApi.deleteDemographicsValidationConfigAppLevel(categoryName).execute();
+            } catch (Exception e) {
+            }
+            try {
+                researchersApi.deleteDemographicsValidationConfig(TEST_STUDY_ID, categoryName).execute();
+            } catch (Exception e) {
+            }
+        }
         researcherStudyCoordinator.signOutAndDeleteUser();
         consentedUserInStudy.signOutAndDeleteUser();
         secondConsentedUserInStudy.signOutAndDeleteUser();
@@ -557,8 +571,9 @@ public class DemographicsTest {
 
     private void assertValid(DemographicResponse response) {
         assertNotNull(response);
-        for (DemographicValueResponse value : response.getValues()) {
-            assertNull(value.getInvalidity());
+        for (int i = 0; i < response.getValues().size(); i++) {
+            DemographicValueResponse value = response.getValues().get(i);
+            assertNull("index " + i + " has error instead of null;", value.getInvalidity());
         }
     }
 
@@ -572,18 +587,43 @@ public class DemographicsTest {
         assertEquals(expectedErrorMessage, response.getValues().get(index).getInvalidity());
     }
 
+    private enum ValidationLevel {
+        APP,
+        STUDY
+    }
+
     @Test
-    public void valueValidation() throws IOException {
-        // add random id that should be ignored
+    public void valueValidationApp() throws IOException {
+        valueValidation(ValidationLevel.APP);
+    }
+
+    @Test
+    public void valueValidationStudy() throws IOException {
+        valueValidation(ValidationLevel.STUDY);
+    }
+
+    private void valueValidation(ValidationLevel validationLevel) throws IOException {
+        // add validation for random category that should be ignored
         DemographicValuesEnumValidationRules randomRules = new DemographicValuesEnumValidationRules();
         randomRules.put("en", ImmutableList.of("a", "b"));
-        adminsApi.saveDemographicsValidationConfigAppLevel(IGNORED_CATEGORY, new DemographicValuesValidationConfig().validationType(ValidationTypeEnum.ENUM).validationRules(randomRules)).execute();
+        DemographicValuesValidationConfig randomConfig = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(randomRules);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(IGNORED_CATEGORY, randomConfig).execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, IGNORED_CATEGORY, randomConfig).execute();
+        }
 
         // add validation for category2
         DemographicValuesEnumValidationRules category2Rules = new DemographicValuesEnumValidationRules();
         category2Rules.put("en", ImmutableList.of("foo", "bar"));
-        adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY2, new DemographicValuesValidationConfig().validationType(ValidationTypeEnum.ENUM).validationRules(category2Rules)).execute();
-
+        DemographicValuesValidationConfig category2Config = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(category2Rules);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY2, category2Config).execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY2, category2Config).execute();
+        }
 
         // validation is for category2 not category1, no validation exists for
         // category1, so should work
@@ -592,8 +632,15 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 CATEGORY1,
                                 new Demographic().values(ImmutableList.of("incorrect", "values"))));
-        DemographicUserResponse response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid).execute().body();
+        DemographicUserResponse response;
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalid)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(CATEGORY1));
 
         // add validation for category1
@@ -601,12 +648,24 @@ public class DemographicsTest {
         DemographicValuesEnumValidationRules category1Rules = new DemographicValuesEnumValidationRules();
         category1Rules.put("en", ImmutableList.of("a", "bb", "7", "-6.3", "true", "xyz"));
         category1Rules.put("es", ImmutableList.of("this", "should", "be", "ignored"));
-        adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY1, new DemographicValuesValidationConfig().validationType(ValidationTypeEnum.ENUM).validationRules(category1Rules)).execute();
+        DemographicValuesValidationConfig category1Config = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(category1Rules);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY1, category1Config).execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1, category1Config).execute();
+        }
 
         // retry invalid demographics with validation for category1 now added (should
         // not work)
-        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalid)
+                    .execute().body();
+        }
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY1), INVALID_ENUM_VALUE, 0);
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY1), INVALID_ENUM_VALUE, 1);
 
@@ -619,18 +678,39 @@ public class DemographicsTest {
                                 new Demographic()
                                         .values(ImmutableList.of(true, "bb", "xyz", "a", -6.3, 7, "a", "a", "a",
                                                 "a"))));
-        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValid)
+                    .execute().body();
+        }
+
         assertValid(response.getDemographics().get(CATEGORY1));
 
         // replace old version
         DemographicValuesEnumValidationRules category1RulesRev2 = new DemographicValuesEnumValidationRules();
         category1RulesRev2.put("en", ImmutableList.of("xyz"));
-        adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY1, new DemographicValuesValidationConfig().validationType(ValidationTypeEnum.ENUM).validationRules(category1RulesRev2)).execute();
+        DemographicValuesValidationConfig category1ConfigV2 = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(category1RulesRev2);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY1, category1ConfigV2).execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1, category1ConfigV2).execute();
+        }
 
-        // this SHOULD NOT work because validation should only use the most revision
-        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValid)
-                .execute().body();
+        // this SHOULD NOT work because validation should only use the most recent
+        // version
+        DemographicUser demographicUserOutdated = demographicUserValid;
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserOutdated)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserOutdated)
+                    .execute().body();
+        }
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY1), INVALID_ENUM_VALUE, 0);
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY1), INVALID_ENUM_VALUE, 1);
         assertValidAtIndex(response.getDemographics().get(CATEGORY1), 2);
@@ -649,15 +729,45 @@ public class DemographicsTest {
                                 CATEGORY1,
                                 new Demographic()
                                         .values(ImmutableList.of("xyz", "xyz"))));
-        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidRev2)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidRev2)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValidRev2)
+                    .execute().body();
+        }
+        assertValid(response.getDemographics().get(CATEGORY1));
+
+        // delete validation config
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.deleteDemographicsValidationConfigAppLevel(CATEGORY1).execute();
+        } else {
+            researchersApi.deleteDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1).execute();
+        }
+
+        // this should work again even with demographics valid on outdated validation
+        // rules because the validation was deleted
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserOutdated)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserOutdated)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(CATEGORY1));
 
         // no english
         DemographicValuesEnumValidationRules category4Rules = new DemographicValuesEnumValidationRules();
         category4Rules.put("es", ImmutableList.of());
-        adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY4,new DemographicValuesValidationConfig().validationType(ValidationTypeEnum.ENUM).validationRules(category4Rules)).execute();
-
+        DemographicValuesValidationConfig spanishConfig = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(category4Rules);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY4, spanishConfig).execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY4, spanishConfig).execute();
+        }
 
         // should not error even when english is not explicitly specified in
         // configuration
@@ -667,13 +777,27 @@ public class DemographicsTest {
                                 CATEGORY4,
                                 new Demographic()
                                         .values(ImmutableList.of(true, "bb", "a", -6.3, 7, "a", "a", "a", "a"))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNoEnglish)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNoEnglish)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValidNoEnglish)
+                    .execute().body();
+        }
+
         assertValid(response.getDemographics().get(CATEGORY4));
 
         // number range validation
-        adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY3,new DemographicValuesValidationConfig().validationType(ValidationTypeEnum.NUMBER_RANGE).validationRules(new DemographicValuesNumberRangeValidationRules().min(0d).max(100d))).execute();
+        DemographicValuesValidationConfig category3Config = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.NUMBER_RANGE)
+                .validationRules(new DemographicValuesNumberRangeValidationRules().min(0d).max(100d));
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY3, category3Config).execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY3, category3Config).execute();
+        }
 
         // should work
         DemographicUser demographicUserValidNumber = new DemographicUser()
@@ -682,9 +806,15 @@ public class DemographicsTest {
                                 CATEGORY3,
                                 new Demographic()
                                         .values(ImmutableList.of(99))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNumber)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidNumber).execute()
+                    .body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValidNumber)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(CATEGORY3));
 
         // should not work because not a number
@@ -694,10 +824,13 @@ public class DemographicsTest {
                                 CATEGORY3,
                                 new Demographic()
                                         .values(ImmutableList.of("5", "xyz", "xyz"))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(),
-                        demographicUserStringsInNumberValidation)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(),
+                    demographicUserStringsInNumberValidation).execute().body();
+        } else {
+            response = researchersApi.saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
+                    demographicUserStringsInNumberValidation).execute().body();
+        }
         assertValidAtIndex(response.getDemographics().get(CATEGORY3), 0);
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY3), INVALID_NUMBER_VALUE_NOT_A_NUMBER, 1);
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY3), INVALID_NUMBER_VALUE_NOT_A_NUMBER, 2);
@@ -709,41 +842,100 @@ public class DemographicsTest {
                                 CATEGORY3,
                                 new Demographic()
                                         .values(ImmutableList.of(5, -12.7, 100.6))));
-        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidNumber)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidNumber)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalidNumber)
+                    .execute().body();
+        }
         assertValidAtIndex(response.getDemographics().get(CATEGORY3), 0);
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY3), INVALID_NUMBER_VALUE_LESS_THAN_MIN, 1);
         assertInvalidAtIndex(response.getDemographics().get(CATEGORY3), INVALID_NUMBER_VALUE_GREATER_THAN_MAX, 2);
 
-        // uploading for study should work even with invalid values because validation is for app-level
-        response = researchersApi
-                .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalid)
-                .execute().body();
+        // get configuration (enum)
+        DemographicValuesValidationConfig fetchedConfig;
+        if (validationLevel == ValidationLevel.APP) {
+            fetchedConfig = adminsApi.getDemographicsValidationConfigAppLevel(CATEGORY2).execute().body();
+        } else {
+            fetchedConfig = researchersApi.getDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY2).execute().body();
+        }
+        assertNotNull(fetchedConfig);
+        assertNotNull(fetchedConfig.getValidationType());
+        assertNotNull(fetchedConfig.getValidationRules());
+        assertEquals(ValidationTypeEnum.ENUM, fetchedConfig.getValidationType());
+        Map<String, List<String>> fetchedEnumRules = (Map<String, List<String>>) fetchedConfig.getValidationRules();
+        assertEquals(ImmutableMap.of("en", ImmutableList.of("foo", "bar")), fetchedEnumRules);
+
+        // get configuration (number range)
+        if (validationLevel == ValidationLevel.APP) {
+            fetchedConfig = adminsApi.getDemographicsValidationConfigAppLevel(CATEGORY3).execute().body();
+        } else {
+            fetchedConfig = researchersApi.getDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY3).execute().body();
+        }
+        assertNotNull(fetchedConfig);
+        assertNotNull(fetchedConfig.getValidationType());
+        assertNotNull(fetchedConfig.getValidationRules());
+        assertEquals(ValidationTypeEnum.NUMBER_RANGE, fetchedConfig.getValidationType());
+        Map<String, Double> fetchedNumberRangeRules = (Map<String, Double>) fetchedConfig.getValidationRules();
+        assertEquals(ImmutableMap.of("min", 0d, "max", 100d), fetchedNumberRangeRules);
+
+        // uploading for study should work even with invalid values because validation
+        // is for app-level, and vice-versa for uploading for app
+        if (validationLevel == ValidationLevel.APP) {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserInvalid)
+                    .execute().body();
+        } else {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalid)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(CATEGORY1));
+    }
+
+    @Test
+    public void validateNIHCategoriesApp() throws IOException {
+        validateNIHCategories(ValidationLevel.APP);
+    }
+
+    @Test
+    public void validateNIHCategoriesStudy() throws IOException {
+        validateNIHCategories(ValidationLevel.STUDY);
     }
 
     /**
      * Real-world test for NIH minimum categories. Valid and invalid sample for each
      * category.
      */
-    @Test
-    public void validateNIHCategories() throws IOException {
+    private void validateNIHCategories(ValidationLevel validationLevel) throws IOException {
         // add validation
-        adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_YEAR_OF_BIRTH,
-                new DemographicValuesValidationConfig()
-                        .validationType(ValidationTypeEnum.NUMBER_RANGE)
-                        .validationRules(new DemographicValuesNumberRangeValidationRules().min(1900.0)
-                                .max(2050.0)))
-                .execute();
+        DemographicValuesValidationConfig yearOfBirthConfig = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.NUMBER_RANGE)
+                .validationRules(new DemographicValuesNumberRangeValidationRules().min(1900.0)
+                        .max(2050.0));
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_YEAR_OF_BIRTH, yearOfBirthConfig).execute();
+        } else {
+            researchersApi
+                    .saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_YEAR_OF_BIRTH, yearOfBirthConfig)
+                    .execute();
+        }
 
         DemographicValuesEnumValidationRules biologicalSexEnumRules = new DemographicValuesEnumValidationRules();
         biologicalSexEnumRules.put("en",
                 ImmutableList.of("Male", "Female", "Intersex", "None of these describe me", "Prefer not to answer"));
-        adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_BIOLOGICAL_SEX,
-                new DemographicValuesValidationConfig()
-                        .validationType(ValidationTypeEnum.ENUM)
-                        .validationRules(biologicalSexEnumRules))
-                .execute();
+        DemographicValuesValidationConfig biologicalSexConfig = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(biologicalSexEnumRules);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_BIOLOGICAL_SEX, biologicalSexConfig)
+                    .execute();
+        } else {
+            researchersApi
+                    .saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_BIOLOGICAL_SEX, biologicalSexConfig)
+                    .execute();
+        }
 
         DemographicValuesEnumValidationRules ethnicityEnumRules = new DemographicValuesEnumValidationRules();
         ethnicityEnumRules.put("en",
@@ -751,11 +943,14 @@ public class DemographicsTest {
                         "Hispanic, Latino, or Spanish", "Middle Eastern or North African",
                         "Native Hawaiian or other Pacific Islander", "White", "None of these fully describe me",
                         "Prefer not to answer"));
-        adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_ETHNICITY,
-        new DemographicValuesValidationConfig()
-        .validationType(ValidationTypeEnum.ENUM)
-        .validationRules(ethnicityEnumRules))
-                .execute();
+        DemographicValuesValidationConfig ethnicityConfig = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(ethnicityEnumRules);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_ETHNICITY, ethnicityConfig).execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_ETHNICITY, ethnicityConfig)
+                    .execute();
+        }
 
         DemographicValuesEnumValidationRules highestEducationRules = new DemographicValuesEnumValidationRules();
         highestEducationRules.put("en",
@@ -765,10 +960,15 @@ public class DemographicsTest {
                         "1 to 3 years after high school (Some college, Associate’s degree, or technical school)",
                         "College 4 years or more (College graduate)", "Advanced degree (Master’s, Doctorate, etc.)",
                         "Prefer not to answer"));
-        adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_HIGHEST_EDUCATION,
-        new DemographicValuesValidationConfig().validationType(ValidationTypeEnum.ENUM)
-                        .validationRules(highestEducationRules))
-                .execute();
+        DemographicValuesValidationConfig highestEducationConfig = new DemographicValuesValidationConfig()
+                .validationType(ValidationTypeEnum.ENUM).validationRules(highestEducationRules);
+        if (validationLevel == ValidationLevel.APP) {
+            adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_HIGHEST_EDUCATION, highestEducationConfig)
+                    .execute();
+        } else {
+            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_HIGHEST_EDUCATION,
+                    highestEducationConfig).execute();
+        }
 
         // test responses
         // valid year of birth
@@ -777,9 +977,16 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_YEAR_OF_BIRTH,
                                 new Demographic().values(ImmutableList.of(2000))));
-        DemographicUserResponse response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidBirthYear)
-                .execute().body();
+        DemographicUserResponse response;
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidBirthYear)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValidBirthYear)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH));
         // invalid year of birth
         DemographicUser demographicUserInvalidBirthYear1 = new DemographicUser()
@@ -787,9 +994,14 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_YEAR_OF_BIRTH,
                                 new Demographic().values(ImmutableList.of(1899))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear1)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear1)
+                    .execute().body();
+        } else {
+            response = researchersApi.saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
+                    demographicUserInvalidBirthYear1).execute().body();
+        }
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH),
                 INVALID_NUMBER_VALUE_LESS_THAN_MIN, 0);
         // invalid year of birth
@@ -798,9 +1010,14 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_YEAR_OF_BIRTH,
                                 new Demographic().values(ImmutableList.of(2051))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear2)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserInvalidBirthYear2)
+                    .execute().body();
+        } else {
+            response = researchersApi.saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
+                    demographicUserInvalidBirthYear2).execute().body();
+        }
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_YEAR_OF_BIRTH),
                 INVALID_NUMBER_VALUE_GREATER_THAN_MAX, 0);
 
@@ -810,8 +1027,14 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_BIOLOGICAL_SEX,
                                 new Demographic().values(ImmutableList.of("None of these describe me"))));
-        response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidSex)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi.saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidSex)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValidSex)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(NIH_CATEGORY_BIOLOGICAL_SEX));
         // invalid sex
         DemographicUser demographicUserValidInvalidSex = new DemographicUser()
@@ -819,9 +1042,14 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_BIOLOGICAL_SEX,
                                 new Demographic().values(ImmutableList.of("invalid value"))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidSex)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidSex)
+                    .execute().body();
+        } else {
+            response = researchersApi.saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
+                    demographicUserValidInvalidSex).execute().body();
+        }
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_BIOLOGICAL_SEX), INVALID_ENUM_VALUE, 0);
 
         // valid ethnicity
@@ -831,9 +1059,15 @@ public class DemographicsTest {
                                 NIH_CATEGORY_ETHNICITY,
                                 new Demographic().values(ImmutableList.of("Black, African American, or African",
                                         "Hispanic, Latino, or Spanish"))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEthnicity)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEthnicity)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValidEthnicity)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(NIH_CATEGORY_ETHNICITY));
         // invalid ethnicity
         DemographicUser demographicUserValidInvalidEthnicity = new DemographicUser()
@@ -841,9 +1075,16 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_ETHNICITY,
                                 new Demographic().values(ImmutableList.of("invalid value"))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEthnicity)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEthnicity)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
+                            demographicUserValidInvalidEthnicity)
+                    .execute().body();
+        }
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_ETHNICITY), INVALID_ENUM_VALUE, 0);
 
         // valid education
@@ -853,9 +1094,15 @@ public class DemographicsTest {
                                 NIH_CATEGORY_HIGHEST_EDUCATION,
                                 new Demographic().values(ImmutableList.of(
                                         "1 to 3 years after high school (Some college, Associate’s degree, or technical school)"))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEducation)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidEducation)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(), demographicUserValidEducation)
+                    .execute().body();
+        }
         assertValid(response.getDemographics().get(NIH_CATEGORY_HIGHEST_EDUCATION));
         // invalid education
         DemographicUser demographicUserValidInvalidEducation = new DemographicUser()
@@ -863,9 +1110,16 @@ public class DemographicsTest {
                         ImmutableMap.of(
                                 NIH_CATEGORY_HIGHEST_EDUCATION,
                                 new Demographic().values(ImmutableList.of("invalid value"))));
-        response = adminsApi
-                .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEducation)
-                .execute().body();
+        if (validationLevel == ValidationLevel.APP) {
+            response = adminsApi
+                    .saveDemographicUserAppLevel(consentedUserInStudy.getUserId(), demographicUserValidInvalidEducation)
+                    .execute().body();
+        } else {
+            response = researchersApi
+                    .saveDemographicUser(TEST_STUDY_ID, consentedUserInStudy.getUserId(),
+                            demographicUserValidInvalidEducation)
+                    .execute().body();
+        }
         assertInvalidAtIndex(response.getDemographics().get(NIH_CATEGORY_HIGHEST_EDUCATION), INVALID_ENUM_VALUE, 0);
     }
 
