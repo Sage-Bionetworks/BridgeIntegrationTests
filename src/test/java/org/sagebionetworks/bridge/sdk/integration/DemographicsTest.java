@@ -24,6 +24,7 @@ import org.junit.Test;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
+import org.sagebionetworks.bridge.rest.api.ForStudyDesignersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
@@ -95,7 +96,8 @@ public class DemographicsTest {
     private static final String INVALID_NUMBER_VALUE_GREATER_THAN_MAX = "invalid number (larger than max)";
 
     TestUser admin;
-    TestUser researcherStudyCoordinator;
+    TestUser researcher;
+    TestUser studyDesigner;
     TestUser consentedUserInStudy;
     TestUser secondConsentedUserInStudy;
     TestUser consentedUserNotInStudy;
@@ -107,6 +109,7 @@ public class DemographicsTest {
     ForConsentedUsersApi consentedUsersNotInStudyApi;
     ForConsentedUsersApi unconsentedConsentedUsersApi;
     ForResearchersApi researchersApi;
+    ForStudyDesignersApi studyDesignersApi;
     StudiesApi studiesApi;
     OrganizationsApi organizationsApi;
 
@@ -118,14 +121,15 @@ public class DemographicsTest {
         studiesApi = admin.getClient(StudiesApi.class);
         organizationsApi = admin.getClient(OrganizationsApi.class);
 
-        researcherStudyCoordinator = TestUserHelper.createAndSignInUser(DemographicsTest.class, true, Role.RESEARCHER,
-                Role.STUDY_COORDINATOR);
+        researcher = TestUserHelper.createAndSignInUser(DemographicsTest.class, true, Role.RESEARCHER);
+        studyDesigner = TestUserHelper.createAndSignInUser(DemographicsTest.class, true, Role.STUDY_DESIGNER);
         consentedUserInStudy = TestUserHelper.createAndSignInUser(DemographicsTest.class, true);
         secondConsentedUserInStudy = TestUserHelper.createAndSignInUser(DemographicsTest.class, true);
         consentedUserNotInStudy = TestUserHelper.createAndSignInUser(DemographicsTest.class, true);
         unconsentedUser = TestUserHelper.createAndSignInUser(DemographicsTest.class, false);
 
-        researchersApi = researcherStudyCoordinator.getClient(ForResearchersApi.class);
+        researchersApi = researcher.getClient(ForResearchersApi.class);
+        studyDesignersApi = studyDesigner.getClient(ForStudyDesignersApi.class);
         consentedUsersApi = consentedUserInStudy.getClient(ForConsentedUsersApi.class);
         secondConsentedUsersApi = secondConsentedUserInStudy.getClient(ForConsentedUsersApi.class);
         consentedUsersNotInStudyApi = consentedUserNotInStudy.getClient(ForConsentedUsersApi.class);
@@ -153,11 +157,12 @@ public class DemographicsTest {
             } catch (Exception e) {
             }
             try {
-                researchersApi.deleteDemographicsValidationConfig(TEST_STUDY_ID, categoryName).execute();
+                studyDesignersApi.deleteDemographicsValidationConfig(TEST_STUDY_ID, categoryName).execute();
             } catch (Exception e) {
             }
         }
-        researcherStudyCoordinator.signOutAndDeleteUser();
+        researcher.signOutAndDeleteUser();
+        studyDesigner.signOutAndDeleteUser();
         consentedUserInStudy.signOutAndDeleteUser();
         secondConsentedUserInStudy.signOutAndDeleteUser();
         consentedUserNotInStudy.signOutAndDeleteUser();
@@ -611,7 +616,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(IGNORED_CATEGORY, randomConfig).execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, IGNORED_CATEGORY, randomConfig).execute();
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, IGNORED_CATEGORY, randomConfig).execute();
         }
 
         // add validation for category2
@@ -622,7 +627,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY2, category2Config).execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY2, category2Config).execute();
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY2, category2Config).execute();
         }
 
         // validation is for category2 not category1, no validation exists for
@@ -653,7 +658,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY1, category1Config).execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1, category1Config).execute();
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1, category1Config).execute();
         }
 
         // retry invalid demographics with validation for category1 now added (should
@@ -697,7 +702,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY1, category1ConfigV2).execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1, category1ConfigV2).execute();
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1, category1ConfigV2).execute();
         }
 
         // this SHOULD NOT work because validation should only use the most recent
@@ -743,7 +748,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.deleteDemographicsValidationConfigAppLevel(CATEGORY1).execute();
         } else {
-            researchersApi.deleteDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1).execute();
+            studyDesignersApi.deleteDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY1).execute();
         }
 
         // this should work again even with demographics valid on outdated validation
@@ -766,7 +771,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY4, spanishConfig).execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY4, spanishConfig).execute();
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY4, spanishConfig).execute();
         }
 
         // should not error even when english is not explicitly specified in
@@ -796,7 +801,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(CATEGORY3, category3Config).execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY3, category3Config).execute();
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, CATEGORY3, category3Config).execute();
         }
 
         // should work
@@ -918,7 +923,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_YEAR_OF_BIRTH, yearOfBirthConfig).execute();
         } else {
-            researchersApi
+            studyDesignersApi
                     .saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_YEAR_OF_BIRTH, yearOfBirthConfig)
                     .execute();
         }
@@ -932,7 +937,7 @@ public class DemographicsTest {
             adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_BIOLOGICAL_SEX, biologicalSexConfig)
                     .execute();
         } else {
-            researchersApi
+            studyDesignersApi
                     .saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_BIOLOGICAL_SEX, biologicalSexConfig)
                     .execute();
         }
@@ -948,7 +953,7 @@ public class DemographicsTest {
         if (validationLevel == ValidationLevel.APP) {
             adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_ETHNICITY, ethnicityConfig).execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_ETHNICITY, ethnicityConfig)
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_ETHNICITY, ethnicityConfig)
                     .execute();
         }
 
@@ -966,7 +971,7 @@ public class DemographicsTest {
             adminsApi.saveDemographicsValidationConfigAppLevel(NIH_CATEGORY_HIGHEST_EDUCATION, highestEducationConfig)
                     .execute();
         } else {
-            researchersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_HIGHEST_EDUCATION,
+            studyDesignersApi.saveDemographicsValidationConfig(TEST_STUDY_ID, NIH_CATEGORY_HIGHEST_EDUCATION,
                     highestEducationConfig).execute();
         }
 
