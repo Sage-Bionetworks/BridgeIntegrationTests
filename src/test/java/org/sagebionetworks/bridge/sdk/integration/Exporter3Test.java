@@ -249,6 +249,16 @@ public class Exporter3Test {
                 LOG.error("Error deleting topic " + createStudyTopicArn);
             }
         }
+
+        // Delete the Export Notification SNS topic.
+        String exportNotificationTopicArn = ex3Config.getExportNotificationTopicArn();
+        if (exportNotificationTopicArn != null) {
+            try {
+                snsClient.deleteTopic(exportNotificationTopicArn);
+            } catch (AmazonClientException ex) {
+                LOG.error("Error deleting topic " + exportNotificationTopicArn);
+            }
+        }
     }
 
     @Test
