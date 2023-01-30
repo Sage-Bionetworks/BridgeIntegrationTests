@@ -25,11 +25,12 @@ import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Alert;
 import org.sagebionetworks.bridge.rest.model.Alert.CategoryEnum;
+import org.sagebionetworks.bridge.rest.model.AlertFilter;
+import org.sagebionetworks.bridge.rest.model.AlertFilter.AlertCategoriesEnum;
 import org.sagebionetworks.bridge.rest.model.AlertIdCollection;
 import org.sagebionetworks.bridge.rest.model.AlertList;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
-import org.sagebionetworks.bridge.rest.model.Enrollment;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
 import org.sagebionetworks.bridge.rest.model.PerformanceOrder;
 import org.sagebionetworks.bridge.rest.model.Role;
@@ -54,6 +55,7 @@ public class AlertsTest {
     private TestUser researcher;
     private TestUser worker;
     private TestUser user;
+    private TestUser user2;
     private TestUser developer;
 
     private AlertsApi researcherAlertsApi;
@@ -119,10 +121,6 @@ public class AlertsTest {
                 .sessions(sessions)
                 .studyBursts(ImmutableList.of(burst));
         schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
-
-        // enroll user in study
-        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
-        studiesApi.enrollParticipant(STUDY_ID_1, new Enrollment().userId(user.getUserId())).execute();
     }
 
     @After
@@ -144,13 +142,18 @@ public class AlertsTest {
         researcher.signOutAndDeleteUser();
         worker.signOutAndDeleteUser();
         user.signOutAndDeleteUser();
+        if (user2 != null) {
+            user2.signOutAndDeleteUser();
+        }
         developer.signOutAndDeleteUser();
     }
 
     private void deleteAlerts() throws IOException {
         AlertList alerts;
         do {
-            alerts = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+            alerts = researcherAlertsApi
+                    .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute()
+                    .body();
             researcherAlertsApi
                     .deleteAlerts(STUDY_ID_1,
                             new AlertIdCollection().alertIds(
@@ -162,10 +165,11 @@ public class AlertsTest {
 
     @Test
     public void newEnrollment() throws IOException {
-        // user has already been enrolled in study
+        // user was already been enrolled in study when account was created
         //
         // make sure there is an alert for their enrollment
-        AlertList alerts = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         Alert enrollmentAlert = assertOneMatchingAlert(alerts, CategoryEnum.NEW_ENROLLMENT, user.getUserId());
 
         // delete the enrollment alert
@@ -174,7 +178,8 @@ public class AlertsTest {
                 .execute();
 
         // make sure the enrollment alert no longer exists
-        AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alertsAfterDelete = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterDelete, CategoryEnum.NEW_ENROLLMENT, user.getUserId());
     }
 
@@ -184,7 +189,8 @@ public class AlertsTest {
         usersApi.getTimelineForSelf(STUDY_ID_1, null).execute();
 
         // make sure there is an alert for timeline access
-        AlertList alerts = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         Alert timelineAccessAlert = assertOneMatchingAlert(alerts, CategoryEnum.TIMELINE_ACCESSED,
                 user.getUserId());
 
@@ -193,7 +199,8 @@ public class AlertsTest {
                 new AlertIdCollection().alertIds(ImmutableList.of(timelineAccessAlert.getId()))).execute();
 
         // make sure the timeline access alert no longer exists
-        AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alertsAfterDelete = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterDelete, CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
     }
 
@@ -241,7 +248,8 @@ public class AlertsTest {
         assertEquals(Integer.valueOf(60), report.getWeeklyAdherencePercent());
 
         // make sure there is an alert for low adherence
-        AlertList alerts = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         Alert lowAdherenceAlert = assertOneMatchingAlert(alerts, CategoryEnum.LOW_ADHERENCE, user.getUserId());
 
         // delete the alert
@@ -250,7 +258,8 @@ public class AlertsTest {
                 .execute();
 
         // make sure there are no alerts for low adherence
-        AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alertsAfterDelete = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterDelete, CategoryEnum.LOW_ADHERENCE, user.getUserId());
 
         // submit another adherence record, adherence should now be 70%
@@ -271,7 +280,8 @@ public class AlertsTest {
         assertEquals(Integer.valueOf(70), report.getWeeklyAdherencePercent());
 
         // make sure there are no alerts for low adherence
-        AlertList alertsAfterGoodAdherence = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alertsAfterGoodAdherence = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterGoodAdherence, CategoryEnum.LOW_ADHERENCE, user.getUserId());
     }
 
@@ -283,7 +293,8 @@ public class AlertsTest {
         usersApi.createStudyActivityEvent(STUDY_ID_1, request, true, true).execute();
 
         // make sure there is an alert for study burst change
-        AlertList alerts = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         Alert studyBurstChangeAlert = assertOneMatchingAlert(alerts, CategoryEnum.STUDY_BURST_CHANGE, user.getUserId());
 
         // delete the alert
@@ -291,7 +302,8 @@ public class AlertsTest {
                 new AlertIdCollection().alertIds(ImmutableList.of(studyBurstChangeAlert.getId()))).execute();
 
         // make sure there are no alerts for study burst change
-        AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alertsAfterDelete = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterDelete, CategoryEnum.STUDY_BURST_CHANGE, user.getUserId());
 
         // update study burst event with updateBursts = false
@@ -300,8 +312,54 @@ public class AlertsTest {
         usersApi.createStudyActivityEvent(STUDY_ID_1, request, true, false).execute();
 
         // no study burst alerts should exist
-        AlertList alertsAfterEvent = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
+        AlertList alertsAfterEvent = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterEvent, CategoryEnum.STUDY_BURST_CHANGE, user.getUserId());
+    }
+
+    @Test
+    public void filtering() throws IOException {
+        // clear existing alerts
+        deleteAlerts();
+
+        // new enrollment alert
+        user2 = TestUserHelper.createAndSignInUser(AlertsTest.class, true);
+        // timeline retrieved alert
+        usersApi.getTimelineForSelf(STUDY_ID_1, null).execute();
+
+        // no filters
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertEquals(2, alerts.getItems().size());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.NEW_ENROLLMENT, user2.getUserId());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
+
+        // new enrollment only
+        alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1,
+                        new AlertFilter().alertCategories(ImmutableList.of(AlertCategoriesEnum.NEW_ENROLLMENT)), 0, 100)
+                .execute().body();
+        assertEquals(1, alerts.getItems().size());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.NEW_ENROLLMENT, user2.getUserId());
+
+        // timeline retrieved only
+        alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1,
+                        new AlertFilter().alertCategories(ImmutableList.of(AlertCategoriesEnum.TIMELINE_ACCESSED)), 0,
+                        100)
+                .execute().body();
+        assertEquals(1, alerts.getItems().size());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
+
+        // both filters
+        alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(
+                        ImmutableList.of(AlertCategoriesEnum.NEW_ENROLLMENT, AlertCategoriesEnum.TIMELINE_ACCESSED)), 0,
+                        100)
+                .execute().body();
+        assertEquals(2, alerts.getItems().size());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.NEW_ENROLLMENT, user2.getUserId());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
     }
 
     private Alert assertOneMatchingAlert(AlertList alerts, CategoryEnum category, String userId) {
