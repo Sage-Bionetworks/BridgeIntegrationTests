@@ -360,6 +360,22 @@ public class AlertsTest {
         assertEquals(2, alerts.getItems().size());
         assertOneMatchingAlert(alerts, Alert.CategoryEnum.NEW_ENROLLMENT, user2.getUserId());
         assertOneMatchingAlert(alerts, Alert.CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
+
+        // duplicate filters are ignored
+        alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(
+                        ImmutableList.of(
+                                AlertCategoriesEnum.NEW_ENROLLMENT,
+                                AlertCategoriesEnum.NEW_ENROLLMENT,
+                                AlertCategoriesEnum.NEW_ENROLLMENT,
+                                AlertCategoriesEnum.NEW_ENROLLMENT,
+                                AlertCategoriesEnum.TIMELINE_ACCESSED)),
+                        0,
+                        100)
+                .execute().body();
+        assertEquals(2, alerts.getItems().size());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.NEW_ENROLLMENT, user2.getUserId());
+        assertOneMatchingAlert(alerts, Alert.CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
     }
 
     private Alert assertOneMatchingAlert(AlertList alerts, CategoryEnum category, String userId) {
