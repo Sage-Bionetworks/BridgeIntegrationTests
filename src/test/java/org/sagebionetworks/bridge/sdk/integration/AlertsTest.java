@@ -25,6 +25,7 @@ import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Alert;
 import org.sagebionetworks.bridge.rest.model.Alert.CategoryEnum;
+import org.sagebionetworks.bridge.rest.model.AlertIdCollection;
 import org.sagebionetworks.bridge.rest.model.AlertList;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
@@ -34,6 +35,7 @@ import org.sagebionetworks.bridge.rest.model.PerformanceOrder;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
@@ -49,7 +51,7 @@ public class AlertsTest {
     private static final String CUSTOM_EVENT = "custom:event1";
 
     private TestUser admin;
-    private TestUser researcherStudy1;
+    private TestUser researcher;
     private TestUser worker;
     private TestUser user;
     private TestUser developer;
@@ -59,6 +61,7 @@ public class AlertsTest {
     private SchedulesV2Api schedulesApi;
     private ForWorkersApi workerApi;
     private ForDevelopersApi developersApi;
+    private StudiesApi studiesApi;
 
     private Assessment assessment;
     private Schedule2 schedule;
@@ -66,16 +69,17 @@ public class AlertsTest {
     @Before
     public void before() throws IOException {
         admin = TestUserHelper.getSignedInAdmin();
-        researcherStudy1 = TestUserHelper.createAndSignInUser(AlertsTest.class, true, Role.RESEARCHER);
+        researcher = TestUserHelper.createAndSignInUser(AlertsTest.class, true, Role.RESEARCHER);
         worker = TestUserHelper.createAndSignInUser(AlertsTest.class, true, Role.WORKER);
         user = TestUserHelper.createAndSignInUser(AlertsTest.class, true);
         developer = TestUserHelper.createAndSignInUser(AlertsTest.class, true, Role.DEVELOPER, Role.STUDY_DESIGNER);
 
-        researcherAlertsApi = researcherStudy1.getClient(AlertsApi.class);
+        researcherAlertsApi = researcher.getClient(AlertsApi.class);
         usersApi = user.getClient(ForConsentedUsersApi.class);
         schedulesApi = admin.getClient(SchedulesV2Api.class);
         workerApi = worker.getClient(ForWorkersApi.class);
         developersApi = developer.getClient(ForDevelopersApi.class);
+        studiesApi = admin.getClient(StudiesApi.class);
 
         // create schedule
         StudyBurst burst = new StudyBurst()
@@ -99,9 +103,8 @@ public class AlertsTest {
         List<Session> sessions = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             Session session = new Session()
-                    .name("Session #1")
+                    .name("Session #" + i)
                     .addStartEventIdsItem("enrollment")
-                    // .delay("P2D")
                     .interval("P3D")
                     .performanceOrder(PerformanceOrder.SEQUENTIAL)
                     .addAssessmentsItem(assessmentReference)
@@ -138,9 +141,10 @@ public class AlertsTest {
         deleteAlerts();
 
         // delete users
-        researcherStudy1.signOutAndDeleteUser();
+        researcher.signOutAndDeleteUser();
         worker.signOutAndDeleteUser();
         user.signOutAndDeleteUser();
+        developer.signOutAndDeleteUser();
     }
 
     private void deleteAlerts() throws IOException {
@@ -149,7 +153,9 @@ public class AlertsTest {
             alerts = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
             researcherAlertsApi
                     .deleteAlerts(STUDY_ID_1,
-                            alerts.getItems().stream().map(alert -> alert.getId()).collect(Collectors.toList()))
+                            new AlertIdCollection().alertIds(
+                                    alerts.getItems().stream().map(alert -> alert.getId())
+                                            .collect(Collectors.toList())))
                     .execute();
         } while (alerts.getItems().size() > 0);
     }
@@ -163,7 +169,9 @@ public class AlertsTest {
         Alert enrollmentAlert = assertOneMatchingAlert(alerts, CategoryEnum.NEW_ENROLLMENT, user.getUserId());
 
         // delete the enrollment alert
-        researcherAlertsApi.deleteAlerts(STUDY_ID_1, ImmutableList.of(enrollmentAlert.getId())).execute();
+        researcherAlertsApi
+                .deleteAlerts(STUDY_ID_1, new AlertIdCollection().alertIds(ImmutableList.of(enrollmentAlert.getId())))
+                .execute();
 
         // make sure the enrollment alert no longer exists
         AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
@@ -173,8 +181,6 @@ public class AlertsTest {
     @Test
     public void timelineAccessed() throws IOException {
         // access the timeline
-        usersApi.createStudyActivityEvent(STUDY_ID_1, new StudyActivityEventRequest().eventId("fake_enrollment")
-                .timestamp(DateTime.parse("2020-05-10T00:00:00.000Z")), true, null).execute();
         usersApi.getTimelineForSelf(STUDY_ID_1, null).execute();
 
         // make sure there is an alert for timeline access
@@ -183,7 +189,8 @@ public class AlertsTest {
                 user.getUserId());
 
         // delete the timeline access alert
-        researcherAlertsApi.deleteAlerts(STUDY_ID_1, ImmutableList.of(timelineAccessAlert.getId())).execute();
+        researcherAlertsApi.deleteAlerts(STUDY_ID_1,
+                new AlertIdCollection().alertIds(ImmutableList.of(timelineAccessAlert.getId()))).execute();
 
         // make sure the timeline access alert no longer exists
         AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
@@ -192,6 +199,11 @@ public class AlertsTest {
 
     @Test
     public void lowAdherence() throws IOException {
+        // set adherence threshold
+        Study study = studiesApi.getStudy(STUDY_ID_1).execute().body();
+        study.setAdherenceThresholdPercentage(60);
+        studiesApi.updateStudy(STUDY_ID_1, study).execute();
+
         // get initial report
         WeeklyAdherenceReport report = workerApi
                 .getWeeklyAdherenceReportForWorker(admin.getAppId(), STUDY_ID_1, user.getUserId()).execute()
@@ -233,7 +245,9 @@ public class AlertsTest {
         Alert lowAdherenceAlert = assertOneMatchingAlert(alerts, CategoryEnum.LOW_ADHERENCE, user.getUserId());
 
         // delete the alert
-        researcherAlertsApi.deleteAlerts(STUDY_ID_1, ImmutableList.of(lowAdherenceAlert.getId())).execute();
+        researcherAlertsApi
+                .deleteAlerts(STUDY_ID_1, new AlertIdCollection().alertIds(ImmutableList.of(lowAdherenceAlert.getId())))
+                .execute();
 
         // make sure there are no alerts for low adherence
         AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
@@ -273,7 +287,8 @@ public class AlertsTest {
         Alert studyBurstChangeAlert = assertOneMatchingAlert(alerts, CategoryEnum.STUDY_BURST_CHANGE, user.getUserId());
 
         // delete the alert
-        researcherAlertsApi.deleteAlerts(STUDY_ID_1, ImmutableList.of(studyBurstChangeAlert.getId())).execute();
+        researcherAlertsApi.deleteAlerts(STUDY_ID_1,
+                new AlertIdCollection().alertIds(ImmutableList.of(studyBurstChangeAlert.getId()))).execute();
 
         // make sure there are no alerts for study burst change
         AlertList alertsAfterDelete = researcherAlertsApi.getAlerts(STUDY_ID_1, 0, 100).execute().body();
