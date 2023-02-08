@@ -227,7 +227,7 @@ public class AlertsTest {
                 TEST_APP_ID);
         AuthenticationApi authApi = unauthenticatedProvider.getAuthenticationApi();
 
-        // creates enrollments before creating the account
+        // creates enrollments then creates the account
         SignUp signUp = new SignUp().appId(TEST_APP_ID).addDataGroupsItem("test_user")
                 .putExternalIdsItem(STUDY_ID_1, EXTERNAL_ID).password(PASSWORD);
         authApi.signUp(signUp).execute();
@@ -242,6 +242,11 @@ public class AlertsTest {
         }
         assertNotNull(externalUserId);
 
+        // make sure there is a new enrollment alert
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertOneMatchingAlert(alerts, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+
         // consent
         ApiClientProvider.AuthenticatedClientProvider authenticatedProvider = unauthenticatedProvider
                 .getAuthenticatedClientProviderBuilder().withExternalId(EXTERNAL_ID).withPassword(PASSWORD).build();
@@ -253,15 +258,62 @@ public class AlertsTest {
         TestUser testUser = TestUserHelper.getSignedInUser(signIn);
         ForConsentedUsersApi consentedUsersApi = testUser.getClient(ForConsentedUsersApi.class);
 
-        // make sure there is a new enrollment alert
-        AlertList alerts = researcherAlertsApi
-                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
-        assertOneMatchingAlert(alerts, CategoryEnum.NEW_ENROLLMENT, externalUserId);
-
         // withdraw
         consentedUsersApi.withdrawFromApp(new Withdrawal().reason("withdrawal reason")).execute();
 
         // alert should be deleted after withdrawal
+        AlertList alertsAfterWithdrawal = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertNoMatchingAlerts(alertsAfterWithdrawal, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+    }
+
+    @Test
+    public void newEnrollment_updateAccount() throws IOException {
+        ApiClientProvider unauthenticatedProvider = Tests.getUnauthenticatedClientProvider(admin.getClientManager(),
+                TEST_APP_ID);
+        AuthenticationApi authApi = unauthenticatedProvider.getAuthenticationApi();
+
+        // sign up using externalId field instead of external id map
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).addDataGroupsItem("test_user")
+                .externalId(EXTERNAL_ID).password(PASSWORD);
+        authApi.signUp(signUp).execute();
+
+        // sign in
+        SignIn signIn = new SignIn().appId(TEST_APP_ID).externalId(EXTERNAL_ID).password(PASSWORD);
+        try {
+            authApi.signInV4(signIn).execute();
+            fail("signIn should have thrown ConsentRequiredException");
+        } catch (ConsentRequiredException ex) {
+            externalUserId = ex.getSession().getId();
+        }
+        assertNotNull(externalUserId);
+
+        // no alert yet
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertNoMatchingAlerts(alerts, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+
+        // consent, which calls AccountService.updateAccount to add the enrollment
+        ApiClientProvider.AuthenticatedClientProvider authenticatedProvider = unauthenticatedProvider
+                .getAuthenticatedClientProviderBuilder().withExternalId(EXTERNAL_ID).withPassword(PASSWORD).build();
+        ConsentSignature signature = new ConsentSignature().name("Eggplant McTester")
+                .birthdate(LocalDate.parse("1970-04-04"))
+                .scope(SharingScope.NO_SHARING);
+        authenticatedProvider.getClient(ConsentsApi.class).createConsentSignature(TEST_APP_ID, signature).execute();
+
+        // there should be an alert now
+        AlertList alertsAfterConsent = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertOneMatchingAlert(alertsAfterConsent, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+
+        TestUser testUser = TestUserHelper.getSignedInUser(signIn);
+        ForConsentedUsersApi consentedUsersApi = testUser.getClient(ForConsentedUsersApi.class);
+
+        // withdraw consent
+        consentedUsersApi.withdrawConsentFromSubpopulation(TEST_APP_ID, new Withdrawal().reason("withdrawal reason"))
+                .execute();
+
+        // alert should be deleted after withdrawal of consent
         AlertList alertsAfterWithdrawal = researcherAlertsApi
                 .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterWithdrawal, CategoryEnum.NEW_ENROLLMENT, externalUserId);
