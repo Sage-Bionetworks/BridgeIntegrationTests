@@ -19,7 +19,6 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.sagebionetworks.bridge.rest.ApiClientProvider;
 import org.sagebionetworks.bridge.rest.api.AlertsApi;
@@ -198,7 +197,6 @@ public class AlertsTest {
         } while (alerts.getItems().size() > 0);
     }
 
-    @Ignore
     @Test
     public void newEnrollment() throws IOException {
         // user was already been enrolled in study when account was created
@@ -399,7 +397,6 @@ public class AlertsTest {
         assertNoMatchingAlerts(alertsAfterEvent, CategoryEnum.STUDY_BURST_CHANGE, user.getUserId());
     }
 
-    @Ignore
     @Test
     public void filtering() throws IOException {
         // clear existing alerts
@@ -461,7 +458,6 @@ public class AlertsTest {
         assertOneMatchingAlert(alerts, Alert.CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
     }
 
-    @Ignore
     @Test
     public void readUnreadAndCategoryCounts() throws IOException {
         // clear existing alerts
