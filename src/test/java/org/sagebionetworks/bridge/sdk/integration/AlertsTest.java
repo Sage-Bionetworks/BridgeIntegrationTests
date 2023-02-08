@@ -31,6 +31,7 @@ import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
@@ -164,7 +165,10 @@ public class AlertsTest {
         deleteAlerts();
 
         // delete external id
-        adminsApi.deleteExternalId(EXTERNAL_ID).execute();
+        try {
+            adminsApi.deleteExternalId(EXTERNAL_ID).execute();
+        } catch (EntityNotFoundException e) {
+        }
 
         // delete users
         researcher.signOutAndDeleteUser();
