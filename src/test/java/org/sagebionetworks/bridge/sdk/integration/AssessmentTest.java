@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,6 +67,18 @@ public class AssessmentTest {
     private static final String TAG2 = "category:cat2";
     private static final String IMAGE_RESOURCE_NAME = "default";
     private static final String IMAGE_RESOURCE_MODULE = "sage_survey";
+    private static final String AGE = "Adult 18+";
+    private static final String LONG_DESCRIPTION = "this is a " + StringUtils.repeat("very ", 20) + "long description";
+    private static final String SCORES = "0";
+    private static final String RELIABILITY = "reliable";
+    private static final String CATEGORY = "cognition";
+    private static final String TECHNICAL_MANUAL_URL = "technical manual url";
+    private static final List<String> PUBLICATION_URLS = ImmutableList.of("publication url 1", "publication url 2");
+    private static final String CAPTION = "caption";
+    private static final String VIDEO_URL = "video url";
+    private static final String PHONE_ORIENTATION = "landscape";
+    private static final String ASSESSMENT_TYPE = "shared_assessment";
+    private static final String METADATA_JSON_SCHEMA_URL = "metadata json schema url";
 
     // This isn't usable until the configuration is implemented, but 
     // verify it is persisted correctly
@@ -164,7 +177,21 @@ public class AssessmentTest {
                 .colorScheme(COLOR_SCHEME)
                 .labels(LABELS)
                 .tags(ImmutableList.of(markerTag, TAG1, TAG2))
-                .customizationFields(CUSTOMIZATION_FIELDS);
+                .customizationFields(CUSTOMIZATION_FIELDS)
+                .age(AGE)
+                .longDescription(LONG_DESCRIPTION)
+                .scores(SCORES)
+                .reliability(RELIABILITY)
+                .category(CATEGORY)
+                .technicalManualUrl(TECHNICAL_MANUAL_URL)
+                .publicationUrls(PUBLICATION_URLS)
+                .caption(CAPTION)
+                .videoUrl(VIDEO_URL)
+                .phoneOrientation(PHONE_ORIENTATION)
+                .soundRequired(null)
+                .multiPart(true)
+                .assessmentType(ASSESSMENT_TYPE)
+                .metadataJsonSchemaUrl(METADATA_JSON_SCHEMA_URL);
         
         Assessment firstRevision = assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
         assertFields(firstRevision, ORG_ID_2);
@@ -588,7 +615,21 @@ public class AssessmentTest {
                 .colorScheme(COLOR_SCHEME)
                 .labels(LABELS)
                 .tags(ImmutableList.of(markerTag, TAG1, TAG2))
-                .customizationFields(CUSTOMIZATION_FIELDS);
+                .customizationFields(CUSTOMIZATION_FIELDS)
+                .age(AGE)
+                .longDescription(LONG_DESCRIPTION)
+                .scores(SCORES)
+                .reliability(RELIABILITY)
+                .category(CATEGORY)
+                .technicalManualUrl(TECHNICAL_MANUAL_URL)
+                .publicationUrls(PUBLICATION_URLS)
+                .caption(CAPTION)
+                .videoUrl(VIDEO_URL)
+                .phoneOrientation(PHONE_ORIENTATION)
+                .soundRequired(null)
+                .multiPart(true)
+                .assessmentType(ASSESSMENT_TYPE)
+                .metadataJsonSchemaUrl(METADATA_JSON_SCHEMA_URL);
         
         Assessment firstRevision = assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
         assertFields(firstRevision, ORG_ID_1);
@@ -732,5 +773,19 @@ public class AssessmentTest {
                 node2Props.stream().map(PropertyInfo::getPropName).collect(toSet()));
         assertEquals(Long.valueOf(1), assessment.getRevision());
         assertEquals(Long.valueOf(1L), assessment.getVersion());
+        assertEquals(AGE, assessment.getAge());
+        assertEquals(LONG_DESCRIPTION, assessment.getLongDescription());
+        assertEquals(SCORES, assessment.getScores());
+        assertEquals(RELIABILITY, assessment.getReliability());
+        assertEquals(CATEGORY, assessment.getCategory());
+        assertEquals(TECHNICAL_MANUAL_URL, assessment.getTechnicalManualUrl());
+        assertEquals(PUBLICATION_URLS, assessment.getPublicationUrls());
+        assertEquals(CAPTION, assessment.getCaption());
+        assertEquals(VIDEO_URL, assessment.getVideoUrl());
+        assertEquals(PHONE_ORIENTATION, assessment.getPhoneOrientation());
+        assertNull(assessment.isSoundRequired());
+        assertEquals(assessment.isMultiPart(), true);
+        assertEquals(ASSESSMENT_TYPE, assessment.getAssessmentType());
+        assertEquals(METADATA_JSON_SCHEMA_URL, assessment.getMetadataJsonSchemaUrl());
     }
 }
