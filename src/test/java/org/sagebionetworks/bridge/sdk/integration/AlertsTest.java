@@ -2,7 +2,10 @@ package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
@@ -13,34 +16,44 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.sagebionetworks.bridge.rest.ApiClientProvider;
 import org.sagebionetworks.bridge.rest.api.AlertsApi;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
+import org.sagebionetworks.bridge.rest.api.ConsentsApi;
+import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Alert;
+import org.sagebionetworks.bridge.rest.model.Alert.CategoryEnum;
 import org.sagebionetworks.bridge.rest.model.AlertCategoriesAndCounts;
 import org.sagebionetworks.bridge.rest.model.AlertCategoryAndCount;
-import org.sagebionetworks.bridge.rest.model.Alert.CategoryEnum;
 import org.sagebionetworks.bridge.rest.model.AlertFilter;
 import org.sagebionetworks.bridge.rest.model.AlertFilter.AlertCategoriesEnum;
 import org.sagebionetworks.bridge.rest.model.AlertIdCollection;
 import org.sagebionetworks.bridge.rest.model.AlertList;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
+import org.sagebionetworks.bridge.rest.model.ConsentSignature;
 import org.sagebionetworks.bridge.rest.model.EventStreamWindow;
 import org.sagebionetworks.bridge.rest.model.PerformanceOrder;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.Session;
+import org.sagebionetworks.bridge.rest.model.SharingScope;
+import org.sagebionetworks.bridge.rest.model.SignIn;
+import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
@@ -48,6 +61,7 @@ import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.WeeklyAdherenceReport;
+import org.sagebionetworks.bridge.rest.model.Withdrawal;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
@@ -56,6 +70,7 @@ import com.google.common.collect.ImmutableMap;
 
 public class AlertsTest {
     private static final String CUSTOM_EVENT = "custom:event1";
+    private static final String EXTERNAL_ID = "external-id";
 
     private TestUser admin;
     private TestUser researcher;
@@ -63,9 +78,10 @@ public class AlertsTest {
     private TestUser user;
     private TestUser user2;
     private TestUser user3;
-    private TestUser user4;
     private TestUser developer;
+    private String externalUserId;
 
+    private ForAdminsApi adminsApi;
     private AlertsApi researcherAlertsApi;
     private ForConsentedUsersApi usersApi;
     private SchedulesV2Api schedulesApi;
@@ -84,6 +100,7 @@ public class AlertsTest {
         user = TestUserHelper.createAndSignInUser(AlertsTest.class, true);
         developer = TestUserHelper.createAndSignInUser(AlertsTest.class, true, Role.DEVELOPER, Role.STUDY_DESIGNER);
 
+        adminsApi = admin.getClient(ForAdminsApi.class);
         researcherAlertsApi = researcher.getClient(AlertsApi.class);
         usersApi = user.getClient(ForConsentedUsersApi.class);
         schedulesApi = admin.getClient(SchedulesV2Api.class);
@@ -131,6 +148,7 @@ public class AlertsTest {
         schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
     }
 
+    @SuppressWarnings("deprecation")
     @After
     public void after() throws IOException {
         // delete schedule
@@ -146,6 +164,12 @@ public class AlertsTest {
         // delete alerts
         deleteAlerts();
 
+        // delete external id
+        try {
+            adminsApi.deleteExternalId(EXTERNAL_ID).execute();
+        } catch (EntityNotFoundException e) {
+        }
+
         // delete users
         researcher.signOutAndDeleteUser();
         worker.signOutAndDeleteUser();
@@ -156,8 +180,8 @@ public class AlertsTest {
         if (user3 != null) {
             user3.signOutAndDeleteUser();
         }
-        if (user4 != null) {
-            user4.signOutAndDeleteUser();
+        if (externalUserId != null) {
+            adminsApi.deleteUser(externalUserId).execute();
         }
         developer.signOutAndDeleteUser();
     }
@@ -177,7 +201,6 @@ public class AlertsTest {
         } while (alerts.getItems().size() > 0);
     }
 
-    @Ignore
     @Test
     public void newEnrollment() throws IOException {
         // user was already been enrolled in study when account was created
@@ -196,6 +219,104 @@ public class AlertsTest {
         AlertList alertsAfterDelete = researcherAlertsApi
                 .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
         assertNoMatchingAlerts(alertsAfterDelete, CategoryEnum.NEW_ENROLLMENT, user.getUserId());
+    }
+
+    @Test
+    public void newEnrollment_externalIdSignUp() throws IOException {
+        ApiClientProvider unauthenticatedProvider = Tests.getUnauthenticatedClientProvider(admin.getClientManager(),
+                TEST_APP_ID);
+        AuthenticationApi authApi = unauthenticatedProvider.getAuthenticationApi();
+
+        // creates enrollments then creates the account
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).addDataGroupsItem("test_user")
+                .putExternalIdsItem(STUDY_ID_1, EXTERNAL_ID).password(PASSWORD);
+        authApi.signUp(signUp).execute();
+
+        // sign in
+        SignIn signIn = new SignIn().appId(TEST_APP_ID).externalId(EXTERNAL_ID).password(PASSWORD);
+        try {
+            authApi.signInV4(signIn).execute();
+            fail("signIn should have thrown ConsentRequiredException");
+        } catch (ConsentRequiredException ex) {
+            externalUserId = ex.getSession().getId();
+        }
+        assertNotNull(externalUserId);
+
+        // make sure there is a new enrollment alert
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertOneMatchingAlert(alerts, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+
+        // consent
+        ApiClientProvider.AuthenticatedClientProvider authenticatedProvider = unauthenticatedProvider
+                .getAuthenticatedClientProviderBuilder().withExternalId(EXTERNAL_ID).withPassword(PASSWORD).build();
+        ConsentSignature signature = new ConsentSignature().name("Eggplant McTester")
+                .birthdate(LocalDate.parse("1970-04-04"))
+                .scope(SharingScope.NO_SHARING);
+        authenticatedProvider.getClient(ConsentsApi.class).createConsentSignature(TEST_APP_ID, signature).execute();
+
+        TestUser testUser = TestUserHelper.getSignedInUser(signIn);
+        ForConsentedUsersApi consentedUsersApi = testUser.getClient(ForConsentedUsersApi.class);
+
+        // withdraw
+        consentedUsersApi.withdrawFromApp(new Withdrawal().reason("withdrawal reason")).execute();
+
+        // alert should be deleted after withdrawal
+        AlertList alertsAfterWithdrawal = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertNoMatchingAlerts(alertsAfterWithdrawal, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+    }
+
+    @Test
+    public void newEnrollment_updateAccount() throws IOException {
+        ApiClientProvider unauthenticatedProvider = Tests.getUnauthenticatedClientProvider(admin.getClientManager(),
+                TEST_APP_ID);
+        AuthenticationApi authApi = unauthenticatedProvider.getAuthenticationApi();
+
+        // sign up using externalId field instead of external id map
+        SignUp signUp = new SignUp().appId(TEST_APP_ID).addDataGroupsItem("test_user")
+                .externalId(EXTERNAL_ID).password(PASSWORD);
+        authApi.signUp(signUp).execute();
+
+        // sign in
+        SignIn signIn = new SignIn().appId(TEST_APP_ID).externalId(EXTERNAL_ID).password(PASSWORD);
+        try {
+            authApi.signInV4(signIn).execute();
+            fail("signIn should have thrown ConsentRequiredException");
+        } catch (ConsentRequiredException ex) {
+            externalUserId = ex.getSession().getId();
+        }
+        assertNotNull(externalUserId);
+
+        // no alert yet
+        AlertList alerts = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertNoMatchingAlerts(alerts, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+
+        // consent, which calls AccountService.updateAccount to add the enrollment
+        ApiClientProvider.AuthenticatedClientProvider authenticatedProvider = unauthenticatedProvider
+                .getAuthenticatedClientProviderBuilder().withExternalId(EXTERNAL_ID).withPassword(PASSWORD).build();
+        ConsentSignature signature = new ConsentSignature().name("Eggplant McTester")
+                .birthdate(LocalDate.parse("1970-04-04"))
+                .scope(SharingScope.NO_SHARING);
+        authenticatedProvider.getClient(ConsentsApi.class).createConsentSignature(TEST_APP_ID, signature).execute();
+
+        // there should be an alert now
+        AlertList alertsAfterConsent = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertOneMatchingAlert(alertsAfterConsent, CategoryEnum.NEW_ENROLLMENT, externalUserId);
+
+        TestUser testUser = TestUserHelper.getSignedInUser(signIn);
+        ForConsentedUsersApi consentedUsersApi = testUser.getClient(ForConsentedUsersApi.class);
+
+        // withdraw consent
+        consentedUsersApi.withdrawConsentFromSubpopulation(TEST_APP_ID, new Withdrawal().reason("withdrawal reason"))
+                .execute();
+
+        // alert should be deleted after withdrawal of consent
+        AlertList alertsAfterWithdrawal = researcherAlertsApi
+                .getAlerts(STUDY_ID_1, new AlertFilter().alertCategories(ImmutableList.of()), 0, 100).execute().body();
+        assertNoMatchingAlerts(alertsAfterWithdrawal, CategoryEnum.NEW_ENROLLMENT, externalUserId);
     }
 
     @Test
@@ -332,7 +453,6 @@ public class AlertsTest {
         assertNoMatchingAlerts(alertsAfterEvent, CategoryEnum.STUDY_BURST_CHANGE, user.getUserId());
     }
 
-    @Ignore
     @Test
     public void filtering() throws IOException {
         // clear existing alerts
@@ -394,7 +514,6 @@ public class AlertsTest {
         assertOneMatchingAlert(alerts, Alert.CategoryEnum.TIMELINE_ACCESSED, user.getUserId());
     }
 
-    @Ignore
     @Test
     public void readUnreadAndCategoryCounts() throws IOException {
         // clear existing alerts
@@ -407,7 +526,7 @@ public class AlertsTest {
         assertCategoriesAndCounts(ImmutableMap.of(AlertCategoryAndCount.CategoryEnum.NEW_ENROLLMENT, 1));
 
         // new enrollment alert
-        user4 = TestUserHelper.createAndSignInUser(AlertsTest.class, true);
+        user2 = TestUserHelper.createAndSignInUser(AlertsTest.class, true);
 
         // check categories and counts
         assertCategoriesAndCounts(ImmutableMap.of(AlertCategoryAndCount.CategoryEnum.NEW_ENROLLMENT, 2));
