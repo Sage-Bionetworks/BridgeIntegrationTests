@@ -69,8 +69,8 @@ public class AssessmentTest {
     private static final String FRAMEWORK_IDENTIFIER = "framework-identifier";
     private static final String JSON_SCHEMA_URL = "json schema url";
     private static final String CATEGORY = "cognition";
-    private static final Integer MINAGE = 10;
-    private static final Integer MAXAGE = 17;
+    private static final Integer MIN_AGE = 10;
+    private static final Integer MAX_AGE = 17;
     private static final Map<String, Object> ADDITIONAL_METADATA = ImmutableMap.of("key1", "value1", "key2", "value2");
 
     // This isn't usable until the configuration is implemented, but 
@@ -174,8 +174,8 @@ public class AssessmentTest {
                 .frameworkIdentifier(FRAMEWORK_IDENTIFIER)
                 .jsonSchemaUrl(JSON_SCHEMA_URL)
                 .category(CATEGORY)
-                .minAge(MINAGE)
-                .maxAge(MAXAGE)
+                .minAge(MIN_AGE)
+                .maxAge(MAX_AGE)
                 .additionalMetadata(ADDITIONAL_METADATA);
         
         Assessment firstRevision = assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
@@ -604,8 +604,8 @@ public class AssessmentTest {
                 .frameworkIdentifier(FRAMEWORK_IDENTIFIER)
                 .jsonSchemaUrl(JSON_SCHEMA_URL)
                 .category(CATEGORY)
-                .minAge(MINAGE)
-                .maxAge(MAXAGE)
+                .minAge(MIN_AGE)
+                .maxAge(MAX_AGE)
                 .additionalMetadata(ADDITIONAL_METADATA);
         
         Assessment firstRevision = assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
@@ -753,8 +753,8 @@ public class AssessmentTest {
         assertEquals(FRAMEWORK_IDENTIFIER, assessment.getFrameworkIdentifier());
         assertEquals(JSON_SCHEMA_URL, assessment.getJsonSchemaUrl());
         assertEquals(CATEGORY, assessment.getCategory());
-        assertEquals(MINAGE, assessment.getMinAge());
-        assertEquals(MAXAGE, assessment.getMaxAge());
+        assertEquals(MIN_AGE, assessment.getMinAge());
+        assertEquals(MAX_AGE, assessment.getMaxAge());
         assertEquals(ADDITIONAL_METADATA, assessment.getAdditionalMetadata());
     }
 }
