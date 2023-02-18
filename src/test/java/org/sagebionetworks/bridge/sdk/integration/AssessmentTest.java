@@ -66,6 +66,12 @@ public class AssessmentTest {
     private static final String TAG2 = "category:cat2";
     private static final String IMAGE_RESOURCE_NAME = "default";
     private static final String IMAGE_RESOURCE_MODULE = "sage_survey";
+    private static final String FRAMEWORK_IDENTIFIER = "framework-identifier";
+    private static final String JSON_SCHEMA_URL = "json schema url";
+    private static final String CATEGORY = "cognition";
+    private static final Integer MIN_AGE = 10;
+    private static final Integer MAX_AGE = 17;
+    private static final Map<String, Object> ADDITIONAL_METADATA = ImmutableMap.of("key1", "value1", "key2", "value2");
 
     // This isn't usable until the configuration is implemented, but 
     // verify it is persisted correctly
@@ -164,7 +170,13 @@ public class AssessmentTest {
                 .colorScheme(COLOR_SCHEME)
                 .labels(LABELS)
                 .tags(ImmutableList.of(markerTag, TAG1, TAG2))
-                .customizationFields(CUSTOMIZATION_FIELDS);
+                .customizationFields(CUSTOMIZATION_FIELDS)
+                .frameworkIdentifier(FRAMEWORK_IDENTIFIER)
+                .jsonSchemaUrl(JSON_SCHEMA_URL)
+                .category(CATEGORY)
+                .minAge(MIN_AGE)
+                .maxAge(MAX_AGE)
+                .additionalMetadata(ADDITIONAL_METADATA);
         
         Assessment firstRevision = assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
         assertFields(firstRevision, ORG_ID_2);
@@ -588,7 +600,13 @@ public class AssessmentTest {
                 .colorScheme(COLOR_SCHEME)
                 .labels(LABELS)
                 .tags(ImmutableList.of(markerTag, TAG1, TAG2))
-                .customizationFields(CUSTOMIZATION_FIELDS);
+                .customizationFields(CUSTOMIZATION_FIELDS)
+                .frameworkIdentifier(FRAMEWORK_IDENTIFIER)
+                .jsonSchemaUrl(JSON_SCHEMA_URL)
+                .category(CATEGORY)
+                .minAge(MIN_AGE)
+                .maxAge(MAX_AGE)
+                .additionalMetadata(ADDITIONAL_METADATA);
         
         Assessment firstRevision = assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
         assertFields(firstRevision, ORG_ID_1);
@@ -732,5 +750,11 @@ public class AssessmentTest {
                 node2Props.stream().map(PropertyInfo::getPropName).collect(toSet()));
         assertEquals(Long.valueOf(1), assessment.getRevision());
         assertEquals(Long.valueOf(1L), assessment.getVersion());
+        assertEquals(FRAMEWORK_IDENTIFIER, assessment.getFrameworkIdentifier());
+        assertEquals(JSON_SCHEMA_URL, assessment.getJsonSchemaUrl());
+        assertEquals(CATEGORY, assessment.getCategory());
+        assertEquals(MIN_AGE, assessment.getMinAge());
+        assertEquals(MAX_AGE, assessment.getMaxAge());
+        assertEquals(ADDITIONAL_METADATA, assessment.getAdditionalMetadata());
     }
 }
