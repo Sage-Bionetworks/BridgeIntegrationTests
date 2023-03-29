@@ -603,13 +603,6 @@ public class UploadTest {
     
     @Test
     public void adherenceInUploadRequest() throws Exception {
-        // TODO: Create a schedule (and study?), add session, add assessment.
-        //      Enroll user in study.
-        //      Upload with metadata referencing timeline instance.
-        //      Check that adherence record exists.
-        //      Upload again referencing same timeline instance with earlier startedOn.
-        //      Check that adherence record is updated with both upload IDs and earlier startedOn.
-        
         // Create assessment, session, and schedule. One time window is persistent, one is not.
         ForDevelopersApi developersApi = developer.getClient(ForDevelopersApi.class);
         AssessmentsApi asmtsApi = developer.getClient(AssessmentsApi.class);
