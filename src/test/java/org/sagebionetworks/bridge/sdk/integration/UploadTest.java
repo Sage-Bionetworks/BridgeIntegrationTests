@@ -668,13 +668,13 @@ public class UploadTest {
         assertRecord(usersApi, search, ENROLLMENT, STARTED_ON, uploadView.getUpload().getCompletedOn(),
                 ImmutableSet.of(uploadView.getId()));
         
-        // Create another upload for the same assessment with earlier startedOn date. Verify date in adherence
-        // record updates and both upload IDs are present.
+        // Create another upload for the same assessment. The record should keep its initial startedOn.
+        // Verify both upload IDs are present.
         UploadViewEx3 uploadViewUpdated = createAndCompleteUpload(usersApi, developersApi, instanceGuid,
                 ENROLLMENT, STARTED_ON.minusHours(1));
         AdherenceRecordsSearch searchUpdated = new AdherenceRecordsSearch().instanceGuids(ImmutableList.of(instanceGuid));
-        assertRecord(usersApi, searchUpdated, ENROLLMENT, STARTED_ON.minusHours(1), 
-                uploadView.getUpload().getCompletedOn(), ImmutableSet.of(uploadView.getId(), uploadViewUpdated.getId()));
+        assertRecord(usersApi, searchUpdated, ENROLLMENT, STARTED_ON, uploadView.getUpload().getCompletedOn(), 
+                ImmutableSet.of(uploadView.getId(), uploadViewUpdated.getId()));
     
         // Create upload for assessment in persistent window and verify adherence record.
         UploadViewEx3 uploadViewPersistent = createAndCompleteUpload(usersApi, developersApi, instanceGuidPersistent,
@@ -697,6 +697,7 @@ public class UploadTest {
         searchPersistent.startTime(STARTED_ON_PERSISTENT_2).endTime(STARTED_ON_PERSISTENT_2);
         assertRecord(usersApi, searchPersistent, ENROLLMENT, STARTED_ON_PERSISTENT_2,
                 uploadViewPersistent.getUpload().getCompletedOn(), ImmutableSet.of(uploadViewPersistent.getId()));
+        
     }
     
     // Requests and completes upload session for user with provided metadata.
