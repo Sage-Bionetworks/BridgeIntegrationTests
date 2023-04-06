@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
 import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.rest.ApiClientProvider;
+import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AccountsApi;
 import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
@@ -109,15 +110,20 @@ import org.sagebionetworks.bridge.rest.model.Withdrawal;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
-@SuppressWarnings("UnstableApiUsage")
+@SuppressWarnings({ "SameParameterValue", "UnstableApiUsage" })
 public class Exporter3Test {
     private static final Logger LOG = LoggerFactory.getLogger(Exporter3Test.class);
 
     private static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
     private static final byte[] UPLOAD_CONTENT = "This is the upload content".getBytes(StandardCharsets.UTF_8);
+    private static final String UNPARSEABLE_USER_AGENT = "appName; 1 (something/1/test)";
+    private static final String UNPARSEABLE_USER_AGENT_2 = "appName; 2 (something/2/test)";
 
     private static final String APP_NAME_FOR_USER = "app-name-for-user";
-    private static final ClientInfo CLIENT_INFO_FOR_USER = new ClientInfo().appName(APP_NAME_FOR_USER);
+    private static final ClientInfo CLIENT_INFO_FOR_USER = new ClientInfo().appName(APP_NAME_FOR_USER).appVersion(1);
+    private static final ClientInfo CLIENT_INFO_FOR_USER_2 = new ClientInfo().appName(APP_NAME_FOR_USER).appVersion(2);
+    private static final String USER_AGENT_FOR_USER = RestUtils.getUserAgent(CLIENT_INFO_FOR_USER);
+    private static final String USER_AGENT_FOR_USER_2 = RestUtils.getUserAgent(CLIENT_INFO_FOR_USER_2);
 
     // Fake record info.
     private static final String RECORD_ID = "fake-record";
@@ -785,6 +791,9 @@ public class Exporter3Test {
 
         // Upload.
         String uploadId = createUpload(user, null);
+
+        // Complete upload with a different client info.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         usersApi.completeUploadSession(uploadId, true, false).execute();
 
@@ -793,16 +802,52 @@ public class Exporter3Test {
         String clientInfoJsonText = record.getClientInfo();
         JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
         assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+        assertEquals(1, deser.get("appVersion").intValue());
+
+        // Note that because JavaSDK includes default client info, we have have to check for a prefix.
+        assertTrue(record.getUserAgent().startsWith(USER_AGENT_FOR_USER));
     }
 
     @Test
-    public void upload_completedByWorker() throws Exception {
-        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withClientInfo(CLIENT_INFO_FOR_USER)
+    public void upload_requestHasNoUserAgent() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
                 .withConsentUser(true).createAndSignInUser();
         userId = user.getUserId();
 
         // Upload.
         String uploadId = createUpload(user, null);
+
+        // Complete upload with a different client info.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify client info.
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        String clientInfoJsonText = record.getClientInfo();
+        JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
+        assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+        assertEquals(2, deser.get("appVersion").intValue());
+
+        // Note that because JavaSDK includes default client info, we have have to check for a prefix.
+        assertTrue(record.getUserAgent().startsWith(USER_AGENT_FOR_USER_2));
+    }
+
+    @Test
+    public void upload_completedByWorker() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Re-log in with a different client info.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
+        user.signInAgain();
+
         workersApi.completeUploadSession(uploadId, true, false).execute();
 
         // Get health data and verify client info.
@@ -811,6 +856,85 @@ public class Exporter3Test {
         String clientInfoJsonText = record.getClientInfo();
         JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
         assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+        assertEquals(2, deser.get("appVersion").intValue());
+
+        // Note that because JavaSDK includes default client info, we have have to check for a prefix.
+        assertTrue(record.getUserAgent().startsWith(USER_AGENT_FOR_USER_2));
+    }
+
+    private static TestUser loginUserWithClientInfo(TestUser user, ClientInfo clientInfo) {
+        SignIn signIn = user.getSignIn();
+        ClientManager clientManager = new ClientManager.Builder().withClientInfo(clientInfo)
+                .withSignIn(signIn).build();
+        return new TestUser(signIn, clientManager, user.getUserId());
+    }
+
+    @Test
+    public void unparseableUserAgentFromUploadRequest() throws Exception {
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withUserAgentOverride(UNPARSEABLE_USER_AGENT)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Complete upload with a different user agent.
+        user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify user agent. (No need to check client info.)
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        assertEquals(UNPARSEABLE_USER_AGENT, record.getUserAgent());
+    }
+
+    @Test
+    public void unparseableUserAgentFromUploadComplete() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Complete upload with a different user agent.
+        user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify user agent.
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        assertEquals(UNPARSEABLE_USER_AGENT_2, record.getUserAgent());
+    }
+
+    @Test
+    public void unparseableUserAgentFromRequestInfo() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Re-log in with a different user agent.
+        user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+        user.signInAgain();
+
+        workersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify client info.
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        assertEquals(UNPARSEABLE_USER_AGENT_2, record.getUserAgent());
+    }
+
+    private static TestUser loginUserWithUserAgent(TestUser user, String userAgent) {
+        SignIn signIn = user.getSignIn();
+        ClientManager clientManager = new ClientManager.Builder().withUserAgentOverride(userAgent).withSignIn(signIn)
+                .build();
+        return new TestUser(signIn, clientManager, user.getUserId());
     }
 
     @Test
