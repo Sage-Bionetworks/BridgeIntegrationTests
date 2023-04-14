@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.PASSWORD;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
@@ -15,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +36,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
 
 import com.google.common.io.Files;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.junit.After;
@@ -57,8 +60,10 @@ import org.slf4j.LoggerFactory;
 import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.rest.ApiClientProvider;
+import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.api.AccountsApi;
+import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ConsentsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
@@ -66,14 +71,19 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.InternalApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConsentRequiredException;
 import org.sagebionetworks.bridge.rest.model.Account;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.App;
+import org.sagebionetworks.bridge.rest.model.Assessment;
+import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.ClientInfo;
 import org.sagebionetworks.bridge.rest.model.ConsentSignature;
-import org.sagebionetworks.bridge.rest.model.ExportNotificationRecordInfo;
+import org.sagebionetworks.bridge.rest.model.ExportedRecordInfo;
 import org.sagebionetworks.bridge.rest.model.ExportToAppNotification;
 import org.sagebionetworks.bridge.rest.model.Exporter3Configuration;
 import org.sagebionetworks.bridge.rest.model.ExporterSubscriptionRequest;
@@ -81,27 +91,39 @@ import org.sagebionetworks.bridge.rest.model.ExporterSubscriptionResult;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecordEx3;
 import org.sagebionetworks.bridge.rest.model.ParticipantVersion;
 import org.sagebionetworks.bridge.rest.model.Role;
+import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SharingScopeForm;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.rest.model.TimeWindow;
+import org.sagebionetworks.bridge.rest.model.Timeline;
+import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
+import org.sagebionetworks.bridge.rest.model.UploadMetadata;
 import org.sagebionetworks.bridge.rest.model.UploadRequest;
 import org.sagebionetworks.bridge.rest.model.UploadSession;
+import org.sagebionetworks.bridge.rest.model.UploadViewEx3;
 import org.sagebionetworks.bridge.rest.model.Withdrawal;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 
-@SuppressWarnings("UnstableApiUsage")
+@SuppressWarnings({ "SameParameterValue", "UnstableApiUsage" })
 public class Exporter3Test {
     private static final Logger LOG = LoggerFactory.getLogger(Exporter3Test.class);
 
     private static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
     private static final byte[] UPLOAD_CONTENT = "This is the upload content".getBytes(StandardCharsets.UTF_8);
+    private static final String UNPARSEABLE_USER_AGENT = "appName; 1 (something/1/test)";
+    private static final String UNPARSEABLE_USER_AGENT_2 = "appName; 2 (something/2/test)";
 
     private static final String APP_NAME_FOR_USER = "app-name-for-user";
-    private static final ClientInfo CLIENT_INFO_FOR_USER = new ClientInfo().appName(APP_NAME_FOR_USER);
+    private static final ClientInfo CLIENT_INFO_FOR_USER = new ClientInfo().appName(APP_NAME_FOR_USER).appVersion(1);
+    private static final ClientInfo CLIENT_INFO_FOR_USER_2 = new ClientInfo().appName(APP_NAME_FOR_USER).appVersion(2);
+    private static final String USER_AGENT_FOR_USER = RestUtils.getUserAgent(CLIENT_INFO_FOR_USER);
+    private static final String USER_AGENT_FOR_USER_2 = RestUtils.getUserAgent(CLIENT_INFO_FOR_USER_2);
 
     // Fake record info.
     private static final String RECORD_ID = "fake-record";
@@ -129,7 +151,9 @@ public class Exporter3Test {
     private static ForWorkersApi workersApi;
 
     private String extId;
+    private Schedule2 schedule;
     private List<String> subscriptionArnList;
+    private Assessment assessment;
     private String userId;
 
     @BeforeClass
@@ -182,6 +206,16 @@ public class Exporter3Test {
         if (userId != null) {
             admin.getClient(InternalApi.class).deleteAllParticipantVersionsForUser(userId).execute();
             adminsApi.deleteUser(userId).execute();
+        }
+
+        if (schedule != null) {
+            SchedulesV2Api schedulesApi = admin.getClient(SchedulesV2Api.class);
+            schedulesApi.deleteSchedule(schedule.getGuid()).execute();
+        }
+
+        if (assessment != null) {
+            AssessmentsApi assessmentsApi = admin.getClient(AssessmentsApi.class);
+            assessmentsApi.deleteAssessment(assessment.getGuid(), true).execute();
         }
     }
 
@@ -338,7 +372,7 @@ public class Exporter3Test {
         exportNotification.setAppId(TEST_APP_ID);
         exportNotification.setRecordId(RECORD_ID);
 
-        ExportNotificationRecordInfo appRecordInfo = new ExportNotificationRecordInfo();
+        ExportedRecordInfo appRecordInfo = new ExportedRecordInfo();
         appRecordInfo.setFileEntityId(APP_FILE_ENTITY_ID);
         appRecordInfo.setParentProjectId(APP_PARENT_PROJECT_ID);
         appRecordInfo.setRawFolderId(APP_RAW_FOLDER_ID);
@@ -346,7 +380,7 @@ public class Exporter3Test {
         appRecordInfo.setS3Key(APP_S3_KEY);
         exportNotification.setRecord(appRecordInfo);
 
-        ExportNotificationRecordInfo studyRecordInfo = new ExportNotificationRecordInfo();
+        ExportedRecordInfo studyRecordInfo = new ExportedRecordInfo();
         studyRecordInfo.setFileEntityId(STUDY_FILE_ENTITY_ID);
         studyRecordInfo.setParentProjectId(STUDY_PARENT_PROJECT_ID);
         studyRecordInfo.setRawFolderId(STUDY_RAW_FOLDER_ID);
@@ -756,7 +790,10 @@ public class Exporter3Test {
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user);
+        String uploadId = createUpload(user, null);
+
+        // Complete upload with a different client info.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         usersApi.completeUploadSession(uploadId, true, false).execute();
 
@@ -765,16 +802,52 @@ public class Exporter3Test {
         String clientInfoJsonText = record.getClientInfo();
         JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
         assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+        assertEquals(1, deser.get("appVersion").intValue());
+
+        // Note that because JavaSDK includes default client info, we have have to check for a prefix.
+        assertTrue(record.getUserAgent().startsWith(USER_AGENT_FOR_USER));
     }
 
     @Test
-    public void upload_completedByWorker() throws Exception {
-        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withClientInfo(CLIENT_INFO_FOR_USER)
+    public void upload_requestHasNoUserAgent() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
                 .withConsentUser(true).createAndSignInUser();
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user);
+        String uploadId = createUpload(user, null);
+
+        // Complete upload with a different client info.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify client info.
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        String clientInfoJsonText = record.getClientInfo();
+        JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
+        assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+        assertEquals(2, deser.get("appVersion").intValue());
+
+        // Note that because JavaSDK includes default client info, we have have to check for a prefix.
+        assertTrue(record.getUserAgent().startsWith(USER_AGENT_FOR_USER_2));
+    }
+
+    @Test
+    public void upload_completedByWorker() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Re-log in with a different client info.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
+        user.signInAgain();
+
         workersApi.completeUploadSession(uploadId, true, false).execute();
 
         // Get health data and verify client info.
@@ -783,9 +856,168 @@ public class Exporter3Test {
         String clientInfoJsonText = record.getClientInfo();
         JsonNode deser = DefaultObjectMapper.INSTANCE.readTree(clientInfoJsonText);
         assertEquals(APP_NAME_FOR_USER, deser.get("appName").textValue());
+        assertEquals(2, deser.get("appVersion").intValue());
+
+        // Note that because JavaSDK includes default client info, we have have to check for a prefix.
+        assertTrue(record.getUserAgent().startsWith(USER_AGENT_FOR_USER_2));
     }
 
-    private String createUpload(TestUser user) throws IOException {
+    private static TestUser loginUserWithClientInfo(TestUser user, ClientInfo clientInfo) {
+        SignIn signIn = user.getSignIn();
+        ClientManager clientManager = new ClientManager.Builder().withClientInfo(clientInfo)
+                .withSignIn(signIn).build();
+        return new TestUser(signIn, clientManager, user.getUserId());
+    }
+
+    @Test
+    public void unparseableUserAgentFromUploadRequest() throws Exception {
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withUserAgentOverride(UNPARSEABLE_USER_AGENT)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Complete upload with a different user agent.
+        user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify user agent. (No need to check client info.)
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        assertEquals(UNPARSEABLE_USER_AGENT, record.getUserAgent());
+    }
+
+    @Test
+    public void unparseableUserAgentFromUploadComplete() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Complete upload with a different user agent.
+        user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify user agent.
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        assertEquals(UNPARSEABLE_USER_AGENT_2, record.getUserAgent());
+    }
+
+    @Test
+    public void unparseableUserAgentFromRequestInfo() throws Exception {
+        // Create user without User-Agent.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withIncludeUserAgent(false)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Upload.
+        String uploadId = createUpload(user, null);
+
+        // Re-log in with a different user agent.
+        user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+        user.signInAgain();
+
+        workersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Get health data and verify client info.
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        HealthDataRecordEx3 record = usersApi.getRecordEx3ById(uploadId, "false").execute().body();
+        assertEquals(UNPARSEABLE_USER_AGENT_2, record.getUserAgent());
+    }
+
+    private static TestUser loginUserWithUserAgent(TestUser user, String userAgent) {
+        SignIn signIn = user.getSignIn();
+        ClientManager clientManager = new ClientManager.Builder().withUserAgentOverride(userAgent).withSignIn(signIn)
+                .build();
+        return new TestUser(signIn, clientManager, user.getUserId());
+    }
+
+    @Test
+    public void getUploadEx3() throws Exception {
+        // Set up a schedule so we can test the timeline in getUploadViewEx3.
+        AssessmentsApi assessmentsApi = admin.getClient(AssessmentsApi.class);
+        SchedulesV2Api schedulesApi = admin.getClient(SchedulesV2Api.class);
+
+        String assessmentId = getClass().getSimpleName() + "-" + RandomStringUtils.randomAlphabetic(10);
+
+        assessment = new Assessment().title(assessmentId).osName("Universal").ownerId("sage-bionetworks")
+                .identifier(assessmentId);
+        assessment = assessmentsApi.createAssessment(assessment).execute().body();
+
+        schedule = new Schedule2();
+        schedule.setName("Test Schedule [Exporter3Test]");
+        schedule.setDuration("P1W");
+
+        Session session = new Session();
+        session.setName("One time task");
+        session.addStartEventIdsItem("enrollment");
+        session.setPerformanceOrder(SEQUENTIAL);
+
+        AssessmentReference2 ref = new AssessmentReference2()
+                .guid(assessment.getGuid()).appId(TEST_APP_ID)
+                .title(assessmentId)
+                .identifier(assessment.getIdentifier())
+                .revision(assessment.getRevision().intValue());
+        session.addAssessmentsItem(ref);
+        session.addTimeWindowsItem(new TimeWindow().startTime("00:00").expiration("P1W"));
+        schedule.addSessionsItem(session);
+
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+
+        Timeline timeline = schedulesApi.getTimelineForStudy(STUDY_ID_1).execute().body();
+
+        // Could also use the session instanceGuid, it doesn't matter.
+        String instanceGuid = timeline.getSchedule().get(0).getAssessments().get(0).getInstanceGuid();
+
+        // Create test user.
+        TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withClientInfo(CLIENT_INFO_FOR_USER)
+                .withConsentUser(true).createAndSignInUser();
+        userId = user.getUserId();
+
+        // Get the user's healthcode.
+        StudyParticipant participant = admin.getClient(ParticipantsApi.class).getParticipantById(userId,
+                false).execute().body();
+        String healthCode = participant.getHealthCode();
+
+        // Upload.
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("instanceGuid", instanceGuid);
+
+        String uploadId = createUpload(user, metadata);
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        usersApi.completeUploadSession(uploadId, true, false).execute();
+
+        // Make some adherence records for our test. eventTimestamp and startedOn are required, but can be any
+        // arbitrary timestamp.
+        DateTime timestamp = DateTime.now();
+        AdherenceRecord adherenceRecord = new AdherenceRecord().instanceGuid(instanceGuid)
+                .eventTimestamp(timestamp).startedOn(timestamp);
+        AdherenceRecordUpdates adherenceRecordUpdates = new AdherenceRecordUpdates().addRecordsItem(adherenceRecord);
+        usersApi.updateAdherenceRecords(STUDY_ID_1, adherenceRecordUpdates).execute();
+
+        // Call getUploadEx3 for self.
+        UploadViewEx3 upload = usersApi.getUploadEx3(uploadId, true).execute().body();
+        verifyUpload(uploadId, healthCode, userId, instanceGuid, upload, false);
+
+        upload = usersApi.getUploadEx3ForStudy(STUDY_ID_1, uploadId, true, true).execute()
+                .body();
+        verifyUpload(uploadId, healthCode, userId, instanceGuid, upload, true);
+
+        // Call getUploadEx3 for worker.
+        upload = workersApi.getUploadEx3ForWorker(TEST_APP_ID, uploadId, true).execute().body();
+        verifyUpload(uploadId, healthCode, userId, instanceGuid, upload, false);
+
+        upload = workersApi.getUploadEx3ForStudyForWorker(TEST_APP_ID, STUDY_ID_1, uploadId, true,
+                true).execute().body();
+        verifyUpload(uploadId, healthCode, userId, instanceGuid, upload, true);
+    }
+
+    private String createUpload(TestUser user, Map<String, Object> metadata) throws IOException {
         // Create a temp file so that we can use RestUtils.
         File file = File.createTempFile("text", ".txt");
         Files.write(UPLOAD_CONTENT, file);
@@ -795,6 +1027,9 @@ public class Exporter3Test {
         uploadRequest.setContentType(CONTENT_TYPE_TEXT_PLAIN);
         uploadRequest.setEncrypted(false);
         uploadRequest.setZipped(false);
+        if (metadata != null) {
+            uploadRequest.setMetadata(metadata);
+        }
 
         // Upload.
         UploadSession session = user.getClient(ForConsentedUsersApi.class).requestUploadSession(uploadRequest)
@@ -804,4 +1039,31 @@ public class Exporter3Test {
         return uploadId;
     }
 
+    private static void verifyUpload(String expectedUploadId, String expectedHealthCode, String expectedUserId,
+            String expectedInstanceGuid, UploadViewEx3 upload, boolean verifyAdherence) {
+        assertEquals(expectedUploadId, upload.getId());
+        assertEquals(expectedHealthCode, upload.getHealthCode());
+        assertEquals(expectedUserId, upload.getUserId());
+
+        // Verify basics for record, timeline, and upload metadata.
+        HealthDataRecordEx3 record = upload.getRecord();
+        assertEquals(expectedUploadId, record.getId());
+        assertEquals(expectedHealthCode, record.getHealthCode());
+
+        TimelineMetadata timelineMetadata = upload.getTimelineMetadata();
+        assertEquals(expectedInstanceGuid, timelineMetadata.getMetadata().get("assessmentInstanceGuid"));
+
+        UploadMetadata uploadMetadata = upload.getUpload();
+        assertEquals(expectedUploadId, uploadMetadata.getUploadId());
+        assertEquals(expectedHealthCode, uploadMetadata.getHealthCode());
+
+        // Adherence is only present for study APIs.
+        if (verifyAdherence) {
+            List<AdherenceRecord> adherenceRecordList = upload.getAdherenceRecords();
+            assertTrue(adherenceRecordList.size() > 0);
+            AdherenceRecord adherenceRecord = adherenceRecordList.get(0);
+            assertEquals(expectedInstanceGuid, adherenceRecord.getInstanceGuid());
+            assertEquals(expectedUserId, adherenceRecord.getUserId());
+        }
+    }
 }

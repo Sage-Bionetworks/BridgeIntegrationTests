@@ -1,23 +1,31 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
+import static org.sagebionetworks.bridge.sdk.integration.InitListener.FAKE_ENROLLMENT;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_2_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
 import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_2_ID;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -31,21 +39,36 @@ import org.junit.experimental.categories.Category;
 
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.rest.RestUtils;
+import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
+import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.exceptions.InvalidEntityException;
 import org.sagebionetworks.bridge.rest.exceptions.UnauthorizedException;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordsSearch;
+import org.sagebionetworks.bridge.rest.model.Assessment;
+import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
 import org.sagebionetworks.bridge.rest.model.RecordExportStatusRequest;
 import org.sagebionetworks.bridge.rest.model.Role;
+import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.ScheduledSession;
+import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SignUp;
+import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.SynapseExporterStatus;
+import org.sagebionetworks.bridge.rest.model.TimeWindow;
+import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadFieldDefinition;
 import org.sagebionetworks.bridge.rest.model.UploadFieldType;
@@ -55,6 +78,7 @@ import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
 import org.sagebionetworks.bridge.rest.model.UploadSession;
 import org.sagebionetworks.bridge.rest.model.UploadStatus;
 import org.sagebionetworks.bridge.rest.model.UploadValidationStatus;
+import org.sagebionetworks.bridge.rest.model.UploadViewEx3;
 import org.sagebionetworks.bridge.user.TestUser;
 import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
@@ -85,13 +109,19 @@ public class UploadTest {
     };
     // valid MD5 hashes for validation testing
     private static final String VALID_BASE64_MD5_HASH = "AAAAAAAAAAAAAAAAAAAAAA=="; // 16 bytes, 24 characters
+    private static final DateTime ENROLLMENT = DateTime.parse("2020-05-10T00:00:00.000Z");
+    private static final DateTime STARTED_ON = DateTime.parse("2020-05-12T08:00:00.000Z");
+    private static final DateTime STARTED_ON_PERSISTENT_1 = DateTime.parse("2020-05-12T16:00:00.000Z");
+    private static final DateTime STARTED_ON_PERSISTENT_2 = DateTime.parse("2020-05-12T18:00:00.000Z");
 
     private static TestUser developer;
     private static TestUser otherAppAdmin;
     private static TestUser researcher;
     private static TestUser user;
     private static TestUser admin;
-
+    private static Schedule2 schedule;
+    private static Assessment assessmentA;
+    
     @SuppressWarnings("deprecation")
     @BeforeClass
     public static void beforeClass() throws Exception {
@@ -207,6 +237,18 @@ public class UploadTest {
     public static void deleteUser() throws Exception {
         if (user != null) {
             user.signOutAndDeleteUser();
+        }
+    }
+    
+    @AfterClass
+    public static void deleteSchedule() throws IOException {
+        AssessmentsApi assessmentsApi = admin.getClient(AssessmentsApi.class);
+        SchedulesV2Api schedulesApi = admin.getClient(SchedulesV2Api.class);
+        if (schedule != null && schedule.getGuid() != null) {
+            schedulesApi.deleteSchedule(schedule.getGuid()).execute();
+        }
+        if (assessmentA != null && assessmentA.getGuid() != null) {
+            assessmentsApi.deleteAssessment(assessmentA.getGuid(), true).execute();
         }
     }
 
@@ -557,5 +599,143 @@ public class UploadTest {
         assertEquals(2, userMetadata.size());
         assertEquals("test-task-guid", userMetadata.get("taskRunId"));
         assertEquals(3.0, (double) userMetadata.get("lastMedicationHoursAgo"), 0.001);
+    }
+    
+    @Test
+    public void adherenceInUploadRequest() throws Exception {
+        // Create assessment, session, and schedule. One time window is persistent, one is not.
+        ForDevelopersApi developersApi = developer.getClient(ForDevelopersApi.class);
+        AssessmentsApi asmtsApi = developer.getClient(AssessmentsApi.class);
+    
+        Study study = developersApi.getStudy(STUDY_ID_1).execute().body();
+        if (study.getScheduleGuid() != null) {
+            admin.getClient(SchedulesV2Api.class).deleteSchedule(study.getScheduleGuid()).execute();
+        }
+    
+        String asmtATag = Tests.randomIdentifier(getClass());
+    
+        assessmentA = new Assessment()
+                .identifier(asmtATag)
+                .osName("Universal")
+                .ownerId(developer.getSession().getOrgMembership())
+                .title("Assessment A");
+        assessmentA = asmtsApi.createAssessment(assessmentA).execute().body();
+    
+        AssessmentReference2 assessRefA = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .identifier(assessmentA.getIdentifier())
+                .guid(assessmentA.getGuid());
+    
+        Session s1 = new Session()
+                .name("Session #1")
+                .addStartEventIdsItem(FAKE_ENROLLMENT)
+                .delay("P2D")
+                .interval("P3D")
+                .performanceOrder(SEQUENTIAL)
+                .addAssessmentsItem(assessRefA)
+                .addTimeWindowsItem(new TimeWindow()
+                        .startTime("08:00").expiration("PT6H"))
+                .addTimeWindowsItem(new TimeWindow()
+                        .startTime("16:00").expiration("PT6H").persistent(true));
+    
+        schedule = new Schedule2()
+                .name("AdheredRecordsTest Schedule")
+                .duration("P22D")
+                .addSessionsItem(s1);
+        schedule = developersApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+    
+        Session session = schedule.getSessions().get(0);
+    
+        // Enroll user in study with fake enrollment timestamp
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+    
+        usersApi.createStudyActivityEvent(STUDY_ID_1, new StudyActivityEventRequest()
+                .eventId(FAKE_ENROLLMENT).timestamp(ENROLLMENT), true, null).execute();
+    
+        Timeline timeline = usersApi.getTimelineForSelf(STUDY_ID_1, null).execute().body();
+        
+        List<ScheduledSession> scheduledSessions = timeline.getSchedule().stream()
+                .filter(sess -> sess.getRefGuid().equals(session.getGuid()))
+                .collect(toList());
+    
+        String instanceGuid = scheduledSessions.get(0).getAssessments().get(0).getInstanceGuid();
+        String instanceGuidPersistent = scheduledSessions.get(1).getAssessments().get(0).getInstanceGuid();
+        
+        // Create upload for assessment in non-persistent window and verify adherence record.
+        UploadViewEx3 uploadView = createAndCompleteUpload(usersApi, developersApi, instanceGuid, 
+                ENROLLMENT, STARTED_ON);
+        AdherenceRecordsSearch search = new AdherenceRecordsSearch().instanceGuids(ImmutableList.of(instanceGuid));
+        assertRecord(usersApi, search, ENROLLMENT, STARTED_ON, uploadView.getUpload().getCompletedOn(),
+                ImmutableSet.of(uploadView.getId()));
+        
+        // Create another upload for the same assessment. The record should keep its initial startedOn.
+        // Verify both upload IDs are present.
+        UploadViewEx3 uploadViewUpdated = createAndCompleteUpload(usersApi, developersApi, instanceGuid,
+                ENROLLMENT, STARTED_ON.minusHours(1));
+        AdherenceRecordsSearch searchUpdated = new AdherenceRecordsSearch().instanceGuids(ImmutableList.of(instanceGuid));
+        assertRecord(usersApi, searchUpdated, ENROLLMENT, STARTED_ON, uploadView.getUpload().getCompletedOn(), 
+                ImmutableSet.of(uploadView.getId(), uploadViewUpdated.getId()));
+    
+        // Create upload for assessment in persistent window and verify adherence record.
+        UploadViewEx3 uploadViewPersistent = createAndCompleteUpload(usersApi, developersApi, instanceGuidPersistent,
+                ENROLLMENT, STARTED_ON_PERSISTENT_2);
+        AdherenceRecordsSearch searchPersistent = new AdherenceRecordsSearch()
+                .instanceGuids(ImmutableList.of(instanceGuidPersistent));
+        assertRecord(usersApi, searchPersistent, ENROLLMENT, STARTED_ON_PERSISTENT_2, 
+                uploadViewPersistent.getUpload().getCompletedOn(), ImmutableSet.of(uploadViewPersistent.getId()));
+    
+        // Create another upload for the same assessment with earlier startedOn date. Verify a new record is created
+        // and the previous persistent record remains.
+        UploadViewEx3 uploadViewPersistentEarlier = createAndCompleteUpload(usersApi, developersApi, instanceGuidPersistent,
+                ENROLLMENT, STARTED_ON_PERSISTENT_1);
+        AdherenceRecordsSearch searchPersistentEarlier = new AdherenceRecordsSearch()
+                .instanceGuids(ImmutableList.of(instanceGuidPersistent))
+                .startTime(STARTED_ON_PERSISTENT_1).endTime(STARTED_ON_PERSISTENT_1);
+        assertRecord(usersApi, searchPersistentEarlier, ENROLLMENT, STARTED_ON_PERSISTENT_1,
+                uploadViewPersistentEarlier.getUpload().getCompletedOn(), 
+                ImmutableSet.of(uploadViewPersistentEarlier.getId()));
+        searchPersistent.startTime(STARTED_ON_PERSISTENT_2).endTime(STARTED_ON_PERSISTENT_2);
+        assertRecord(usersApi, searchPersistent, ENROLLMENT, STARTED_ON_PERSISTENT_2,
+                uploadViewPersistent.getUpload().getCompletedOn(), ImmutableSet.of(uploadViewPersistent.getId()));
+        
+    }
+    
+    // Requests and completes upload session for user with provided metadata.
+    private UploadViewEx3 createAndCompleteUpload(ForConsentedUsersApi usersApi, ForDevelopersApi developersApi,
+                                                  String instanceGuid, DateTime eventTimestamp, 
+                                                  DateTime startedOn) throws IOException {
+        File file = resolveFilePath("schemaless-encrypted");
+        UploadRequest request = RestUtils.makeUploadRequestForFile(file);
+        request.setMetadata(ImmutableMap.of("instanceGuid", instanceGuid,
+                "eventTimestamp", eventTimestamp,
+                "startedOn", startedOn));
+    
+        UploadSession uploadSession = usersApi.requestUploadSession(request).execute().body();
+        RestUtils.uploadToS3(file, uploadSession.getUrl());
+        String uploadId = uploadSession.getId();
+    
+        // Complete upload in synchronous mode, for ease of testing.
+        UploadValidationStatus status = usersApi.completeUploadSession(uploadId, true, false)
+                .execute().body();
+        assertEquals(UploadStatus.SUCCEEDED, status.getStatus());
+    
+        return developersApi.getUploadEx3(uploadId, false).execute().body();
+    }
+    
+    // Verifies an adherence record exists with the expected fields from an upload. Note that the search must 
+    // be specific enough to only find the exact adherence record.
+    private void assertRecord(ForConsentedUsersApi usersApi, AdherenceRecordsSearch search, DateTime eventTimestamp,
+                              DateTime startedOn, DateTime uploadedOn, Set<String> uploadIds) throws IOException {
+        AdherenceRecordList list = usersApi.searchForAdherenceRecords(
+                STUDY_ID_1, search).execute().body();
+        assertEquals((Integer) 1, list.getTotal());
+        AdherenceRecord record = list.getItems().get(0);
+        
+        assertEquals(eventTimestamp, record.getEventTimestamp());
+        assertEquals(startedOn, record.getStartedOn());
+        assertEquals(uploadedOn, record.getUploadedOn());
+        
+        assertEquals(uploadIds.size(), record.getUploadIds().size());
+        assertEquals(uploadIds, new HashSet<>(record.getUploadIds()));
     }
 }
