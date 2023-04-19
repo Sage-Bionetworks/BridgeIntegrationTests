@@ -92,6 +92,7 @@ import org.sagebionetworks.bridge.rest.model.HealthDataRecordEx3;
 import org.sagebionetworks.bridge.rest.model.ParticipantVersion;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SharingScopeForm;
@@ -972,7 +973,9 @@ public class Exporter3Test {
         Timeline timeline = schedulesApi.getTimelineForStudy(STUDY_ID_1).execute().body();
 
         // Could also use the session instanceGuid, it doesn't matter.
-        String instanceGuid = timeline.getSchedule().get(0).getAssessments().get(0).getInstanceGuid();
+        ScheduledSession scheduledSession = timeline.getSchedule().get(0);
+        String sessionInstanceGuid = scheduledSession.getInstanceGuid();
+        String instanceGuid = scheduledSession.getAssessments().get(0).getInstanceGuid();
 
         // Create test user.
         TestUser user = new TestUserHelper.Builder(Exporter3Test.class).withClientInfo(CLIENT_INFO_FOR_USER)
@@ -995,9 +998,15 @@ public class Exporter3Test {
         // Make some adherence records for our test. eventTimestamp and startedOn are required, but can be any
         // arbitrary timestamp.
         DateTime timestamp = DateTime.now();
-        AdherenceRecord adherenceRecord = new AdherenceRecord().instanceGuid(instanceGuid)
+        AdherenceRecord adherenceWithInstanceGuid = new AdherenceRecord().instanceGuid(instanceGuid)
                 .eventTimestamp(timestamp).startedOn(timestamp);
-        AdherenceRecordUpdates adherenceRecordUpdates = new AdherenceRecordUpdates().addRecordsItem(adherenceRecord);
+
+        // Make a second adherence record with the wrong instanceGuid, just to test that we can query by upload ID.
+        // The wrong instanceGuid has to be real, or else the record won't save.
+        AdherenceRecord adherenceWithUploadId = new AdherenceRecord().instanceGuid(sessionInstanceGuid)
+                .eventTimestamp(timestamp).startedOn(timestamp).addUploadIdsItem(uploadId);
+        AdherenceRecordUpdates adherenceRecordUpdates = new AdherenceRecordUpdates()
+                .addRecordsItem(adherenceWithInstanceGuid).addRecordsItem(adherenceWithUploadId);
         usersApi.updateAdherenceRecords(STUDY_ID_1, adherenceRecordUpdates).execute();
 
         // Call getUploadEx3 for self.
@@ -1059,10 +1068,16 @@ public class Exporter3Test {
 
         // Adherence is only present for study APIs.
         if (verifyAdherence) {
-            List<AdherenceRecord> adherenceRecordList = upload.getAdherenceRecords();
+            List<AdherenceRecord> adherenceRecordList = upload.getAdherenceRecordsForSchedule();
             assertTrue(adherenceRecordList.size() > 0);
             AdherenceRecord adherenceRecord = adherenceRecordList.get(0);
             assertEquals(expectedInstanceGuid, adherenceRecord.getInstanceGuid());
+            assertEquals(expectedUserId, adherenceRecord.getUserId());
+
+            adherenceRecordList = upload.getAdherenceRecordsForUpload();
+            assertTrue(adherenceRecordList.size() > 0);
+            adherenceRecord = adherenceRecordList.get(0);
+            assertEquals(expectedUploadId, adherenceRecord.getUploadIds().get(0));
             assertEquals(expectedUserId, adherenceRecord.getUserId());
         }
     }
