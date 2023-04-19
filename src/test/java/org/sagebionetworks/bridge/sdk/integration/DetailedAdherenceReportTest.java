@@ -16,6 +16,7 @@ import org.sagebionetworks.bridge.rest.model.ActivityEventUpdateType;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
 import org.sagebionetworks.bridge.rest.model.Assessment;
+import org.sagebionetworks.bridge.rest.model.AssessmentCompletionState;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.DetailedAdherenceReport;
 import org.sagebionetworks.bridge.rest.model.DetailedAdherenceReportAssessmentRecord;
@@ -27,6 +28,7 @@ import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.ScheduledAssessment;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Session;
+import org.sagebionetworks.bridge.rest.model.SessionCompletionState;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.user.TestUser;
@@ -158,7 +160,7 @@ public class DetailedAdherenceReportTest {
         assertEquals("Week 1/Burst 1", burstSession.getBurstName());
         assertEquals("Study Burst", burstSession.getBurstId());
         assertEquals("Study Burst Tapping Test", burstSession.getSessionName());
-        assertEquals("completed", burstSession.getSessionStatus());
+        assertEquals(SessionCompletionState.COMPLETED, burstSession.getSessionStatus());
         // dates should be formatted to match the client's time zone even when submitted in another zone initially.
         assertEquals(startedOn.withZone(DATE_TIME_ZONE).toString(), burstSession.getSessionStart().toString());
         assertEquals(finishedOn.withZone(DATE_TIME_ZONE).toString(), burstSession.getSessionCompleted().toString());
@@ -167,7 +169,7 @@ public class DetailedAdherenceReportTest {
         
         DetailedAdherenceReportAssessmentRecord burstAssessmentRecord = burstAssessmentRecords.get(0);
         assertEquals("tappingTest", burstAssessmentRecord.getAssessmentName());
-        assertEquals("Completed", burstAssessmentRecord.getAssessmentStatus());
+        assertEquals(AssessmentCompletionState.COMPLETED, burstAssessmentRecord.getAssessmentStatus());
         assertEquals(startedOn.withZone(DATE_TIME_ZONE).toString(), burstAssessmentRecord.getAssessmentStart().toString());
         assertEquals(finishedOn.withZone(DATE_TIME_ZONE).toString(), burstAssessmentRecord.getAssessmentCompleted().toString());
         assertEquals(uploadedOn.withZone(DATE_TIME_ZONE).toString(), burstAssessmentRecord.getAssessmentUploadedOn().toString());
@@ -178,7 +180,7 @@ public class DetailedAdherenceReportTest {
         assertNull(basicSession.getBurstName());
         assertNull(basicSession.getBurstId());
         assertEquals("Initial Survey", basicSession.getSessionName());
-        assertEquals("completed", basicSession.getSessionStatus());
+        assertEquals(SessionCompletionState.COMPLETED, basicSession.getSessionStatus());
         assertEquals(startedOn.withZone(DATE_TIME_ZONE).toString(), basicSession.getSessionStart().toString());
         assertEquals(finishedOn.withZone(DATE_TIME_ZONE).toString(), basicSession.getSessionCompleted().toString());
     
@@ -186,7 +188,7 @@ public class DetailedAdherenceReportTest {
     
         DetailedAdherenceReportAssessmentRecord basicSessionAssessmentRecord = basicSessionAssessmentRecords.get(0);
         assertEquals("Survey", basicSessionAssessmentRecord.getAssessmentName());
-        assertEquals("Completed", basicSessionAssessmentRecord.getAssessmentStatus());
+        assertEquals(AssessmentCompletionState.COMPLETED, basicSessionAssessmentRecord.getAssessmentStatus());
         assertEquals(startedOn.withZone(DATE_TIME_ZONE).toString(), basicSessionAssessmentRecord.getAssessmentStart().toString());
         assertEquals(finishedOn.withZone(DATE_TIME_ZONE).toString(), basicSessionAssessmentRecord.getAssessmentCompleted().toString());
         assertEquals(uploadedOn.withZone(DATE_TIME_ZONE).toString(), basicSessionAssessmentRecord.getAssessmentUploadedOn().toString());
