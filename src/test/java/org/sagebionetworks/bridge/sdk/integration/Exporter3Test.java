@@ -791,10 +791,15 @@ public class Exporter3Test {
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user, null);
+        File file = createUploadFile();
+        UploadSession session = createUploadSession(user, file, null);
+        String uploadId = session.getId();
+
+        // Change User-Agent to make sure that we don't overwrite it.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
 
         // Complete upload with a different client info.
-        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
+        RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         usersApi.completeUploadSession(uploadId, true, false).execute();
 
@@ -817,10 +822,15 @@ public class Exporter3Test {
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user, null);
+        File file = createUploadFile();
+        UploadSession session = createUploadSession(user, file, null);
+        String uploadId = session.getId();
+
+        // Change User-Agent to make sure that we don't overwrite it.
+        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
 
         // Complete upload with a different client info.
-        user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
+        RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         usersApi.completeUploadSession(uploadId, true, false).execute();
 
@@ -843,12 +853,17 @@ public class Exporter3Test {
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user, null);
+        File file = createUploadFile();
+        UploadSession session = createUploadSession(user, file, null);
+        String uploadId = session.getId();
 
-        // Re-log in with a different client info.
+        // Change User-Agent to make sure that we don't overwrite it.
         user = loginUserWithClientInfo(user, CLIENT_INFO_FOR_USER_2);
-        user.signInAgain();
 
+        // Upload the file to S3.
+        RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
+
+        // Complete upload with the worker.
         workersApi.completeUploadSession(uploadId, true, false).execute();
 
         // Get health data and verify client info.
@@ -867,7 +882,9 @@ public class Exporter3Test {
         SignIn signIn = user.getSignIn();
         ClientManager clientManager = new ClientManager.Builder().withClientInfo(clientInfo)
                 .withSignIn(signIn).build();
-        return new TestUser(signIn, clientManager, user.getUserId());
+        TestUser updatedUser = new TestUser(signIn, clientManager, user.getUserId());
+        updatedUser.signInAgain();
+        return updatedUser;
     }
 
     @Test
@@ -877,10 +894,15 @@ public class Exporter3Test {
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user, null);
+        File file = createUploadFile();
+        UploadSession session = createUploadSession(user, file, null);
+        String uploadId = session.getId();
 
-        // Complete upload with a different user agent.
+        // Change User-Agent to make sure that we don't overwrite it.
         user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+
+        // Complete upload with a different client info.
+        RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         usersApi.completeUploadSession(uploadId, true, false).execute();
 
@@ -897,10 +919,15 @@ public class Exporter3Test {
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user, null);
+        File file = createUploadFile();
+        UploadSession session = createUploadSession(user, file, null);
+        String uploadId = session.getId();
 
-        // Complete upload with a different user agent.
+        // Change User-Agent to make sure that we don't overwrite it.
         user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
+
+        // Complete upload with a different client info.
+        RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
         ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
         usersApi.completeUploadSession(uploadId, true, false).execute();
 
@@ -917,12 +944,17 @@ public class Exporter3Test {
         userId = user.getUserId();
 
         // Upload.
-        String uploadId = createUpload(user, null);
+        File file = createUploadFile();
+        UploadSession session = createUploadSession(user, file, null);
+        String uploadId = session.getId();
 
-        // Re-log in with a different user agent.
+        // Change User-Agent to make sure that we don't overwrite it.
         user = loginUserWithUserAgent(user, UNPARSEABLE_USER_AGENT_2);
-        user.signInAgain();
 
+        // Upload the file to S3.
+        RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
+
+        // Complete upload with the worker.
         workersApi.completeUploadSession(uploadId, true, false).execute();
 
         // Get health data and verify client info.
@@ -935,7 +967,9 @@ public class Exporter3Test {
         SignIn signIn = user.getSignIn();
         ClientManager clientManager = new ClientManager.Builder().withUserAgentOverride(userAgent).withSignIn(signIn)
                 .build();
-        return new TestUser(signIn, clientManager, user.getUserId());
+        TestUser updatedUser = new TestUser(signIn, clientManager, user.getUserId());
+        updatedUser.signInAgain();
+        return updatedUser;
     }
 
     @Test
@@ -1026,11 +1060,15 @@ public class Exporter3Test {
         verifyUpload(uploadId, healthCode, userId, instanceGuid, upload, true);
     }
 
-    private String createUpload(TestUser user, Map<String, Object> metadata) throws IOException {
+    private File createUploadFile() throws IOException {
         // Create a temp file so that we can use RestUtils.
         File file = File.createTempFile("text", ".txt");
         Files.write(UPLOAD_CONTENT, file);
+        return file;
+    }
 
+    private UploadSession createUploadSession(TestUser user, File file, Map<String, Object> metadata)
+            throws IOException {
         // Create upload request. RestUtils defaults to application/zip. We want to overwrite this.
         UploadRequest uploadRequest = RestUtils.makeUploadRequestForFile(file);
         uploadRequest.setContentType(CONTENT_TYPE_TEXT_PLAIN);
@@ -1043,9 +1081,14 @@ public class Exporter3Test {
         // Upload.
         UploadSession session = user.getClient(ForConsentedUsersApi.class).requestUploadSession(uploadRequest)
                 .execute().body();
-        String uploadId = session.getId();
+        return session;
+    }
+
+    private String createUpload(TestUser user, Map<String, Object> metadata) throws IOException {
+        File file = createUploadFile();
+        UploadSession session = createUploadSession(user, file, metadata);
         RestUtils.uploadToS3(file, session.getUrl(), CONTENT_TYPE_TEXT_PLAIN);
-        return uploadId;
+        return session.getId();
     }
 
     private static void verifyUpload(String expectedUploadId, String expectedHealthCode, String expectedUserId,
