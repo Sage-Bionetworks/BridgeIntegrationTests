@@ -42,6 +42,7 @@ import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.api.StudyAdherenceApi;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
@@ -82,9 +83,14 @@ import org.sagebionetworks.bridge.user.TestUserHelper;
  *
  * @see https://developer.sagebridge.org/articles/v2/scheduling.html
  */
+@SuppressWarnings("UnnecessaryLocalVariable")
 public class AdherenceRecordsTest {
-
+    private static final String DUMMY_UPLOAD_ID_1 = "dummy-upload-id-1";
+    private static final String DUMMY_UPLOAD_ID_2 = "dummy-upload-id-2";
     private static final DateTime ENROLLMENT = DateTime.parse("2020-05-10T00:00:00.000Z");
+    private static final String TAG_A = "tag-A";
+    private static final String TAG_B = "tag-B";
+    private static final String TAG_C = "tag-C";
     private static final DateTime T1 = DateTime.parse("2020-05-18T00:00:00.000Z");
     private static final DateTime T2 = DateTime.parse("2020-09-03T00:00:00.000Z");
     private TestUser developer;
@@ -575,7 +581,74 @@ public class AdherenceRecordsTest {
         EventStream fakeEnrollmentStream = report.getStreams().get(1);
         assertEquals(fakeEnrollmentStream.getByDayEntries().keySet(), ImmutableSet.of("2", "5", "8", "11", "14", "17", "20"));
     }
-    
+
+    @Test
+    public void testUploadIdQueries() throws Exception {
+        participant = TestUserHelper.createAndSignInUser(AdherenceRecordsTest.class, true);
+        ForConsentedUsersApi usersApi = participant.getClient(ForConsentedUsersApi.class);
+
+        // Get the session instanceGuid and the assessment instanceGuid.
+        timeline = usersApi.getTimelineForSelf(STUDY_ID_1, null).execute().body();
+        ScheduledSession schSession = timeline.getSchedule().get(0);
+        String sessionInstanceGuid = schSession.getInstanceGuid();
+        String assessmentInstanceGuid = schSession.getAssessments().get(0).getInstanceGuid();
+
+        // Create 3 adherence records:
+        //   A with no upload ID
+        //   B with upload 1
+        //   C with uploads 1 and 2
+        // eventTimestamp and startedOn are required, but can be any arbitrary timestamp. However, they need to be
+        // 3 different timestamps, because this is one of the primary keys for Adherence Records.
+        DateTime timestampA = DateTime.now();
+        AdherenceRecord adherenceA = new AdherenceRecord().instanceGuid(assessmentInstanceGuid).eventTimestamp(timestampA)
+                .startedOn(timestampA).clientData(TAG_A);
+
+        DateTime timestampB = timestampA.plusSeconds(1);
+        AdherenceRecord adherenceB = new AdherenceRecord().instanceGuid(assessmentInstanceGuid)
+                .eventTimestamp(timestampB).startedOn(timestampB).clientData(TAG_B).addUploadIdsItem(DUMMY_UPLOAD_ID_1);
+
+        DateTime timestampC = timestampB.plusSeconds(1);
+        AdherenceRecord adherenceC = new AdherenceRecord().instanceGuid(assessmentInstanceGuid)
+                .eventTimestamp(timestampC).startedOn(timestampC).clientData(TAG_C).addUploadIdsItem(DUMMY_UPLOAD_ID_1)
+                .addUploadIdsItem(DUMMY_UPLOAD_ID_2);
+
+        // Update the session adherence record with a timestamp that won't be picked up by our tests.
+        DateTime sessionTimestamp = timestampC.plusSeconds(10);
+        AdherenceRecord sessionAdherenceRecord = new AdherenceRecord().instanceGuid(sessionInstanceGuid)
+                .eventTimestamp(sessionTimestamp).startedOn(sessionTimestamp);
+
+        AdherenceRecordUpdates adherenceRecordUpdates = new AdherenceRecordUpdates().addRecordsItem(adherenceA)
+                .addRecordsItem(adherenceB).addRecordsItem(adherenceC).addRecordsItem(sessionAdherenceRecord);
+        usersApi.updateAdherenceRecords(STUDY_ID_1, adherenceRecordUpdates).execute();
+
+        // Need to set bounds for eventTimestamp. eventTimestampStart is inclusive, eventTimestampEnd is exclusive.
+        DateTime eventTimestampStart = timestampA;
+        DateTime eventTimestampEnd = timestampC.plusMillis(1);
+
+        // Create queries for upload ID (B and C), for records with multiple upload IDs (just C), and for records with
+        // no upload IDs (just A).
+        AdherenceRecordsSearch searchByUploadId = new AdherenceRecordsSearch().uploadId(DUMMY_UPLOAD_ID_1);
+        AdherenceRecordsSearch searchByMultipleUploadIds = new AdherenceRecordsSearch().hasMultipleUploadIds(true)
+                .eventTimestampStart(eventTimestampStart).eventTimestampEnd(eventTimestampEnd);
+        AdherenceRecordsSearch searchByNoUploadIds = new AdherenceRecordsSearch().hasNoUploadIds(true)
+                .eventTimestampStart(eventTimestampStart).eventTimestampEnd(eventTimestampEnd);
+
+        // Participant can query.
+        assertRecords(searchByUploadId, TAG_B, TAG_C);
+        assertRecords(searchByMultipleUploadIds, TAG_C);
+        assertRecords(searchByNoUploadIds, TAG_A);
+
+        // Developer can query by study.
+        assertDeveloperSearchByStudy(searchByUploadId, TAG_B, TAG_C);
+        assertDeveloperSearchByStudy(searchByMultipleUploadIds, TAG_C);
+        assertDeveloperSearchByStudy(searchByNoUploadIds, TAG_A);
+
+        // Developer can query by user.
+        assertDeveloperSearchByUser(searchByUploadId, TAG_B, TAG_C);
+        assertDeveloperSearchByUser(searchByMultipleUploadIds, TAG_C);
+        assertDeveloperSearchByUser(searchByNoUploadIds, TAG_A);
+    }
+
     private void updateAssessmentRecord(ForConsentedUsersApi usersApi, String instanceGuid, DateTime startedOn,
             DateTime finishedOn) throws Exception {
         AdherenceRecord record1 = new AdherenceRecord().instanceGuid(instanceGuid)
@@ -723,10 +796,28 @@ public class AdherenceRecordsTest {
     private DateTime getTimestamp(String monthAndDay, String hourOfDay) {
         return DateTime.parse("2020-" + monthAndDay + "T" + hourOfDay + ":00:00.000Z");
     }
+
+    private void assertDeveloperSearchByStudy(AdherenceRecordsSearch search, String... expectedTags) throws Exception {
+        StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
+        AdherenceRecordList list = adherenceApi.searchForAdherenceRecordsForStudy(STUDY_ID_1, search).execute().body();
+        assertRecords(list, expectedTags);
+    }
+
+    private void assertDeveloperSearchByUser(AdherenceRecordsSearch search, String... expectedTags) throws Exception {
+        StudyAdherenceApi adherenceApi = developer.getClient(StudyAdherenceApi.class);
+        AdherenceRecordList list = adherenceApi.searchForStudyParticipantAdherenceRecords(STUDY_ID_1,
+                participant.getUserId(), search).execute().body();
+        assertRecords(list, expectedTags);
+    }
+
     private void assertRecords(AdherenceRecordsSearch search, String... expectedTags) throws Exception {
         ForConsentedUsersApi usersApi = participant.getClient(ForConsentedUsersApi.class);
         AdherenceRecordList list = usersApi.searchForAdherenceRecords(
                 STUDY_ID_1, search).execute().body();
+        assertRecords(list, expectedTags);
+    }
+
+    private void assertRecords(AdherenceRecordList list, String... expectedTags) {
         // There will be duplicates so this has to be a list.
         List<String> tags = list.getItems().stream()
                 .map(ar -> (String)ar.getClientData())
@@ -734,8 +825,9 @@ public class AdherenceRecordsTest {
         List<String> expectedTagList = Lists.newArrayList(expectedTags);
         Collections.sort(expectedTagList);
         Collections.sort(tags);
-        assertEquals(expectedTagList, tags);   
+        assertEquals(expectedTagList, tags);
     }
+
     private void assertRecordsAndTimestamps(AdherenceRecordsSearch search, String... expectedTags) throws Exception {
         ForConsentedUsersApi usersApi = participant.getClient(ForConsentedUsersApi.class);
         AdherenceRecordList list = usersApi.searchForAdherenceRecords(

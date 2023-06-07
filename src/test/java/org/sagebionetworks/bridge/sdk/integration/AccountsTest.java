@@ -22,6 +22,7 @@ import java.io.IOException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +34,7 @@ import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
 import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.StudyParticipantsApi;
@@ -48,6 +50,7 @@ import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.IdentifierUpdate;
 import org.sagebionetworks.bridge.rest.model.Phone;
+import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.RequestInfo;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
@@ -60,6 +63,10 @@ import org.sagebionetworks.bridge.user.TestUserHelper;
 import org.sagebionetworks.bridge.util.IntegTestUtils;
 
 public class AccountsTest {
+    private static final LocalDate REPORT_DATE = LocalDate.parse("2000-01-01");
+    private static final String REPORT_ID = "accounts-test-report";
+    private static final String REPORT_KEY = "report-key";
+    private static final String REPORT_VALUE = "report-value";
     private static final ImmutableList<String> USER_DATA_GROUPS = ImmutableList.of("test_user", "sdk-int-1");
     private TestUser admin;
     private TestUser developer;
@@ -184,7 +191,16 @@ public class AccountsTest {
         
         code = orgAdminApi.signOutAccount(emailUserId, true).execute().code();
         assertEquals(200, code);
-        
+
+        // Special case: Deleting accounts also deletes their report data. There are unusual permissions issues with
+        // participant reports scoped to a specific study. Create a participant report to verify that this works.
+        ReportData reportData = new ReportData();
+        reportData.setData(ImmutableMap.of(REPORT_KEY, REPORT_VALUE));
+        reportData.setLocalDate(REPORT_DATE);
+        reportData.addStudyIdsItem(STUDY_ID_1);
+        developer.getClient(ParticipantReportsApi.class).addParticipantReportRecordV4(emailUserId, REPORT_ID,
+                reportData).execute();
+
         // delete the account
         orgAdminApi.deleteAccount(emailUserId).execute();
         

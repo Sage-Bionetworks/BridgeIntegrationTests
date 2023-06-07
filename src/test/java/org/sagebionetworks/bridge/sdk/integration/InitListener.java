@@ -28,10 +28,13 @@ import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForOrgAdminsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
+import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
 import org.sagebionetworks.bridge.rest.api.SubpopulationsApi;
 import org.sagebionetworks.bridge.rest.exceptions.ConstraintViolationException;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.AccountSummary;
+import org.sagebionetworks.bridge.rest.model.AccountSummarySearch;
 import org.sagebionetworks.bridge.rest.model.App;
 import org.sagebionetworks.bridge.rest.model.CustomEvent;
 import org.sagebionetworks.bridge.rest.model.Environment;
@@ -175,6 +178,30 @@ public class InitListener extends RunListener {
                 admin.getClient(AuthenticationApi.class).changeApp(API_SIGNIN).execute();
             }
         }
+
+        // Wipe all test accounts.
+        AccountSummarySearch search = new AccountSummarySearch().emailFilter("bridge-testing");
+        ParticipantsApi participantsApi = admin.getClient(ParticipantsApi.class);
+        List<AccountSummary> accountSummaryList;
+        int numPages = 0;
+        do {
+            if (numPages >= 5) {
+                // Short-circuit to prevent an infinite loop.
+                LOG.error("Too many test accounts. Breaking out of account cleanup loop.");
+                break;
+            }
+
+            accountSummaryList = participantsApi.searchAccountSummaries(search).execute().body().getItems();
+            for (AccountSummary accountSummary : accountSummaryList) {
+                adminApi.deleteUser(accountSummary.getId()).execute();
+            }
+            numPages++;
+
+            // Sleep for 1 second before re-querying, to make sure we don't overload the server.
+            //noinspection BusyWait
+            Thread.sleep(1000);
+        } while (!accountSummaryList.isEmpty());
+
         testRunInitialized = true;
     }
     @Override
