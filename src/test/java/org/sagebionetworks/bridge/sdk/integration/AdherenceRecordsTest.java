@@ -674,7 +674,7 @@ public class AdherenceRecordsTest {
         // Update the adherence post-processing attributes. Since no adherence record is created, this will
         // automatically create an adherence record.
         AdherencePostProcessingAttributes attributeUpdates = new AdherencePostProcessingAttributes()
-                .postProcessingAttributes(ImmutableMap.of("foo", "bar"))
+                .postProcessingAttributes(ImmutableMap.of("foo", "foo-value"))
                 .postProcessingCompletedOn(postProcessingCompletedOn)
                 .postProcessingStatus("test1")
                 .startedOn(null);
@@ -702,15 +702,18 @@ public class AdherenceRecordsTest {
         assertEquals("test1", record.getPostProcessingStatus());
 
         Map<String, String> attributesMap = (Map<String, String>) record.getPostProcessingAttributes();
-        assertEquals("bar", attributesMap.get("foo"));
+        assertEquals(1, attributesMap.size());
+        assertEquals("foo-value", attributesMap.get("foo"));
 
         // Since no startedOn was specified, BridgeServer automatically creates a startedOn.
         assertNotNull(record.getStartedOn());
 
         // Update the adherence post-processing attributes again. Set a startedOn. This should overwrite the old one.
+        // Set different post-processing attributes to make sure we don't clobber the old ones.
+        // Don't specify completedOn to make sure we don't clobber the old one.
         attributeUpdates = new AdherencePostProcessingAttributes()
-                .postProcessingAttributes(ImmutableMap.of("foo", "bar"))
-                .postProcessingCompletedOn(postProcessingCompletedOn)
+                .postProcessingAttributes(ImmutableMap.of("bar", "bar-value2"))
+                .postProcessingCompletedOn(null)
                 .postProcessingStatus("test2")
                 .startedOn(startedOn);
         researchersApi.updateAdherencePostProcessingAttributes(STUDY_ID_1, "healthcode:" + healthCode,
@@ -721,15 +724,24 @@ public class AdherenceRecordsTest {
         assertEquals(1, recordList.size());
 
         record = recordList.get(0);
+        assertEquals(postProcessingCompletedOn, record.getPostProcessingCompletedOn());
         assertEquals("test2", record.getPostProcessingStatus());
         assertEquals(startedOn, record.getStartedOn());
 
+        attributesMap = (Map<String, String>) record.getPostProcessingAttributes();
+        assertEquals(2, attributesMap.size());
+        assertEquals("foo-value", attributesMap.get("foo"));
+        assertEquals("bar-value2", attributesMap.get("bar"));
+
         // Update the adherence post-processing attributes a third. Set startedOn to null. The startedOn from step 2
         // should be preserved.
+        // Set different post-processing attributes to make sure we merge with the old ones.
+        // Don't specify post-processing status to make sure we don't clobber the old one.
+        DateTime postProcessingCompletedOn2 = postProcessingCompletedOn.plusHours(1);
         attributeUpdates = new AdherencePostProcessingAttributes()
-                .postProcessingAttributes(ImmutableMap.of("foo", "bar"))
-                .postProcessingCompletedOn(postProcessingCompletedOn)
-                .postProcessingStatus("test3")
+                .postProcessingAttributes(ImmutableMap.of("bar", "bar-value3", "baz", "baz-value3"))
+                .postProcessingCompletedOn(postProcessingCompletedOn2)
+                .postProcessingStatus(null)
                 .startedOn(null);
         researchersApi.updateAdherencePostProcessingAttributes(STUDY_ID_1, "healthcode:" + healthCode,
                 instanceGuid, eventTimestamp, attributeUpdates).execute();
@@ -739,8 +751,15 @@ public class AdherenceRecordsTest {
         assertEquals(1, recordList.size());
 
         record = recordList.get(0);
-        assertEquals("test3", record.getPostProcessingStatus());
+        assertEquals(postProcessingCompletedOn2, record.getPostProcessingCompletedOn());
+        assertEquals("test2", record.getPostProcessingStatus());
         assertEquals(startedOn, record.getStartedOn());
+
+        attributesMap = (Map<String, String>) record.getPostProcessingAttributes();
+        assertEquals(3, attributesMap.size());
+        assertEquals("foo-value", attributesMap.get("foo"));
+        assertEquals("bar-value3", attributesMap.get("bar"));
+        assertEquals("baz-value3", attributesMap.get("baz"));
     }
 
     private void updateAssessmentRecord(ForConsentedUsersApi usersApi, String instanceGuid, DateTime startedOn,
