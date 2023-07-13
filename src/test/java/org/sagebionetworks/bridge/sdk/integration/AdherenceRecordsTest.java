@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toList;
 import static org.joda.time.DateTimeZone.UTC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.sagebionetworks.bridge.rest.model.AdherenceRecordType.ASSESSMENT;
@@ -27,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
@@ -43,6 +45,7 @@ import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.StudyAdherenceApi;
+import org.sagebionetworks.bridge.rest.model.AdherencePostProcessingAttributes;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
@@ -83,7 +86,7 @@ import org.sagebionetworks.bridge.user.TestUserHelper;
  *
  * @see https://developer.sagebridge.org/articles/v2/scheduling.html
  */
-@SuppressWarnings("UnnecessaryLocalVariable")
+@SuppressWarnings({ "unchecked", "UnnecessaryLocalVariable" })
 public class AdherenceRecordsTest {
     private static final String DUMMY_UPLOAD_ID_1 = "dummy-upload-id-1";
     private static final String DUMMY_UPLOAD_ID_2 = "dummy-upload-id-2";
@@ -647,6 +650,116 @@ public class AdherenceRecordsTest {
         assertDeveloperSearchByUser(searchByUploadId, TAG_B, TAG_C);
         assertDeveloperSearchByUser(searchByMultipleUploadIds, TAG_C);
         assertDeveloperSearchByUser(searchByNoUploadIds, TAG_A);
+    }
+
+    @Test
+    public void updatePostProcessingAttributes() throws Exception {
+        participant = TestUserHelper.createAndSignInUser(AdherenceRecordsTest.class, true);
+        ForConsentedUsersApi usersApi = participant.getClient(ForConsentedUsersApi.class);
+
+        // For test coverage, test using healthCode.
+        String healthCode = usersApi.getUsersParticipantRecord(false).execute().body().getHealthCode();
+
+        // Get the instanceGuid.
+        timeline = usersApi.getTimelineForSelf(STUDY_ID_1, null).execute().body();
+        ScheduledSession schSession = timeline.getSchedule().get(0);
+        String instanceGuid = schSession.getInstanceGuid();
+
+        // Create event timestamp and startedOn. These are required, but can be any arbitrary timestamp.
+        // Note: Server stores these attributes as epoch milliseconds, so just flatten everything down to UTC.
+        DateTime eventTimestamp = DateTime.now(DateTimeZone.UTC);
+        DateTime startedOn = eventTimestamp.plusMinutes(1);
+        DateTime postProcessingCompletedOn = eventTimestamp.plusMinutes(2);
+
+        // Update the adherence post-processing attributes. Since no adherence record is created, this will
+        // automatically create an adherence record.
+        AdherencePostProcessingAttributes attributeUpdates = new AdherencePostProcessingAttributes()
+                .postProcessingAttributes(ImmutableMap.of("foo", "foo-value"))
+                .postProcessingCompletedOn(postProcessingCompletedOn)
+                .postProcessingStatus("test1")
+                .startedOn(null);
+
+        researcher = TestUserHelper.createAndSignInUser(AdherenceRecordsTest.class, false, RESEARCHER);
+        ForResearchersApi researchersApi = researcher.getClient(ForResearchersApi.class);
+        researchersApi.updateAdherencePostProcessingAttributes(STUDY_ID_1, "healthcode:" + healthCode,
+                instanceGuid, eventTimestamp, attributeUpdates).execute();
+
+        // Get adherence record and verify.
+        AdherenceRecordsSearch search = new AdherenceRecordsSearch()
+                .instanceGuids(ImmutableList.of(instanceGuid))
+                // Event timestamp is a range of values. Start is inclusive, end is exclusive. Since we're looking for
+                // a specific singular timestamp, the end is start+1.
+                .eventTimestampStart(eventTimestamp)
+                .eventTimestampEnd(eventTimestamp.plusMillis(1))
+                // Page size is required, but we're only looking for one record, so this is fine.
+                .pageSize(1);
+        List<AdherenceRecord> recordList = usersApi.searchForAdherenceRecords(STUDY_ID_1, search).execute().body()
+                .getItems();
+        assertEquals(1, recordList.size());
+
+        AdherenceRecord record = recordList.get(0);
+        assertEquals(postProcessingCompletedOn, record.getPostProcessingCompletedOn());
+        assertEquals("test1", record.getPostProcessingStatus());
+
+        Map<String, String> attributesMap = (Map<String, String>) record.getPostProcessingAttributes();
+        assertEquals(1, attributesMap.size());
+        assertEquals("foo-value", attributesMap.get("foo"));
+
+        // Since no startedOn was specified, BridgeServer automatically creates a startedOn.
+        assertNotNull(record.getStartedOn());
+
+        // Update the adherence post-processing attributes again. Set a startedOn. This should overwrite the old one.
+        // Set different post-processing attributes to make sure we don't clobber the old ones.
+        // Don't specify completedOn to make sure we don't clobber the old one.
+        attributeUpdates = new AdherencePostProcessingAttributes()
+                .postProcessingAttributes(ImmutableMap.of("bar", "bar-value2"))
+                .postProcessingCompletedOn(null)
+                .postProcessingStatus("test2")
+                .startedOn(startedOn);
+        researchersApi.updateAdherencePostProcessingAttributes(STUDY_ID_1, "healthcode:" + healthCode,
+                instanceGuid, eventTimestamp, attributeUpdates).execute();
+
+        // Verify that the adherence record is updated. The startedOn is unchanged.
+        recordList = usersApi.searchForAdherenceRecords(STUDY_ID_1, search).execute().body().getItems();
+        assertEquals(1, recordList.size());
+
+        record = recordList.get(0);
+        assertEquals(postProcessingCompletedOn, record.getPostProcessingCompletedOn());
+        assertEquals("test2", record.getPostProcessingStatus());
+        assertEquals(startedOn, record.getStartedOn());
+
+        attributesMap = (Map<String, String>) record.getPostProcessingAttributes();
+        assertEquals(2, attributesMap.size());
+        assertEquals("foo-value", attributesMap.get("foo"));
+        assertEquals("bar-value2", attributesMap.get("bar"));
+
+        // Update the adherence post-processing attributes a third. Set startedOn to null. The startedOn from step 2
+        // should be preserved.
+        // Set different post-processing attributes to make sure we merge with the old ones.
+        // Don't specify post-processing status to make sure we don't clobber the old one.
+        DateTime postProcessingCompletedOn2 = postProcessingCompletedOn.plusHours(1);
+        attributeUpdates = new AdherencePostProcessingAttributes()
+                .postProcessingAttributes(ImmutableMap.of("bar", "bar-value3", "baz", "baz-value3"))
+                .postProcessingCompletedOn(postProcessingCompletedOn2)
+                .postProcessingStatus(null)
+                .startedOn(null);
+        researchersApi.updateAdherencePostProcessingAttributes(STUDY_ID_1, "healthcode:" + healthCode,
+                instanceGuid, eventTimestamp, attributeUpdates).execute();
+
+        // Verify that the adherence record is updated. The startedOn is unchanged.
+        recordList = usersApi.searchForAdherenceRecords(STUDY_ID_1, search).execute().body().getItems();
+        assertEquals(1, recordList.size());
+
+        record = recordList.get(0);
+        assertEquals(postProcessingCompletedOn2, record.getPostProcessingCompletedOn());
+        assertEquals("test2", record.getPostProcessingStatus());
+        assertEquals(startedOn, record.getStartedOn());
+
+        attributesMap = (Map<String, String>) record.getPostProcessingAttributes();
+        assertEquals(3, attributesMap.size());
+        assertEquals("foo-value", attributesMap.get("foo"));
+        assertEquals("bar-value3", attributesMap.get("bar"));
+        assertEquals("baz-value3", attributesMap.get("baz"));
     }
 
     private void updateAssessmentRecord(ForConsentedUsersApi usersApi, String instanceGuid, DateTime startedOn,
