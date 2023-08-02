@@ -24,10 +24,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.amazonaws.AmazonClientException;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSSessionCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.BasicSessionCredentials;
 import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sqs.AmazonSQS;
@@ -184,14 +183,21 @@ public class Exporter3Test {
         testQueueArn = config.get("integ.test.queue.arn");
         testQueueUrl = config.get("integ.test.queue.url");
         workersApi = admin.getClient(ForWorkersApi.class);
+        studyDesigner = TestUserHelper.createAndSignInUser(StudyBurstTest.class, false, STUDY_DESIGNER);
+        studyDesignersApi = studyDesigner.getClient(ForStudyDesignersApi.class);
 
         // Set up AWS clients.
-        AWSCredentials awsCredentials = new BasicAWSCredentials(config.get("aws.key"),
-                config.get("aws.secret.key"));
-        AWSCredentialsProvider awsCredentialsProvider = new AWSStaticCredentialsProvider(awsCredentials);
-
-        snsClient = AmazonSNSClientBuilder.standard().withCredentials(awsCredentialsProvider).build();
-        sqsClient = AmazonSQSClientBuilder.standard().withCredentials(awsCredentialsProvider).build();
+        AWSSessionCredentials sessionCredentials = new BasicSessionCredentials(
+                config.get("aws.key"),
+                config.get("aws.secret.key"),
+                config.get("aws.session.token")
+        );
+        sqsClient = AmazonSQSClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
+                .build();
+        snsClient = AmazonSNSClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
+                .build();
 
         // Clean up stray Synapse resources before test.
         deleteEx3Resources();
@@ -233,6 +239,17 @@ public class Exporter3Test {
         if (assessment != null) {
             AssessmentsApi assessmentsApi = admin.getClient(AssessmentsApi.class);
             assessmentsApi.deleteAssessment(assessment.getGuid(), true).execute();
+        }
+
+        // Delete ex3ConfigForStudy for study.
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+        Study study = studiesApi.getStudy(Tests.STUDY_ID_1).execute().body();
+        Exporter3Configuration ex3ConfigForStudy = study.getExporter3Configuration();
+
+        if (ex3ConfigForStudy != null) {
+            study.setExporter3Configuration(null);
+            study.setExporter3Enabled(false);
+            studiesApi.updateStudy(Tests.STUDY_ID_1, study).execute();
         }
     }
 
@@ -799,10 +816,7 @@ public class Exporter3Test {
 
     @Test
     public void exportTimelineForStudy() throws Exception {
-        // Init Exporter 3.
-        adminsApi.initExporter3ForStudy(STUDY_ID_1).execute().body();
-
-        studyDesigner = TestUserHelper.createAndSignInUser(StudyBurstTest.class, false, STUDY_DESIGNER);
+        // Set up assessment.
         assessment = new Assessment().title(StudyBurstTest.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
                 .identifier(Tests.randomIdentifier(Exporter3Test.class));
 
@@ -811,35 +825,40 @@ public class Exporter3Test {
 
         setupSchedule(MUTABLE_EVENT, MUTABLE, "P2D");
 
-        studyDesignersApi = studyDesigner.getClient(ForStudyDesignersApi.class);
-        adminsApi = admin.getClient(ForAdminsApi.class);
+        Exporter3Configuration exporter3Config = adminsApi.exportTimelineForStudy(Tests.STUDY_ID_1).execute().body();
 
-        Timeline timeline = studyDesignersApi.getTimelineForStudy(STUDY_ID_1).execute().body();
-
-        Exporter3Configuration exporter3Config = adminsApi.exportTimelineForStudy(STUDY_ID_1).execute().body();
         WikiPageKey key = WikiPageKeyHelper.createWikiPageKey(exporter3Config.getProjectId(), ObjectType.ENTITY, exporter3Config.getWikiPageId());
         V2WikiPage getWiki = synapseClient.getV2WikiPage(key);
+        String markdownId = getWiki.getMarkdownFileHandleId();
+        Thread.sleep(5000);
 
-        assertEquals(getWiki.getTitle(), "wikiFor" + STUDY_ID_1);
-        assertEquals(getWiki.getMarkdownFileHandleId(), "exportedTimelinefor" + STUDY_ID_1);
+        // First time creating wiki page:
+        // 1. wiki page is created
+        // 2. wiki page attributes are as expected: title; markdownFileHandleId created/not null
+        assertEquals(getWiki.getTitle(), "Exported Timeline for " + STUDY_ID_1);
+        assertNotNull(getWiki.getMarkdownFileHandleId());
 
-
+        // wiki page already exists:
+        // 1. wiki page markdown handle id changes.
+        Exporter3Configuration exporter3Config_again = adminsApi.exportTimelineForStudy(STUDY_ID_1).execute().body();
+        V2WikiPage updatedWiki = synapseClient.getV2WikiPage(key);
+        String newMarkdownId = updatedWiki.getMarkdownFileHandleId();
+        assertNotEquals(markdownId, newMarkdownId);
     }
 
     private void setupSchedule(String originEventId, ActivityEventUpdateType burstUpdateType, String delayPeriod)
             throws Exception {
         // clean up any schedule that is there
         try {
-            TestUser admin = TestUserHelper.getSignedInAdmin();
+            //TestUser admin = TestUserHelper.getSignedInAdmin();
             schedule = admin.getClient(SchedulesV2Api.class).getScheduleForStudy(STUDY_ID_1).execute().body();
             admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
         } catch (EntityNotFoundException e) {
-
+            LOG.info("No schedule found." );
         }
 
-        studyDesignersApi = studyDesigner.getClient(ForStudyDesignersApi.class);
         schedule = new Schedule2();
-        schedule.setName("Test Schedule [StudyBurstTest]");
+        schedule.setName("Test Schedule [Exporter3test]");
         schedule.setDuration("P10D");
 
         StudyBurst burst = new StudyBurst()
