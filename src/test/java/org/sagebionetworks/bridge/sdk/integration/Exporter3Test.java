@@ -830,7 +830,6 @@ public class Exporter3Test {
         WikiPageKey key = WikiPageKeyHelper.createWikiPageKey(exporter3Config.getProjectId(), ObjectType.ENTITY, exporter3Config.getWikiPageId());
         V2WikiPage getWiki = synapseClient.getV2WikiPage(key);
         String markdownId = getWiki.getMarkdownFileHandleId();
-        Thread.sleep(5000);
 
         // First time creating wiki page:
         // 1. wiki page is created
