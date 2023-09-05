@@ -24,9 +24,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.amazonaws.AmazonClientException;
-import com.amazonaws.auth.AWSSessionCredentials;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sqs.AmazonSQS;
@@ -187,17 +188,12 @@ public class Exporter3Test {
         studyDesignersApi = studyDesigner.getClient(ForStudyDesignersApi.class);
 
         // Set up AWS clients.
-        AWSSessionCredentials sessionCredentials = new BasicSessionCredentials(
-                config.get("aws.key"),
-                config.get("aws.secret.key"),
-                config.get("aws.session.token")
-        );
-        sqsClient = AmazonSQSClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
-                .build();
-        snsClient = AmazonSNSClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(sessionCredentials))
-                .build();
+        AWSCredentials awsCredentials = new BasicAWSCredentials(config.get("aws.key"),
+                config.get("aws.secret.key"));
+        AWSCredentialsProvider awsCredentialsProvider = new AWSStaticCredentialsProvider(awsCredentials);
+
+        snsClient = AmazonSNSClientBuilder.standard().withCredentials(awsCredentialsProvider).build();
+        sqsClient = AmazonSQSClientBuilder.standard().withCredentials(awsCredentialsProvider).build();
 
         // Clean up stray Synapse resources before test.
         deleteEx3Resources();
@@ -257,6 +253,10 @@ public class Exporter3Test {
     public static void afterClass() throws Exception {
         // Clean up Synapse resources.
         deleteEx3Resources();
+
+        if (studyDesigner != null) {
+            studyDesigner.signOutAndDeleteUser();
+        }
     }
 
     private static void deleteEx3Resources() throws IOException {
@@ -849,7 +849,6 @@ public class Exporter3Test {
             throws Exception {
         // clean up any schedule that is there
         try {
-            //TestUser admin = TestUserHelper.getSignedInAdmin();
             schedule = admin.getClient(SchedulesV2Api.class).getScheduleForStudy(STUDY_ID_1).execute().body();
             admin.getClient(SchedulesV2Api.class).deleteSchedule(schedule.getGuid()).execute();
         } catch (EntityNotFoundException e) {
