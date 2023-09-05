@@ -158,7 +158,7 @@ public class AlertsTest {
 
         // delete assessment
         if (assessment != null) {
-            developersApi.deleteAssessment(assessment.getGuid(), true);
+            adminsApi.deleteAssessment(assessment.getGuid(), true).execute();
         }
 
         // delete alerts
