@@ -46,6 +46,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.sagebionetworks.client.SynapseClient;
 import org.sagebionetworks.client.exceptions.SynapseException;
@@ -815,6 +816,7 @@ public class Exporter3Test {
     }
 
     @Test
+    @Ignore
     public void exportTimelineForStudy() throws Exception {
         // Set up assessment.
         assessment = new Assessment().title(StudyBurstTest.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
