@@ -101,7 +101,11 @@ public class Schedule2Test {
         developer = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, DEVELOPER);
         studyDesigner = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_DESIGNER);
         
-        assessment = new Assessment().title(Schedule2Test.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
+        assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .title(Schedule2Test.class.getSimpleName())
+                .osName("Universal")
+                .ownerId(SAGE_ID)
                 .identifier(Tests.randomIdentifier(getClass()));
         
         assessment = developer.getClient(AssessmentsApi.class).createAssessment(assessment).execute().body();

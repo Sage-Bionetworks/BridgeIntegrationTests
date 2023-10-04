@@ -8,6 +8,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.sagebionetworks.bridge.rest.model.Assessment.PhaseEnum.DRAFT;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
 import static org.sagebionetworks.bridge.sdk.integration.Schedule2Test.assertImageResource;
@@ -158,6 +159,7 @@ public class AssessmentTest {
         
         // createAssessment works
         Assessment unsavedAssessment = new Assessment()
+                .phase(DRAFT)
                 .identifier(id)
                 .title(TITLE)
                 .summary("Summary")
@@ -418,6 +420,7 @@ public class AssessmentTest {
         // Test paging (10 records with different IDs)
         for (int i=0; i < 10; i++) {
             unsavedAssessment = new Assessment()
+                    .phase(DRAFT)
                     .identifier(id+i)
                     .title(TITLE)
                     .osName("Both")
@@ -456,6 +459,7 @@ public class AssessmentTest {
         String parentGuid = page1.getItems().get(0).getGuid();
         String parentId = page1.getItems().get(0).getIdentifier();
         unsavedAssessment = new Assessment()
+                .phase(DRAFT)
                 .identifier(parentId)
                 .title(TITLE)
                 .osName("Both")
@@ -589,6 +593,7 @@ public class AssessmentTest {
         
         // createAssessment works
         Assessment unsavedAssessment = new Assessment()
+                .phase(DRAFT)
                 .identifier(id)
                 .title(TITLE)
                 .summary("Summary")
@@ -639,6 +644,7 @@ public class AssessmentTest {
         assessmentApiOrg1 = studyDesignerOrg1.getClient(AssessmentsApi.class);
 
         Assessment assessment = new Assessment()
+                .phase(DRAFT)
                 .identifier(id)
                 .revision(1L)
                 .ownerId(ORG_ID_1)
@@ -756,5 +762,6 @@ public class AssessmentTest {
         assertEquals(MIN_AGE, assessment.getMinAge());
         assertEquals(MAX_AGE, assessment.getMaxAge());
         assertEquals(ADDITIONAL_METADATA, assessment.getAdditionalMetadata());
+        assertEquals(DRAFT, assessment.getPhase());
     }
 }

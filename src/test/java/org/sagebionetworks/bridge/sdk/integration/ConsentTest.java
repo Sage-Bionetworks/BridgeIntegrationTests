@@ -699,6 +699,7 @@ public class ConsentTest {
         }
         
         assessmentA = asmtsApi.createAssessment(new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(randomIdentifier(ConsentTest.class))
                 .osName("Universal")
                 .ownerId(adminUser.getSession().getOrgMembership())

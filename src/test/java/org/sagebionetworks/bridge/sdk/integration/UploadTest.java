@@ -615,6 +615,7 @@ public class UploadTest {
         String asmtATag = Tests.randomIdentifier(getClass());
     
         assessmentA = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(asmtATag)
                 .osName("Universal")
                 .ownerId(developer.getSession().getOrgMembership())

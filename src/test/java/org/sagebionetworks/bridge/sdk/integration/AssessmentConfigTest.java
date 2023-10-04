@@ -97,6 +97,7 @@ public class AssessmentConfigTest {
     public void test() throws Exception {
         // createAssessment works
         Assessment unsavedAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(id)
                 .title("Title")
                 .summary("Summary")
