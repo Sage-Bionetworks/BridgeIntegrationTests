@@ -13,6 +13,8 @@ import static org.sagebionetworks.bridge.rest.model.PerformanceOrder.SEQUENTIAL;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_COORDINATOR;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
+import static org.sagebionetworks.bridge.rest.model.StudyPhase.DESIGN;
+import static org.sagebionetworks.bridge.rest.model.StudyPhase.RECRUITMENT;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_2;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.STUDY_ID_1;
@@ -39,6 +41,7 @@ import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForStudyCoordinatorsApi;
+import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
@@ -67,6 +70,7 @@ import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEvent;
 import org.sagebionetworks.bridge.rest.model.StudyBurst;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.rest.model.StudyPhase;
 import org.sagebionetworks.bridge.rest.model.TimeWindow;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.TimelineMetadata;
@@ -101,7 +105,11 @@ public class Schedule2Test {
         developer = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, DEVELOPER);
         studyDesigner = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_DESIGNER);
         
-        assessment = new Assessment().title(Schedule2Test.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
+        assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .title(Schedule2Test.class.getSimpleName())
+                .osName("Universal")
+                .ownerId(SAGE_ID)
                 .identifier(Tests.randomIdentifier(getClass()));
         
         assessment = developer.getClient(AssessmentsApi.class).createAssessment(assessment).execute().body();
@@ -415,6 +423,49 @@ public class Schedule2Test {
         SchedulesV2Api devSchedulesApi = developer.getClient(SchedulesV2Api.class);
         devSchedulesApi.getScheduleForStudy(STUDY_ID_1).execute().body();
         devSchedulesApi.getScheduleForStudy(STUDY_ID_2).execute().body();
+    }
+
+    @Test
+    public void transitionStudyToRecruitment() throws Exception {
+        studyCoordinator = TestUserHelper.createAndSignInUser(Schedule2Test.class, false, STUDY_COORDINATOR);
+
+        SchedulesV2Api schedulesApi = studyDesigner.getClient(SchedulesV2Api.class);
+        TestUser admin = TestUserHelper.getSignedInAdmin();
+        StudiesApi studiesApi = admin.getClient(StudiesApi.class);
+
+        AssessmentReference2 ref = new AssessmentReference2()
+                .appId(TEST_APP_ID)
+                .guid(assessment.getGuid())
+                .identifier(assessment.getIdentifier());
+
+        schedule = new Schedule2();
+        schedule.setName("Test Schedule [Schedule2Test]");
+        schedule.setDuration("P1W");
+        Session session = new Session();
+        session.setName("Simple repeating assessment");
+        session.setInterval("P1D");
+        session.setAssessments(null);
+        session.addStartEventIdsItem("enrollment");
+        session.setPerformanceOrder(SEQUENTIAL);
+        session.addAssessmentsItem(ref);
+        session.addTimeWindowsItem(new TimeWindow().startTime("08:00").expiration("PT1H"));
+        schedule.addSessionsItem(session);
+
+        // create schedule.
+        schedule = schedulesApi.saveScheduleForStudy(STUDY_ID_1, schedule).execute().body();
+
+        try {
+            Study study = studiesApi.transitionStudyToRecruitment(STUDY_ID_1).execute().body();
+            Assessment assessment1 = developer.getClient(AssessmentsApi.class).getAssessmentByGUID(assessment.getGuid())
+                    .execute().body();
+            // Verify that assessment was transitioned to published phase
+            assertEquals(Assessment.PhaseEnum.PUBLISHED, assessment1.getPhase());
+        } finally {
+            ForSuperadminsApi superadminsApi = admin.getClient(ForSuperadminsApi.class);
+            Study study = superadminsApi.revertStudyToDesign(STUDY_ID_1).execute().body();
+            assertNotNull(study);
+            assertEquals(DESIGN, study.getPhase());
+        }
     }
     
     @Test

@@ -66,7 +66,10 @@ public class StudyBurstTest {
         
         usersApi = user.getClient(ForConsentedUsersApi.class);
         
-        assessment = new Assessment().title(StudyBurstTest.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
+        assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .title(StudyBurstTest.class.getSimpleName())
+                .osName("Universal").ownerId(SAGE_ID)
                 .identifier(Tests.randomIdentifier(getClass()));
         
         assessment = studyDesigner.getClient(ForStudyDesignersApi.class)

@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.randomIdentifier;
@@ -25,6 +26,7 @@ import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.SharedAssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.TagsApi;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentConfig;
 import org.sagebionetworks.bridge.rest.model.AssessmentList;
@@ -92,11 +94,12 @@ public class AssessmentConfigTest {
         TagsApi tagsApi = admin.getClient(TagsApi.class);
         tagsApi.deleteTag(markerTag).execute();
     }
-    
+
     @Test
     public void test() throws Exception {
         // createAssessment works
         Assessment unsavedAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.REVIEW)
                 .identifier(id)
                 .title("Title")
                 .summary("Summary")
@@ -133,6 +136,15 @@ public class AssessmentConfigTest {
                 "   }" + 
                 "]").getAsJsonArray();
         config.setConfig(jsonArray);
+
+        try {
+            config = assessmentApi.updateAssessmentConfig(assessment.getGuid(), config).execute().body();
+            fail("Should have thrown exception");
+        } catch (BadRequestException e) {
+
+        }
+        assessment.setPhase(Assessment.PhaseEnum.DRAFT);
+        assessment = assessmentApi.updateAssessment(assessment.getGuid(), assessment).execute().body();
         config = assessmentApi.updateAssessmentConfig(assessment.getGuid(), config).execute().body();
         
         assessmentApi.publishAssessment(assessment.getGuid(), null).execute().body();

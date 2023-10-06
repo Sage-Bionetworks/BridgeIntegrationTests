@@ -72,6 +72,7 @@ public class StudyAdherenceReportTest {
         String asmtCTag = RandomStringUtils.randomAlphabetic(5);
         
         assessmentA = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(asmtATag)
                 .osName("Universal")
                 .ownerId(SAGE_ID)
@@ -79,6 +80,7 @@ public class StudyAdherenceReportTest {
         assessmentA = asmtsApi.createAssessment(assessmentA).execute().body();
         
         assessmentB = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(asmtBTag)
                 .osName("Universal")
                 .ownerId(SAGE_ID)
@@ -86,6 +88,7 @@ public class StudyAdherenceReportTest {
         assessmentB = asmtsApi.createAssessment(assessmentB).execute().body();
 
         assessmentC = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(asmtCTag)
                 .osName("Universal")
                 .ownerId(SAGE_ID)

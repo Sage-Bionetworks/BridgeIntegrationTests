@@ -817,7 +817,11 @@ public class Exporter3Test {
     @Test
     public void exportTimelineForStudy() throws Exception {
         // Set up assessment.
-        assessment = new Assessment().title(StudyBurstTest.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
+        assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .title(StudyBurstTest.class.getSimpleName())
+                .osName("Universal")
+                .ownerId(SAGE_ID)
                 .identifier(Tests.randomIdentifier(Exporter3Test.class));
 
         assessment = studyDesigner.getClient(ForStudyDesignersApi.class)
@@ -1089,7 +1093,11 @@ public class Exporter3Test {
 
         String assessmentId = getClass().getSimpleName() + "-" + RandomStringUtils.randomAlphabetic(10);
 
-        assessment = new Assessment().title(assessmentId).osName("Universal").ownerId("sage-bionetworks")
+        assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .title(assessmentId)
+                .osName("Universal")
+                .ownerId("sage-bionetworks")
                 .identifier(assessmentId);
         assessment = assessmentsApi.createAssessment(assessment).execute().body();
 

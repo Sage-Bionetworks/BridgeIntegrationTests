@@ -207,6 +207,7 @@ public class AppConfigTest {
     public void crudAppConfig() throws Exception {
         String id = randomIdentifier(AssessmentTest.class);
         Assessment unsavedAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(id)
                 .title("Title")
                 .summary("Summary")
@@ -220,6 +221,7 @@ public class AppConfigTest {
 
         String localAssessmentId = randomIdentifier(AssessmentTest.class);
         Assessment unsavedLocalAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(localAssessmentId)
                 .title("localTitle")
                 .osName("Both")

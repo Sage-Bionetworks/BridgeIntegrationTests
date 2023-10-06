@@ -117,6 +117,7 @@ public class AlertsTest {
                 .updateType(ActivityEventUpdateType.MUTABLE);
 
         assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(Tests.randomIdentifier(getClass()))
                 .osName("Universal")
                 .ownerId(developer.getSession().getOrgMembership())

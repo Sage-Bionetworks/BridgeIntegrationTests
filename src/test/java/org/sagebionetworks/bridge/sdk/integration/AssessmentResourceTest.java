@@ -108,8 +108,13 @@ public class AssessmentResourceTest {
         sharedAssessmentsApiOrg1 = developerOrg1.getClient(SharedAssessmentsApi.class);
         assessmentApiOrg2 = developerOrg2.getClient(AssessmentsApi.class);
         
-        Assessment unsavedAssessment = new Assessment().identifier(id).title("AssessmentResourceTest assessment")
-                .osName("Android").ownerId(ORG_ID_1).revision(1L);
+        Assessment unsavedAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .identifier(id)
+                .title("AssessmentResourceTest assessment")
+                .osName("Android")
+                .ownerId(ORG_ID_1)
+                .revision(1L);
 
         Assessment assessment = assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
         
@@ -317,8 +322,13 @@ public class AssessmentResourceTest {
         assessmentApiOrg1 = studyDesignerOrg1.getClient(AssessmentsApi.class);
         assessmentApiOrg2 = studyDesignerOrg2.getClient(AssessmentsApi.class);
         
-        Assessment unsavedAssessment = new Assessment().identifier(id).title("AssessmentResourceTest assessment")
-                .osName("Android").ownerId(ORG_ID_1).revision(1L);
+        Assessment unsavedAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .identifier(id)
+                .title("AssessmentResourceTest assessment")
+                .osName("Android")
+                .ownerId(ORG_ID_1)
+                .revision(1L);
 
         assessmentApiOrg1.createAssessment(unsavedAssessment).execute().body();
         
