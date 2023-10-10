@@ -159,7 +159,7 @@ public class AssessmentTest {
         
         // createAssessment works
         Assessment unsavedAssessment = new Assessment()
-                .phase(DRAFT)
+                // Does not set phase field to verify service will set default
                 .identifier(id)
                 .title(TITLE)
                 .summary("Summary")
