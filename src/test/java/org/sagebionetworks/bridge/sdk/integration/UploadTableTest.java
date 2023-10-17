@@ -33,8 +33,8 @@ public class UploadTableTest {
     private static final DateTime CREATED_ON_3 = DateTime.parse("2018-01-03T00:00:00Z");
     private static final DateTime CREATED_ON_4 = DateTime.parse("2018-01-04T00:00:00Z");
     private static final DateTime CREATED_ON_5 = DateTime.parse("2018-01-05T00:00:00Z");
-    private static final String DUMMY_ASSESSMENT_ID_A = "dummy-assessment-A";
-    private static final String DUMMY_ASSESSMENT_ID_B = "dummy-assessment-B";
+    private static final String DUMMY_ASSESSMENT_GUID_A = "dummy-assessment-A";
+    private static final String DUMMY_ASSESSMENT_GUID_B = "dummy-assessment-B";
     private static final String DUMMY_HEALTH_CODE = "dummy-health-code";
     private static final String DUMMY_RECORD_ID_1 = "dummy-record-1";
     private static final String DUMMY_RECORD_ID_2 = "dummy-record-2";
@@ -76,8 +76,8 @@ public class UploadTableTest {
     @Test
     public void test() throws IOException {
         // Create a row.
-        UploadTableRow row = new UploadTableRow().recordId(DUMMY_RECORD_ID_1).assessmentId(DUMMY_ASSESSMENT_ID_A)
-                .assessmentRevision(1).createdOn(CREATED_ON_1).testData(true).healthCode(DUMMY_HEALTH_CODE)
+        UploadTableRow row = new UploadTableRow().recordId(DUMMY_RECORD_ID_1).assessmentGuid(DUMMY_ASSESSMENT_GUID_A)
+                .createdOn(CREATED_ON_1).testData(true).healthCode(DUMMY_HEALTH_CODE)
                 .participantVersion(1).putMetadataItem("foo", "bar")
                 .putDataItem("baz", "qux");
         workersApi.saveUploadTableRowForWorker(IntegTestUtils.TEST_APP_ID, studyId, row).execute();
@@ -88,8 +88,7 @@ public class UploadTableTest {
         assertEquals(IntegTestUtils.TEST_APP_ID, row.getAppId());
         assertEquals(studyId, row.getStudyId());
         assertEquals(DUMMY_RECORD_ID_1, row.getRecordId());
-        assertEquals(DUMMY_ASSESSMENT_ID_A, row.getAssessmentId());
-        assertEquals(1, row.getAssessmentRevision().intValue());
+        assertEquals(DUMMY_ASSESSMENT_GUID_A, row.getAssessmentGuid());
         assertEquals(CREATED_ON_1, row.getCreatedOn());
         assertTrue(row.isTestData());
         assertEquals(DUMMY_HEALTH_CODE, row.getHealthCode());
@@ -124,29 +123,29 @@ public class UploadTableTest {
     @Test
     public void query() throws IOException {
         // Make some table rows with the following fields:
-        // 1. row with assessment A revision 1, createdOn 2018-01-01
-        // 2. row with assessment A revision 2, createdOn 2018-01-02
-        // 3. row with assessment B revision 1, createdOn 2018-01-03
-        // 4. row with assessment B revision 2, createdOn 2018-01-04, testData=true
-        // 5. row with assessment B revision 3, createdOn 2018-01-05, testData=true
-        UploadTableRow row1 = new UploadTableRow().recordId(DUMMY_RECORD_ID_1).assessmentId(DUMMY_ASSESSMENT_ID_A)
-                .assessmentRevision(1).createdOn(CREATED_ON_1).testData(false).healthCode(DUMMY_HEALTH_CODE);
+        // 1. row with assessment A, createdOn 2018-01-01
+        // 2. row with assessment A, createdOn 2018-01-02
+        // 3. row with assessment B, createdOn 2018-01-03
+        // 4. row with assessment B, createdOn 2018-01-04, testData=true
+        // 5. row with assessment B, createdOn 2018-01-05, testData=true
+        UploadTableRow row1 = new UploadTableRow().recordId(DUMMY_RECORD_ID_1).assessmentGuid(DUMMY_ASSESSMENT_GUID_A)
+                .createdOn(CREATED_ON_1).testData(false).healthCode(DUMMY_HEALTH_CODE);
         workersApi.saveUploadTableRowForWorker(IntegTestUtils.TEST_APP_ID, studyId, row1).execute();
 
-        UploadTableRow row2 = new UploadTableRow().recordId(DUMMY_RECORD_ID_2).assessmentId(DUMMY_ASSESSMENT_ID_A)
-                .assessmentRevision(2).createdOn(CREATED_ON_2).testData(false).healthCode(DUMMY_HEALTH_CODE);
+        UploadTableRow row2 = new UploadTableRow().recordId(DUMMY_RECORD_ID_2).assessmentGuid(DUMMY_ASSESSMENT_GUID_A)
+                .createdOn(CREATED_ON_2).testData(false).healthCode(DUMMY_HEALTH_CODE);
         workersApi.saveUploadTableRowForWorker(IntegTestUtils.TEST_APP_ID, studyId, row2).execute();
 
-        UploadTableRow row3 = new UploadTableRow().recordId(DUMMY_RECORD_ID_3).assessmentId(DUMMY_ASSESSMENT_ID_B)
-                .assessmentRevision(1).createdOn(CREATED_ON_3).testData(false).healthCode(DUMMY_HEALTH_CODE);
+        UploadTableRow row3 = new UploadTableRow().recordId(DUMMY_RECORD_ID_3).assessmentGuid(DUMMY_ASSESSMENT_GUID_B)
+                .createdOn(CREATED_ON_3).testData(false).healthCode(DUMMY_HEALTH_CODE);
         workersApi.saveUploadTableRowForWorker(IntegTestUtils.TEST_APP_ID, studyId, row3).execute();
 
-        UploadTableRow row4 = new UploadTableRow().recordId(DUMMY_RECORD_ID_4).assessmentId(DUMMY_ASSESSMENT_ID_B)
-                .assessmentRevision(2).createdOn(CREATED_ON_4).testData(true).healthCode(DUMMY_HEALTH_CODE);
+        UploadTableRow row4 = new UploadTableRow().recordId(DUMMY_RECORD_ID_4).assessmentGuid(DUMMY_ASSESSMENT_GUID_B)
+                .createdOn(CREATED_ON_4).testData(true).healthCode(DUMMY_HEALTH_CODE);
         workersApi.saveUploadTableRowForWorker(IntegTestUtils.TEST_APP_ID, studyId, row4).execute();
 
-        UploadTableRow row5 = new UploadTableRow().recordId(DUMMY_RECORD_ID_5).assessmentId(DUMMY_ASSESSMENT_ID_B)
-                .assessmentRevision(3).createdOn(CREATED_ON_5).testData(true).healthCode(DUMMY_HEALTH_CODE);
+        UploadTableRow row5 = new UploadTableRow().recordId(DUMMY_RECORD_ID_5).assessmentGuid(DUMMY_ASSESSMENT_GUID_B)
+                .createdOn(CREATED_ON_5).testData(true).healthCode(DUMMY_HEALTH_CODE);
         workersApi.saveUploadTableRowForWorker(IntegTestUtils.TEST_APP_ID, studyId, row5).execute();
 
         // Basic query with only app and study. Verify we get only 3 rows (no test data). Rows can be in any order, so
@@ -160,13 +159,16 @@ public class UploadTableTest {
         assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_2));
         assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_3));
 
-        // Query with assessment ID A and revision 1. Verify we get only record 1.
-        UploadTableRowQuery query = new UploadTableRowQuery().assessmentId(DUMMY_ASSESSMENT_ID_A)
-                .assessmentRevision(1);
+        // Query with assessment ID A. Verify we get only records 1 and 2.
+        UploadTableRowQuery query = new UploadTableRowQuery().assessmentGuid(DUMMY_ASSESSMENT_GUID_A);
         rowList = workersApi.queryUploadTableRowsForWorker(IntegTestUtils.TEST_APP_ID, studyId, query).execute().body()
                 .getItems();
-        assertEquals(1, rowList.size());
+        assertEquals(2, rowList.size());
         assertEquals(DUMMY_RECORD_ID_1, rowList.get(0).getRecordId());
+        recordIdSet = rowList.stream().map(UploadTableRow::getRecordId).collect(Collectors.toSet());
+        assertEquals(2, recordIdSet.size());
+        assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_1));
+        assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_2));
 
         // Query with start and end date. End date is exclusive, so if we set startDate=CREATED_ON_2 and
         // endDate=CREATED_ON_3, we'll only get record 2.
@@ -188,38 +190,43 @@ public class UploadTableTest {
         assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_3));
         assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_4));
         assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_5));
+    }
 
-        // Pagination test. Set page size to 2. We should get a page of 2, a second page of 2, and a page of 1.
-        recordIdSet = new HashSet<>();
-        query = new UploadTableRowQuery().includeTestData(true).start(0).pageSize(2);
+    @Test
+    public void pagination() throws IOException {
+        // Pagination test. Minimum page size is 5. Make 11 rows. This will paginate into 2 pages of 5 and 1 page of 1.
+        for (int i = 1; i <= 11; i++) {
+            UploadTableRow row = new UploadTableRow().recordId("record" + i).assessmentGuid(DUMMY_ASSESSMENT_GUID_A)
+                    .createdOn(CREATED_ON_1).testData(false).healthCode(DUMMY_HEALTH_CODE);
+            workersApi.saveUploadTableRowForWorker(IntegTestUtils.TEST_APP_ID, studyId, row).execute();
+        }
+
+        Set<String> recordIdSet = new HashSet<>();
+        UploadTableRowQuery query = new UploadTableRowQuery().start(0).pageSize(5);
+        List<UploadTableRow> rowList = workersApi.queryUploadTableRowsForWorker(IntegTestUtils.TEST_APP_ID, studyId,
+                        query).execute().body().getItems();
+        assertEquals(5, rowList.size());
+        rowList.stream().map(UploadTableRow::getRecordId).forEach(recordIdSet::add);
+
+        query = new UploadTableRowQuery().start(5).pageSize(5);
         rowList = workersApi.queryUploadTableRowsForWorker(IntegTestUtils.TEST_APP_ID, studyId, query).execute().body()
                 .getItems();
-        assertEquals(2, rowList.size());
-        recordIdSet.add(rowList.get(0).getRecordId());
-        recordIdSet.add(rowList.get(1).getRecordId());
+        assertEquals(5, rowList.size());
+        rowList.stream().map(UploadTableRow::getRecordId).forEach(recordIdSet::add);
 
-        query = new UploadTableRowQuery().includeTestData(true).start(2).pageSize(2);
-        rowList = workersApi.queryUploadTableRowsForWorker(IntegTestUtils.TEST_APP_ID, studyId, query).execute().body()
-                .getItems();
-        assertEquals(2, rowList.size());
-        recordIdSet.add(rowList.get(0).getRecordId());
-        recordIdSet.add(rowList.get(1).getRecordId());
-
-        query = new UploadTableRowQuery().includeTestData(true).start(4).pageSize(2);
+        query = new UploadTableRowQuery().start(10).pageSize(5);
         rowList = workersApi.queryUploadTableRowsForWorker(IntegTestUtils.TEST_APP_ID, studyId, query).execute().body()
                 .getItems();
         assertEquals(1, rowList.size());
         recordIdSet.add(rowList.get(0).getRecordId());
 
-        assertEquals(5, recordIdSet.size());
-        assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_1));
-        assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_2));
-        assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_3));
-        assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_4));
-        assertTrue(recordIdSet.contains(DUMMY_RECORD_ID_5));
+        assertEquals(11, recordIdSet.size());
+        for (int i = 1; i <= 11; i++) {
+            assertTrue(recordIdSet.contains("record" + i));
+        }
 
         // Get the next page just for good measure. It will be empty.
-        query = new UploadTableRowQuery().includeTestData(true).start(6).pageSize(2);
+        query = new UploadTableRowQuery().start(15).pageSize(5);
         rowList = workersApi.queryUploadTableRowsForWorker(IntegTestUtils.TEST_APP_ID, studyId, query).execute().body()
                 .getItems();
         assertEquals(0, rowList.size());
