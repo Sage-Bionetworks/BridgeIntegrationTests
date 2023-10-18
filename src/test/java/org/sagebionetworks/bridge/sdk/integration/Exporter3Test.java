@@ -335,6 +335,7 @@ public class Exporter3Test {
         assertTrue(updatedApp.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedApp.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+        assertTrue(ex3Config.isUploadTableEnabled());
 
         // Verify that the project has the correct app id annotation
         String projectId = ex3Config.getProjectId();
@@ -363,6 +364,7 @@ public class Exporter3Test {
         assertTrue(updatedStudy.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedStudy.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+        assertTrue(ex3Config.isUploadTableEnabled());
 
         // Verify that the project has the correct study id annotation.
         String projectId = ex3Config.getProjectId();
