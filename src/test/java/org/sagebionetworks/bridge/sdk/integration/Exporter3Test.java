@@ -241,6 +241,7 @@ public class Exporter3Test {
         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
         Study study = studiesApi.getStudy(Tests.STUDY_ID_1).execute().body();
         Exporter3Configuration ex3ConfigForStudy = study.getExporter3Configuration();
+        deleteEx3Resources(ex3ConfigForStudy);
 
         if (ex3ConfigForStudy != null) {
             study.setExporter3Configuration(null);
