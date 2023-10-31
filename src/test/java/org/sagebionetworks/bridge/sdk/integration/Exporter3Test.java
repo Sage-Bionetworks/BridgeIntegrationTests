@@ -698,6 +698,9 @@ public class Exporter3Test {
 
         result = workersApi.getParticipantVersion(TEST_APP_ID, userId, 5).execute().body();
         assertEquals(participantVersion5, result);
+
+        result = workersApi.getLatestParticipantVersion(TEST_APP_ID, userId).execute().body();
+        assertEquals(participantVersion5, result);
     }
 
     @Test
