@@ -11,6 +11,7 @@ import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Assessment.PhaseEnum.DRAFT;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
 import static org.sagebionetworks.bridge.rest.model.Role.STUDY_DESIGNER;
+import static org.sagebionetworks.bridge.rest.model.Role.WORKER;
 import static org.sagebionetworks.bridge.sdk.integration.Schedule2Test.assertImageResource;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.API_SIGNIN;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
@@ -89,6 +90,7 @@ public class AssessmentTest {
     private TestUser devOrg2;
     private TestUser studyDesignerOrg1;
     private TestUser studyDesignerOrg2;
+    private TestUser worker;
     private String id;
     private String markerTag;
     private OrganizationsApi orgsApi;
@@ -117,6 +119,9 @@ public class AssessmentTest {
         }
         if (studyDesignerOrg2 != null) {
             studyDesignerOrg2.signOutAndDeleteUser();
+        }
+        if (worker != null) {
+            worker.signOutAndDeleteUser();
         }
         TestUser admin = TestUserHelper.getSignedInAdmin();
         AssessmentsApi api = admin.getClient(AssessmentsApi.class);
@@ -199,7 +204,13 @@ public class AssessmentTest {
         assertEquals(firstRevision.getGuid(), retValueById.getGuid());
         // verify fields
         assertFields(retValueById, ORG_ID_2);
-        
+
+        // Piggyback off this test to test the Worker API.
+        worker = new TestUserHelper.Builder(AssessmentTest.class).withRoles(WORKER).createAndSignInUser();
+        Assessment workerAssessment = worker.getClient(AssessmentsApi.class).getAssessmentByGuidForWorker(TEST_APP_ID,
+                firstRevision.getGuid()).execute().body();
+        assertEquals(firstRevision.getGuid(), workerAssessment.getGuid());
+
         // createAssessmentRevision works
         firstRevision.setIdentifier(id);
         firstRevision.setOwnerId(ORG_ID_1);
