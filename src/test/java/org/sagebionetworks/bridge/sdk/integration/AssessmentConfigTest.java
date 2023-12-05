@@ -1,9 +1,13 @@
 package org.sagebionetworks.bridge.sdk.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 import static org.sagebionetworks.bridge.rest.model.Role.DEVELOPER;
+import static org.sagebionetworks.bridge.rest.model.Role.WORKER;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.ORG_ID_1;
 import static org.sagebionetworks.bridge.sdk.integration.Tests.randomIdentifier;
+import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,6 +29,7 @@ import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.OrganizationsApi;
 import org.sagebionetworks.bridge.rest.api.SharedAssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.TagsApi;
+import org.sagebionetworks.bridge.rest.exceptions.BadRequestException;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentConfig;
 import org.sagebionetworks.bridge.rest.model.AssessmentList;
@@ -44,6 +49,7 @@ public class AssessmentConfigTest {
 
     private TestUser admin;
     private TestUser developer;
+    private TestUser worker;
     private String id;
     private String markerTag;
     private AssessmentsApi assessmentApi;
@@ -54,6 +60,8 @@ public class AssessmentConfigTest {
         markerTag = "test:" + randomIdentifier(AssessmentTest.class);
 
         developer = new TestUserHelper.Builder(AssessmentTest.class).withRoles(DEVELOPER).createAndSignInUser();
+
+        worker = new TestUserHelper.Builder(AssessmentTest.class).withRoles(WORKER).createAndSignInUser();
 
         admin = TestUserHelper.getSignedInAdmin();
         OrganizationsApi orgsApi = admin.getClient(OrganizationsApi.class);
@@ -66,6 +74,9 @@ public class AssessmentConfigTest {
     public void after() throws IOException {
         if (developer != null) {
             developer.signOutAndDeleteUser();            
+        }
+        if (worker != null) {
+            worker.signOutAndDeleteUser();
         }
         TestUser admin = TestUserHelper.getSignedInAdmin();
         AssessmentsApi api = admin.getClient(AssessmentsApi.class);
@@ -92,11 +103,12 @@ public class AssessmentConfigTest {
         TagsApi tagsApi = admin.getClient(TagsApi.class);
         tagsApi.deleteTag(markerTag).execute();
     }
-    
+
     @Test
     public void test() throws Exception {
         // createAssessment works
         Assessment unsavedAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.REVIEW)
                 .identifier(id)
                 .title("Title")
                 .summary("Summary")
@@ -133,8 +145,26 @@ public class AssessmentConfigTest {
                 "   }" + 
                 "]").getAsJsonArray();
         config.setConfig(jsonArray);
+
+        try {
+            config = assessmentApi.updateAssessmentConfig(assessment.getGuid(), config).execute().body();
+            fail("Should have thrown exception");
+        } catch (BadRequestException e) {
+
+        }
+        assessment.setPhase(Assessment.PhaseEnum.DRAFT);
+        assessment = assessmentApi.updateAssessment(assessment.getGuid(), assessment).execute().body();
         config = assessmentApi.updateAssessmentConfig(assessment.getGuid(), config).execute().body();
-        
+
+        // Get assessment config works.
+        config = assessmentApi.getAssessmentConfig(assessment.getGuid()).execute().body();
+        assertNotNull(config);
+
+        // Get assessment config for worker works.
+        config = worker.getClient(AssessmentsApi.class).getAssessmentConfigForWorker(TEST_APP_ID,
+                assessment.getGuid()).execute().body();
+        assertNotNull(config);
+
         assessmentApi.publishAssessment(assessment.getGuid(), null).execute().body();
         
         // This is starting to look like a problem in the API... you can't just get back the assessment

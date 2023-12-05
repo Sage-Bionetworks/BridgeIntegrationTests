@@ -136,6 +136,7 @@ public class PermissionsTest {
         
         // Creating assessment
         assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(Tests.randomIdentifier(getClass()))
                 .title("test-assessment-title")
                 .summary("Summary")

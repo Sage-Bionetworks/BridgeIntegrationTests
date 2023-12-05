@@ -128,6 +128,7 @@ public class AdherenceRecordsTest {
         asmtBTag = Tests.randomIdentifier(getClass());
         
         assessmentA = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(asmtATag)
                 .osName("Universal")
                 .ownerId(developer.getSession().getOrgMembership())
@@ -135,6 +136,7 @@ public class AdherenceRecordsTest {
         assessmentA = asmtsApi.createAssessment(assessmentA).execute().body();
         
         assessmentB = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(asmtBTag)
                 .osName("Universal")
                 .ownerId(developer.getSession().getOrgMembership())

@@ -289,6 +289,7 @@ public class OrganizationTest {
 
         AssessmentsApi assessmentApi = admin.getClient(AssessmentsApi.class);
         Assessment unsavedAssessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
                 .identifier(Tests.randomIdentifier(Assessment.class))
                 .title("Title")
                 .summary("Summary")

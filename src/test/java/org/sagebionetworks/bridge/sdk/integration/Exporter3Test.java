@@ -241,6 +241,7 @@ public class Exporter3Test {
         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
         Study study = studiesApi.getStudy(Tests.STUDY_ID_1).execute().body();
         Exporter3Configuration ex3ConfigForStudy = study.getExporter3Configuration();
+        deleteEx3Resources(ex3ConfigForStudy);
 
         if (ex3ConfigForStudy != null) {
             study.setExporter3Configuration(null);
@@ -335,6 +336,7 @@ public class Exporter3Test {
         assertTrue(updatedApp.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedApp.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+        assertTrue(ex3Config.isUploadTableEnabled());
 
         // Verify that the project has the correct app id annotation
         String projectId = ex3Config.getProjectId();
@@ -363,6 +365,7 @@ public class Exporter3Test {
         assertTrue(updatedStudy.isExporter3Enabled());
         Exporter3Configuration ex3Config = updatedStudy.getExporter3Configuration();
         verifySynapseResources(ex3Config);
+        assertTrue(ex3Config.isUploadTableEnabled());
 
         // Verify that the project has the correct study id annotation.
         String projectId = ex3Config.getProjectId();
@@ -695,6 +698,9 @@ public class Exporter3Test {
 
         result = workersApi.getParticipantVersion(TEST_APP_ID, userId, 5).execute().body();
         assertEquals(participantVersion5, result);
+
+        result = workersApi.getLatestParticipantVersion(TEST_APP_ID, userId).execute().body();
+        assertEquals(participantVersion5, result);
     }
 
     @Test
@@ -817,7 +823,11 @@ public class Exporter3Test {
     @Test
     public void exportTimelineForStudy() throws Exception {
         // Set up assessment.
-        assessment = new Assessment().title(StudyBurstTest.class.getSimpleName()).osName("Universal").ownerId(SAGE_ID)
+        assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .title(StudyBurstTest.class.getSimpleName())
+                .osName("Universal")
+                .ownerId(SAGE_ID)
                 .identifier(Tests.randomIdentifier(Exporter3Test.class));
 
         assessment = studyDesigner.getClient(ForStudyDesignersApi.class)
@@ -1089,7 +1099,11 @@ public class Exporter3Test {
 
         String assessmentId = getClass().getSimpleName() + "-" + RandomStringUtils.randomAlphabetic(10);
 
-        assessment = new Assessment().title(assessmentId).osName("Universal").ownerId("sage-bionetworks")
+        assessment = new Assessment()
+                .phase(Assessment.PhaseEnum.DRAFT)
+                .title(assessmentId)
+                .osName("Universal")
+                .ownerId("sage-bionetworks")
                 .identifier(assessmentId);
         assessment = assessmentsApi.createAssessment(assessment).execute().body();
 
