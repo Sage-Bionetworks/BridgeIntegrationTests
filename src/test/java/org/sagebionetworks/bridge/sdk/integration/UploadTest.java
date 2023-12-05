@@ -16,6 +16,7 @@ import static org.sagebionetworks.bridge.util.IntegTestUtils.TEST_APP_ID;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -44,6 +45,7 @@ import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForAdminsApi;
 import org.sagebionetworks.bridge.rest.api.ForConsentedUsersApi;
 import org.sagebionetworks.bridge.rest.api.ForDevelopersApi;
+import org.sagebionetworks.bridge.rest.api.ForSuperadminsApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
 import org.sagebionetworks.bridge.rest.api.UploadSchemasApi;
@@ -56,7 +58,9 @@ import org.sagebionetworks.bridge.rest.model.AdherenceRecordsSearch;
 import org.sagebionetworks.bridge.rest.model.Assessment;
 import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
+import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.RecordExportStatusRequest;
+import org.sagebionetworks.bridge.rest.model.RedriveUploadIds;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
@@ -737,5 +741,80 @@ public class UploadTest {
         
         assertEquals(uploadIds.size(), record.getUploadIds().size());
         assertEquals(uploadIds, new HashSet<>(record.getUploadIds()));
+    }
+
+    @Test
+    public void testRedriveUploadSmallBatch() throws IOException {
+        // Set up request
+        File file = resolveFilePath("schemaless-encrypted");
+
+        // Set user sharing scope, just to test metadata in upload validation.
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        StudyParticipant participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        participant.setSharingScope(SharingScope.ALL_QUALIFIED_RESEARCHERS);
+        usersApi.updateUsersParticipantRecord(participant).execute();
+
+        // Upload the file.
+        UploadRequest request = RestUtils.makeUploadRequestForFile(file);
+        UploadSession session = usersApi.requestUploadSession(request).execute().body();
+        RestUtils.uploadToS3(file, session.getUrl());
+        String uploadId = session.getId();
+
+        // Complete upload in synchronous mode.
+        UploadValidationStatus status = usersApi.completeUploadSession(uploadId, true, false)
+                .execute().body();
+        validateUploadValidationStatus(uploadId, status);
+        HealthDataRecord record = status.getRecord();
+
+        // Change the user's sharing scope. This is the simplest change we can make that will be reflected when we
+        // redrive the upload.
+        participant.setSharingScope(SharingScope.SPONSORS_AND_PARTNERS);
+        usersApi.updateUsersParticipantRecord(participant).execute();
+
+        // Redrive
+        ForSuperadminsApi superAdminApi = admin.getClient(ForSuperadminsApi.class);
+        Message msg = superAdminApi.redriveUploads(new RedriveUploadIds().uploadIds(Arrays.asList(uploadId)))
+                .execute().body();
+
+        // Validate.
+        assertEquals(msg.getMessage(), "Upload redrive completed.");
+    }
+
+    @Test
+    public void testRedriveUploadLargeBatch() throws IOException {
+        // Set up request
+        File file = resolveFilePath("schemaless-encrypted");
+
+        // Set user sharing scope, just to test metadata in upload validation.
+        ForConsentedUsersApi usersApi = user.getClient(ForConsentedUsersApi.class);
+        StudyParticipant participant = usersApi.getUsersParticipantRecord(false).execute().body();
+        participant.setSharingScope(SharingScope.ALL_QUALIFIED_RESEARCHERS);
+        usersApi.updateUsersParticipantRecord(participant).execute();
+
+        // Upload the file.
+        UploadRequest request = RestUtils.makeUploadRequestForFile(file);
+        UploadSession session = usersApi.requestUploadSession(request).execute().body();
+        RestUtils.uploadToS3(file, session.getUrl());
+        String uploadId = session.getId();
+
+        // Complete upload in synchronous mode.
+        UploadValidationStatus status = usersApi.completeUploadSession(uploadId, true, false)
+                .execute().body();
+        validateUploadValidationStatus(uploadId, status);
+        HealthDataRecord record = status.getRecord();
+
+        // Change the user's sharing scope. This is the simplest change we can make that will be reflected when we
+        // redrive the upload.
+        participant.setSharingScope(SharingScope.SPONSORS_AND_PARTNERS);
+        usersApi.updateUsersParticipantRecord(participant).execute();
+
+        // Redrive
+        ForSuperadminsApi superAdminApi = admin.getClient(ForSuperadminsApi.class);
+        Message msg = superAdminApi.redriveUploads(new RedriveUploadIds().uploadIds(Arrays.asList(
+                uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId)))
+                .execute().body();
+
+        // Validate.
+        assertEquals(msg.getMessage(), "Upload redrive completed.");
     }
 }
