@@ -76,6 +76,7 @@ import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadFieldDefinition;
 import org.sagebionetworks.bridge.rest.model.UploadFieldType;
+import org.sagebionetworks.bridge.rest.model.UploadRedriveList;
 import org.sagebionetworks.bridge.rest.model.UploadRequest;
 import org.sagebionetworks.bridge.rest.model.UploadSchema;
 import org.sagebionetworks.bridge.rest.model.UploadSchemaType;
@@ -774,10 +775,13 @@ public class UploadTest {
 
         // Redrive
         ForSuperadminsApi superAdminApi = admin.getClient(ForSuperadminsApi.class);
-        Message msg = superAdminApi.redriveUploads(new RedriveUploadIds().uploadIds(Arrays.asList(uploadId)))
+        Message msg = superAdminApi.redriveUploads(new UploadRedriveList().uploadIds(Arrays.asList(uploadId)))
                 .execute().body();
 
         // Validate.
+        UploadValidationStatus status2 = usersApi.getUploadStatus(uploadId).execute().body();
+        HealthDataRecord record2 = status2.getRecord();
+        assertEquals(record.getData(), record2.getData());
         assertEquals(msg.getMessage(), "Upload redrive completed.");
     }
 
@@ -811,7 +815,7 @@ public class UploadTest {
 
         // Redrive
         ForSuperadminsApi superAdminApi = admin.getClient(ForSuperadminsApi.class);
-        Message msg = superAdminApi.redriveUploads(new RedriveUploadIds().uploadIds(Arrays.asList(
+        Message msg = superAdminApi.redriveUploads(new UploadRedriveList().uploadIds(Arrays.asList(
                 uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId, uploadId)))
                 .execute().body();
 
