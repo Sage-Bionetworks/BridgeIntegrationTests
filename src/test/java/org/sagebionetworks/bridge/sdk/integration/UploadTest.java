@@ -60,7 +60,6 @@ import org.sagebionetworks.bridge.rest.model.AssessmentReference2;
 import org.sagebionetworks.bridge.rest.model.HealthDataRecord;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.RecordExportStatusRequest;
-import org.sagebionetworks.bridge.rest.model.RedriveUploadIds;
 import org.sagebionetworks.bridge.rest.model.Role;
 import org.sagebionetworks.bridge.rest.model.Schedule2;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
@@ -781,6 +780,7 @@ public class UploadTest {
         // Validate.
         UploadValidationStatus status2 = usersApi.getUploadStatus(uploadId).execute().body();
         HealthDataRecord record2 = status2.getRecord();
+        assertEquals(SharingScope.SPONSORS_AND_PARTNERS, record2.getUserSharingScope());
         assertEquals(record.getData(), record2.getData());
         assertEquals(msg.getMessage(), "Upload redrive completed.");
     }
