@@ -68,7 +68,7 @@ public class CRCTest {
     static final LocalDate JAN1 = LocalDate.parse("1970-01-01");
     static final LocalDate JAN2 = LocalDate.parse("1970-01-02");
     static final FhirContext CONTEXT = FhirContext.forDstu3();
-    static final String TEST_EMAIL = "bridge-testing+crc@sagebase.org";
+    static final String TEST_EMAIL = "testing+crc@bridgedigital.health";
     static final List<String> WORKFLOW_TAGS = ImmutableList.of("enrolled", "selected",
             "declined", "tests_requested", "tests_scheduled", "tests_collected", "tests_available",
             "ship_test_requested");

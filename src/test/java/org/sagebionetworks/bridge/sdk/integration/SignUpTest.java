@@ -66,7 +66,7 @@ public class SignUpTest {
         try {
             AuthenticationApi authApi = testUser.getClient(AuthenticationApi.class);
             
-            SignIn email = new SignIn().appId("junk").email("bridge-testing@sagebase.org");
+            SignIn email = new SignIn().appId("junk").email("testing@bridgedigital.health");
             authApi.requestResetPassword(email).execute();
         } finally {
             testUser.signOutAndDeleteUser();
@@ -79,7 +79,7 @@ public class SignUpTest {
         try {
             AuthenticationApi authApi = testUser.getClient(AuthenticationApi.class);
             
-            SignIn email = new SignIn().email("bridge-testing@sagebase.org");
+            SignIn email = new SignIn().email("testing@bridgedigital.health");
             authApi.requestResetPassword(email).execute();
         } finally {
             testUser.signOutAndDeleteUser();

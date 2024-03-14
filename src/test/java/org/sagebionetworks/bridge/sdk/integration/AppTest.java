@@ -289,9 +289,9 @@ public class AppTest {
         assertFalse(newerApp.isAutoVerificationEmailSuppressed());
         assertEquals("Altered Test App [SDK]", newerApp.getName());
         assertFalse(newerApp.isStrictUploadValidationEnabled());
-        assertEquals("test3@test.com", newerApp.getSupportEmail());
+        assertEquals("testing+support@bridgedigital.health", newerApp.getSupportEmail());
         assertEquals(UploadValidationStrictness.WARNING, newerApp.getUploadValidationStrictness());
-        assertEquals("bridge-testing+test4@sagebase.org", newerApp.getConsentNotificationEmail());
+        assertEquals("testing+test4@bridgedigital.health", newerApp.getConsentNotificationEmail());
 
         assertEquals("endpoint2", newerApp.getOAuthProviders().get("myProvider").getEndpoint());
         assertEquals("callbackUrl2", newerApp.getOAuthProviders().get("myProvider").getCallbackUrl());
@@ -691,9 +691,9 @@ public class AppTest {
         app.setAutoVerificationEmailSuppressed(false);
         app.setName("Altered Test App [SDK]");
         app.setStrictUploadValidationEnabled(false);
-        app.setSupportEmail("test3@test.com");
+        app.setSupportEmail("testing+support@bridgedigital.health");
         app.setUploadValidationStrictness(UploadValidationStrictness.WARNING);
-        app.setConsentNotificationEmail("bridge-testing+test4@sagebase.org");
+        app.setConsentNotificationEmail("testing+test4@bridgedigital.health");
         
         OAuthProvider provider = app.getOAuthProviders().get("myProvider");
         provider.endpoint("endpoint2");

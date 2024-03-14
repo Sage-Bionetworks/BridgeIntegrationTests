@@ -28,9 +28,9 @@ public class UTF8Test {
         app.setIdentifier(appId);
         app.setName(appName);
         app.setSponsorName(appName);
-        app.setTechnicalEmail("bridge-testing+technical@sagebase.org");
-        app.setSupportEmail("bridge-testing+support@sagebase.org");
-        app.setConsentNotificationEmail("bridge-testing+consent@sagebase.org");
+        app.setTechnicalEmail("testing+technical@bridgedigital.health");
+        app.setSupportEmail("testing+support@bridgedigital.health");
+        app.setConsentNotificationEmail("testing+consent@bridgedigital.health");
         app.setEmailVerificationEnabled(true);
 
         // create study

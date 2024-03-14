@@ -167,7 +167,7 @@ public class AuthenticationTest {
     
     @Test
     public void resendingEmailVerificationToUnknownEmailDoesNotThrowException() throws Exception {
-        Identifier email = new Identifier().appId(testUser.getAppId()).email("bridge-testing@sagebase.org");
+        Identifier email = new Identifier().appId(testUser.getAppId()).email("testing@bridgedigital.health");
         
         Response<Message> response = authApi.resendEmailVerification(email).execute();
         assertEquals(202, response.code());

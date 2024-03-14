@@ -88,19 +88,19 @@ public class AccountSummarySearchTest {
         // Manually generate email addresses. We want to limit our AccountSummarySearch to just accounts created by
         // this test, to improve test reliability. Note that AccountSummarySearch.emailFilter uses a like
         // '%[emailFilter]%', so an email prefix works.
-        emailPrefix = "bridge-testing+AccountSummarySearchTest-" + RandomStringUtils.randomAlphabetic(4) + "-";
+        emailPrefix = "testing+AccountSummarySearchTest-" + RandomStringUtils.randomAlphabetic(4) + "-";
         
         testUser = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(true)
-                .withSignUp(new SignUp().email(emailPrefix + "test@sagebase.org")
+                .withSignUp(new SignUp().email(emailPrefix + "test@bridgedigital.health")
                     .languages(Lists.newArrayList("es"))    
                     .dataGroups(TEST_USER_GROUPS)).createUser();
         taggedUser = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(true)
-                .withSignUp(new SignUp().email(emailPrefix + "tagged@sagebase.org")
+                .withSignUp(new SignUp().email(emailPrefix + "tagged@bridgedigital.health")
                         .languages(Lists.newArrayList("es"))
                         .roles(ImmutableList.of(Role.DEVELOPER))
                         .dataGroups(TAGGED_USER_GROUPS)).createUser();
         frenchUser = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(true)
-                .withSignUp(new SignUp().email(emailPrefix + "french@sagebase.org")
+                .withSignUp(new SignUp().email(emailPrefix + "french@bridgedigital.health")
                         .languages(Lists.newArrayList("fr"))
                         .attributes(ImmutableMap.of("can_be_recontacted", "true"))
                         .dataGroups(FRENCH_USER_GROUPS)).createUser();
@@ -111,15 +111,15 @@ public class AccountSummarySearchTest {
         orgsApi.addMember(ORG_ID_1, frenchUser.getUserId()).execute();
         
         study1User = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(false)
-                .withSignUp(new SignUp().email(emailPrefix + "s1@sagebase.org")).createUser();
+                .withSignUp(new SignUp().email(emailPrefix + "s1@bridgedigital.health")).createUser();
         study2User = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(false)
-                .withSignUp(new SignUp().email(emailPrefix + "s2@sagebase.org")).createUser();
+                .withSignUp(new SignUp().email(emailPrefix + "s2@bridgedigital.health")).createUser();
         study1and2User = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(false)
-                .withSignUp(new SignUp().email(emailPrefix + "s1and2@sagebase.org")).createUser();
+                .withSignUp(new SignUp().email(emailPrefix + "s1and2@bridgedigital.health")).createUser();
         study1withdrawnFrom2User = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(false)
-                .withSignUp(new SignUp().email(emailPrefix + "s1not2@sagebase.org")).createUser();
+                .withSignUp(new SignUp().email(emailPrefix + "s1not2@bridgedigital.health")).createUser();
         study2withdrawnFrom1User = new TestUserHelper.Builder(AccountSummarySearchTest.class).withConsentUser(false)
-                .withSignUp(new SignUp().email(emailPrefix + "s2not1@sagebase.org")).createUser();
+                .withSignUp(new SignUp().email(emailPrefix + "s2not1@bridgedigital.health")).createUser();
         
         StudiesApi studiesApi = admin.getClient(StudiesApi.class);
         studiesApi.enrollParticipant(STUDY_ID_1, 
@@ -450,18 +450,18 @@ public class AccountSummarySearchTest {
         assertTrue(found.containsAll(ImmutableSet.of(s1, s1and2, s1not2, s2not1)));
         assertFalse(found.containsAll(ImmutableSet.of(s2)));
         
-        search = makeAccountSummarySearch().emailFilter("sagebase").stringSearchPosition(PREFIX);
+        search = makeAccountSummarySearch().emailFilter("bridgedigital").stringSearchPosition(PREFIX);
         list = studyParticipantsApi.getStudyParticipants(STUDY_ID_1, search).execute().body();
         found = mapUserIds(list);
         assertFalse(found.containsAll(ImmutableSet.of(s1, s1and2, s1not2, s2not1)));
 
-        search = makeAccountSummarySearch().emailFilter("sagebase").stringSearchPosition(INFIX);
+        search = makeAccountSummarySearch().emailFilter("bridgedigital").stringSearchPosition(INFIX);
         list = studyParticipantsApi.getStudyParticipants(STUDY_ID_1, search).execute().body();
         found = mapUserIds(list);
         assertTrue(found.containsAll(ImmutableSet.of(s1, s1and2, s1not2, s2not1)));
         
         // Test predicate (and/or) by switching to OR search that should return two records
-        search = makeAccountSummarySearch().emailFilter(emailPrefix + "s1@sagebase.org")
+        search = makeAccountSummarySearch().emailFilter(emailPrefix + "s1@bridgedigital.health")
                 .externalIdFilter("s1-s1not2").predicate(OR).stringSearchPosition(EXACT);
         list = studyParticipantsApi.getStudyParticipants(STUDY_ID_1, search).execute().body();
         found = mapUserIds(list);
