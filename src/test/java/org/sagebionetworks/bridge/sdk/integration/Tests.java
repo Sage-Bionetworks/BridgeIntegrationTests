@@ -313,9 +313,9 @@ public class Tests {
         app.setSponsorName("The Test App Folks [SDK]");
         app.setStrictUploadValidationEnabled(true);
         app.setAppIdExcludedInExport(true);
-        app.setSupportEmail("test@test.com");
-        app.setConsentNotificationEmail("bridge-testing+test2@sagebase.org");
-        app.setTechnicalEmail("test3@test.com");
+        app.setSupportEmail("testing+support@bridgedigital.health");
+        app.setConsentNotificationEmail("testing+test2@bridgedigital.health");
+        app.setTechnicalEmail("testing+test3@bridgedigital.health");
         app.setUsesCustomExportSchedule(true);
         app.setUserProfileAttributes(Lists.newArrayList("new_profile_attribute"));
         app.setTaskIdentifiers(Lists.newArrayList("taskA")); // setting it differently just for the heck of it 
